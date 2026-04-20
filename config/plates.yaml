@@ -1,82 +1,82 @@
 plates:
   "12-well":
-    rows: 3
-    cols: 4
+    rows: 3                     # 培养板行数。12孔板通常为 3 行（A~C）
+    cols: 4                     # 培养板列数。12孔板通常为 4 列（1~4）
 
     a1_start:
-      x: 8563500
-      y: 5755000
-      meaning: "A1孔左侧观测起始点"
+      x: 8563500                # A1 孔左侧观测起始点的 X 轴脉冲坐标
+      y: 5755000                # A1 孔左侧观测起始点的 Y 轴脉冲坐标
+      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: 19.5
-    well_gap_mm: 3.6
-    pulses_per_mm: 147500
+    well_diameter_mm: 19.5      # 单个培养孔直径，单位：mm
+    well_gap_mm: 3.6            # 相邻培养孔边缘之间的间距，单位：mm
+    pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
 
     # 与你实测换孔逻辑一致：
     # A1 -> A2: Y 轴减小
     # A1 -> B1: X 轴减小
-    row_stage_sign: -1
-    col_stage_sign: -1
+    row_stage_sign: -1          # 行方向符号。沿行方向移动（A→B→C）时，位移台 X 轴变化方向为负
+    col_stage_sign: -1          # 列方向符号。沿列方向移动（1→2→3→4）时，位移台 Y 轴变化方向为负
 
     # 孔内扫描方向。当前沿用原脚本默认方向，显式写入，避免隐式默认。
-    x_stage_sign_for_view_down: -1
-    y_stage_sign_for_view_right: -1
+    x_stage_sign_for_view_down: -1   # 图像中“向下”对应的位移台 X 轴运动方向符号
+    y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
 
     # 兼容旧字段（可保留）
-    point_12: [8563500, 5755000]
-    point_12_d: 195
-    point_12_gap: 36
-    rpm_mm: 14750
+    point_12: [8563500, 5755000] # 旧版 12 孔板 A1 起始点坐标，单位：脉冲
+    point_12_d: 195              # 旧版孔径参数，单位通常为 0.1 mm，即 195 表示 19.5 mm
+    point_12_gap: 36             # 旧版孔间距参数，单位通常为 0.1 mm，即 36 表示 3.6 mm
+    rpm_mm: 14750                # 旧版单位换算参数，表示 0.1 mm 对应脉冲数
 
     axis_mapping:
-      image_up_down_axis: x
-      image_left_right_axis: y
-      stage_and_view_reverse: true
+      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
+      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
+      stage_and_view_reverse: true  # 位移台运动方向与图像视野移动方向是否相反。true 表示相反
 
   "24-well":
-    rows: 4
-    cols: 6
+    rows: 4                     # 培养板行数。24孔板通常为 4 行（A~D）
+    cols: 6                     # 培养板列数。24孔板通常为 6 列（1~6）
 
     a1_start:
-      x: null
-      y: null
-      meaning: "A1孔左侧观测起始点"
+      x: null                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
+      y: null                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
+      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: null
-    well_gap_mm: null
-    pulses_per_mm: 147500
+    well_diameter_mm: null      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: null           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: null
-    col_stage_sign: null
-    x_stage_sign_for_view_down: null
-    y_stage_sign_for_view_right: null
+    row_stage_sign: null        # 行方向的位移台运动符号，使用前需根据实测结果填写
+    col_stage_sign: null        # 列方向的位移台运动符号，使用前需根据实测结果填写
+    x_stage_sign_for_view_down: null   # 图像向下对应的 X 轴方向符号，需实测确认
+    y_stage_sign_for_view_right: null  # 图像向右对应的 Y 轴方向符号，需实测确认
 
     axis_mapping:
-      image_up_down_axis: x
-      image_left_right_axis: y
-      stage_and_view_reverse: true
+      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
+      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
+      stage_and_view_reverse: true  # 位移台运动方向与图像视野方向相反
 
   "48-well":
-    rows: 6
-    cols: 8
+    rows: 6                     # 培养板行数。48孔板通常为 6 行（A~F）
+    cols: 8                     # 培养板列数。48孔板通常为 8 列（1~8）
 
     a1_start:
-      x: null
-      y: null
-      meaning: "A1孔左侧观测起始点"
+      x: null                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
+      y: null                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
+      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: null
-    well_gap_mm: null
-    pulses_per_mm: 147500
+    well_diameter_mm: null      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: null           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: null
-    col_stage_sign: null
-    x_stage_sign_for_view_down: null
-    y_stage_sign_for_view_right: null
+    row_stage_sign: null        # 行方向的位移台运动符号，使用前需根据实测结果填写
+    col_stage_sign: null        # 列方向的位移台运动符号，使用前需根据实测结果填写
+    x_stage_sign_for_view_down: null   # 图像向下对应的 X 轴方向符号，需实测确认
+    y_stage_sign_for_view_right: null  # 图像向右对应的 Y 轴方向符号，需实测确认
 
     axis_mapping:
-      image_up_down_axis: x
-      image_left_right_axis: y
-      stage_and_view_reverse: true
+      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
+      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
+      stage_and_view_reverse: true  # 位移台运动方向与图像视野方向相反

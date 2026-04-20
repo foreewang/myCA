@@ -1,5 +1,18 @@
 from __future__ import annotations
+"""
+camera_controller.py
 
+功能：
+1. 封装海康工业相机 MVS Python SDK 的常用调用流程；
+2. 支持按设备索引或序列号选择相机；
+3. 支持软件触发单帧采图；
+4. 支持设置曝光、增益；
+5. 支持将 Mono8 图像保存为 bmp/jpg/png。
+
+适用场景：
+- 放在项目的 devices/camera_controller.py 中，作为工程化相机控制模块使用；
+- 上层扫描流程、调度流程、测试脚本都只调用本模块，不直接接触 SDK 细节。
+"""
 import os
 import sys
 import time
@@ -7,17 +20,19 @@ import ctypes
 import logging
 import importlib
 import argparse
-# import cv2
+# import cv2  # 如后续需要 OpenCV 保存/处理，可再启用
 from PIL import Image
 import numpy as np
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
 
+# 当前模块日志器
 logger = logging.getLogger(__name__)
 
 
 class CameraSDKError(RuntimeError):
+    """相机 SDK 相关异常。"""
     pass
 
 # DEFAULT_MVS_PYTHON_DIR = r"/opt/MVS/Samples/64/Python/MvImport"
@@ -26,6 +41,17 @@ DEFAULT_MVS_PYTHON_DIR = r"C:\Program Files (x86)\MVS\Development\Samples\Python
 
 @dataclass
 class FrameInfo:
+    """
+    单帧采集完成后返回的信息结构体。
+
+    字段说明：
+    - width / height: 图像宽高（像素）
+    - frame_num: 帧号
+    - pixel_type: 像素格式枚举值
+    - frame_len: 原始帧字节长度
+    - saved_path: 保存到磁盘的路径
+    - timestamp: 保存时刻的时间戳
+    """
     width: int
     height: int
     frame_num: int
@@ -37,7 +63,11 @@ class FrameInfo:
 
 class HikCameraController:
     """
-    适合放在项目的 devices/camera_controller.py 中使用。
+    海康工业相机控制器。
+
+    设计目标：
+    - 让上层代码只关心“打开相机 / 设置参数 / 采图 / 关闭相机”
+    - 将 SDK 的导入、设备枚举、句柄创建、异常处理都收敛在这里
 
     目录建议：
         project_root/
@@ -63,24 +93,50 @@ class HikCameraController:
         default_exposure_us: Optional[float] = None,
         default_gain: Optional[float] = None,
     ) -> None:
+        # MVS Python 模块目录
         self.mvs_python_dir = mvs_python_dir or os.getenv("MVS_PYTHON_DIR") or DEFAULT_MVS_PYTHON_DIR
+        # 相机选择方式：
+        # - 若 serial_number 不为空，则优先按序列号匹配
+        # - 否则按 device_index 选择
         self.device_index = device_index
         self.serial_number = serial_number
+        # 当前仅实现 software 软件触发
         self.trigger_source = trigger_source.lower().strip()
+        # 获取单帧时的等待超时，单位 ms
         self.grab_timeout_ms = int(grab_timeout_ms)
+        # jpg 保存质量，仅在保存 jpg 时有意义
         self.jpg_quality = int(jpg_quality)
+        # 打开相机后若提供默认曝光 / 增益，则自动设置
         self.default_exposure_us = default_exposure_us
         self.default_gain = default_gain
 
+        # SDK 是否已完成导入
         self._sdk_loaded = False
+
+        # 用字典统一保存导入到的 SDK 类、结构体、常量
         self._sdk: Dict[str, Any] = {}
+
+        # 相机实例句柄对象（MvCamera）
         self.cam: Any = None
+
+        # 当前相机 PayloadSize（每帧最大数据长度）
         self.payload_size: Optional[int] = None
+
+        # 当前选中的设备信息结构体
         self.device_info: Any = None
+
+        # 状态标志
         self.opened = False
         self.grabbing = False
 
     def _load_sdk(self) -> None:
+        """
+        动态导入海康 MVS Python SDK。
+
+        这样写的好处：
+        - 不要求用户必须把 SDK 路径提前配到系统环境变量
+        - 只在真正需要打开相机时才导入 SDK
+        """
         if self._sdk_loaded:
             return
 
@@ -316,6 +372,22 @@ class HikCameraController:
         self._check(ret, f"MV_CC_SetIntValue({key})")
 
     def open(self) -> None:
+        """
+        打开相机并完成基础初始化。
+
+        执行顺序：
+        1. 导入 SDK
+        2. 创建 MvCamera 实例
+        3. 初始化 SDK 全局环境
+        4. 枚举并选择设备
+        5. 创建句柄
+        6. 打开设备
+        7. 配置网络包大小（GigE 可优化）
+        8. 设置触发模式
+        9. 设置默认曝光、增益
+        10. 开始取流
+        11. 读取 PayloadSize
+        """
         if self.opened:
             return
 
@@ -378,6 +450,16 @@ class HikCameraController:
             pass
 
     def _set_trigger_mode(self) -> None:
+        """
+        设置触发模式。
+
+        当前脚本逻辑：
+        - TriggerMode = On
+        - TriggerSource = Software
+
+        即：不是连续采集，而是每次调用 capture_once 时，
+        通过 TriggerSoftware 主动触发一次拍照。
+        """
         self._set_enum("TriggerMode", 1)
         if self.trigger_source == "software":
             self._set_enum("TriggerSource", int(self._sdk.get("MV_TRIGGER_SOURCE_SOFTWARE", 7)))
@@ -385,6 +467,7 @@ class HikCameraController:
             raise CameraSDKError(f"当前脚本只实现 software 触发，收到 trigger_source={self.trigger_source}")
 
     def start_grabbing(self) -> None:
+        """开始取流。"""
         if self.grabbing:
             return
         ret = self.cam.MV_CC_StartGrabbing()
@@ -392,6 +475,7 @@ class HikCameraController:
         self.grabbing = True
 
     def stop_grabbing(self) -> None:
+        """停止取流。"""
         if self.cam is None or not self.grabbing:
             return
         try:
@@ -428,6 +512,18 @@ class HikCameraController:
         return self._get_float_value("Gain")
 
     def capture_once(self, save_path: str, timeout_ms: Optional[int] = None) -> FrameInfo:
+        """
+        软件触发采一张图并保存。
+
+        流程：
+        1. 检查相机是否已打开
+        2. 检查 payload_size 是否已获取
+        3. 如未开始取流则启动取流
+        4. 发送 TriggerSoftware 命令
+        5. 调用 MV_CC_GetOneFrameTimeout 获取一帧原始数据
+        6. 调用 _save_frame 保存到磁盘
+        7. 返回本帧信息
+        """
         if not self.opened:
             raise CameraSDKError("相机尚未打开，请先调用 open()")
         if not self.payload_size:
@@ -483,6 +579,15 @@ class HikCameraController:
         return self.capture_once(save_path=save_path, timeout_ms=timeout_ms)
 
     def close(self) -> None:
+        """
+        关闭相机并释放资源。
+
+        注意：
+        - 先停流
+        - 再关闭设备
+        - 再销毁句柄
+        - 最后全局 Finalize
+        """
         if not self._sdk_loaded:
             return
         try:

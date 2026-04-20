@@ -1,27 +1,26 @@
-
 camera:
-  device_index: 0
-  serial_number: null
+  device_index: 0          # 相机设备索引号。若连接了多个相机，可用索引区分；通常 0 表示第一个相机
+  serial_number: null      # 相机序列号。为 null 表示不按序列号绑定相机；若需要固定某一台相机，可填写对应序列号
 
   resolution:
-    width: 5120
-    height: 5120
-    allow_downscale: true
+    width: 5120            # 当前采集分辨率宽度，单位：像素
+    height: 5120           # 当前采集分辨率高度，单位：像素
+    allow_downscale: true  # 是否允许降采样/降分辨率运行。true 表示可切换到较低分辨率以提升速度
     presets:
       max:
-        width: 5120
-        height: 5120
+        width: 5120        # 最大分辨率预设宽度
+        height: 5120       # 最大分辨率预设高度
       half:
-        width: 2560
-        height: 2560
+        width: 2560        # 半分辨率预设宽度
+        height: 2560       # 半分辨率预设高度
 
-  exposure_us: 30000
-  gain: 0.0
+  exposure_us: 30000       # 曝光时间，单位：微秒（us）。30000 即 30 ms
+  gain: 0.0                # 增益值。0.0 表示不额外增益，通常噪声更低
 
-  trigger_mode: software
-  pixel_format: mono8
-  save_format: bmp
+  trigger_mode: software   # 触发模式。software 表示软件触发拍照，而不是连续采集或硬件触发
+  pixel_format: mono8      # 像素格式。mono8 表示 8 位单通道灰度图
+  save_format: bmp         # 图像保存格式。这里保存为 bmp 格式
 
   save_options:
-    create_dir_if_missing: true
-    overwrite: true
+    create_dir_if_missing: true  # 若保存目录不存在，是否自动创建。true 表示自动创建
+    overwrite: true              # 若目标文件已存在，是否覆盖。true 表示直接覆盖

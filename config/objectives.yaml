@@ -1,23 +1,22 @@
-
 objectives:
   "4x":
-    magnification: 4
-    focus_position: null
+    magnification: 4          # 物镜放大倍数。这里表示 4 倍物镜
+    focus_position: null      # 该物镜对应的调焦位置。null 表示当前尚未标定，后续可填写具体焦点位置
     fov_mm:
-      width: 3.0
-      height: 3.0
+      width: 3.0              # 该物镜下视野宽度，单位：mm
+      height: 3.0             # 该物镜下视野高度，单位：mm
     recommended_resolution:
-      width: 5120
-      height: 5120
-    description: "4x物镜默认观察配置"
+      width: 5120             # 推荐采集分辨率宽度，单位：像素
+      height: 5120            # 推荐采集分辨率高度，单位：像素
+    description: "4x物镜默认观察配置"   # 对该物镜配置的文字说明
 
   "10x":
-    magnification: 10
-    focus_position: null
+    magnification: 10         # 物镜放大倍数。这里表示 10 倍物镜
+    focus_position: null      # 该物镜对应的调焦位置。null 表示当前尚未标定
     fov_mm:
-      width: null
-      height: null
+      width: null             # 该物镜下视野宽度，单位：mm。null 表示暂未测定
+      height: null            # 该物镜下视野高度，单位：mm。null 表示暂未测定
     recommended_resolution:
-      width: 5120
-      height: 5120
-    description: "10x物镜默认观察配置"
+      width: 5120             # 推荐采集分辨率宽度，单位：像素
+      height: 5120            # 推荐采集分辨率高度，单位：像素
+    description: "10x物镜默认观察配置"  # 对该物镜配置的文字说明
