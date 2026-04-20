@@ -1,0 +1,21 @@
+task:
+  task_id: "align_a1_img001_c01"
+  task_type: "align_clone_one_step_from_detect"
+
+  detect_json: "C:/colony_system/config/a1_scan_detect_result_test.json"
+  image_index: 1
+  clone_id: "C01"
+
+  dry_run: false
+
+  motion:
+    port: "COM3"
+    baudrate: 115200
+    x_slave: 1
+    y_slave: 2
+    profile_vel: 200000
+    profile_acc: 50000
+    profile_dec: 50000
+    settle_s: 0.8
+
+  output_json: "C:/colony_system/config/align_a1_img001_c01_result.json"

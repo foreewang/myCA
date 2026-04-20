@@ -1,0 +1,30 @@
+#单点拍照
+task:
+  task_id: "test_a1_start_capture_001"
+  task_type: "single_point_capture"
+
+  plate_type: "12-well"
+  well_name: "A1"
+  objective: "4x"
+  point_mode: "a1_start"
+
+  capture:
+    save_dir: "C:/colony_system/data/images/test_single_point"
+    filename_pattern: "{well}_start_{task_id}.bmp"
+
+  motion:
+    port: "COM3"
+    baudrate: 115200
+    x_slave: 1
+    y_slave: 2
+    profile_vel: 200000
+    profile_acc: 50000
+    profile_dec: 50000
+    timeout_s: 120.0
+
+  scan:
+    settle_s: 0.8
+
+  detect:
+    enabled: false
+    output_json: "C:/colony_system/data/results/test_single_point_detect.json"

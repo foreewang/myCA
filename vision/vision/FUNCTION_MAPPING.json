@@ -1,0 +1,19 @@
+{
+  "to_gray_u8": "vision/image_loader.py",
+  "resize_keep_ratio": "vision/preprocess.py",
+  "auto_seed_threshold": "vision/preprocess.py",
+  "roi_density_signal": "vision/preprocess.py",
+  "draw_cross": "vision/postprocess.py",
+  "bbox_iou_xywh": "vision/postprocess.py",
+  "nms_xywh": "vision/postprocess.py",
+  "circular_smooth": "vision/postprocess.py",
+  "upscale_to_original": "vision/postprocess.py",
+  "save_outputs": "vision/postprocess.py",
+  "contour_centroid_from_mask": "vision/center_locator.py",
+  "detect_coarse_rois": "vision/segment.py",
+  "radial_contour_from_signal_vectorized": "vision/segment.py",
+  "refine_contour_in_roi": "vision/segment.py",
+  "build_failed_component": "vision/feature_extract.py",
+  "build_refined_component": "vision/feature_extract.py",
+  "detect_and_refine": "vision/detect_pipeline.py"
+}

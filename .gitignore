@@ -1,0 +1,16 @@
+@"
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.db
+*.sqlite
+*.sqlite3
+.venv/
+env/
+dist/
+build/
+"@ | Set-Content .gitignore

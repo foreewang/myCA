@@ -1,0 +1,23 @@
+
+objectives:
+  "4x":
+    magnification: 4
+    focus_position: null
+    fov_mm:
+      width: 3.0
+      height: 3.0
+    recommended_resolution:
+      width: 5120
+      height: 5120
+    description: "4x物镜默认观察配置"
+
+  "10x":
+    magnification: 10
+    focus_position: null
+    fov_mm:
+      width: null
+      height: null
+    recommended_resolution:
+      width: 5120
+      height: 5120
+    description: "10x物镜默认观察配置"

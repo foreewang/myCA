@@ -1,0 +1,82 @@
+plates:
+  "12-well":
+    rows: 3
+    cols: 4
+
+    a1_start:
+      x: 8563500
+      y: 5755000
+      meaning: "A1孔左侧观测起始点"
+
+    well_diameter_mm: 19.5
+    well_gap_mm: 3.6
+    pulses_per_mm: 147500
+
+    # 与你实测换孔逻辑一致：
+    # A1 -> A2: Y 轴减小
+    # A1 -> B1: X 轴减小
+    row_stage_sign: -1
+    col_stage_sign: -1
+
+    # 孔内扫描方向。当前沿用原脚本默认方向，显式写入，避免隐式默认。
+    x_stage_sign_for_view_down: -1
+    y_stage_sign_for_view_right: -1
+
+    # 兼容旧字段（可保留）
+    point_12: [8563500, 5755000]
+    point_12_d: 195
+    point_12_gap: 36
+    rpm_mm: 14750
+
+    axis_mapping:
+      image_up_down_axis: x
+      image_left_right_axis: y
+      stage_and_view_reverse: true
+
+  "24-well":
+    rows: 4
+    cols: 6
+
+    a1_start:
+      x: null
+      y: null
+      meaning: "A1孔左侧观测起始点"
+
+    well_diameter_mm: null
+    well_gap_mm: null
+    pulses_per_mm: 147500
+
+    # 使用前请按实测值补全，避免沿用错误默认方向
+    row_stage_sign: null
+    col_stage_sign: null
+    x_stage_sign_for_view_down: null
+    y_stage_sign_for_view_right: null
+
+    axis_mapping:
+      image_up_down_axis: x
+      image_left_right_axis: y
+      stage_and_view_reverse: true
+
+  "48-well":
+    rows: 6
+    cols: 8
+
+    a1_start:
+      x: null
+      y: null
+      meaning: "A1孔左侧观测起始点"
+
+    well_diameter_mm: null
+    well_gap_mm: null
+    pulses_per_mm: 147500
+
+    # 使用前请按实测值补全，避免沿用错误默认方向
+    row_stage_sign: null
+    col_stage_sign: null
+    x_stage_sign_for_view_down: null
+    y_stage_sign_for_view_right: null
+
+    axis_mapping:
+      image_up_down_axis: x
+      image_left_right_axis: y
+      stage_and_view_reverse: true

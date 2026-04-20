@@ -1,0 +1,27 @@
+
+camera:
+  device_index: 0
+  serial_number: null
+
+  resolution:
+    width: 5120
+    height: 5120
+    allow_downscale: true
+    presets:
+      max:
+        width: 5120
+        height: 5120
+      half:
+        width: 2560
+        height: 2560
+
+  exposure_us: 30000
+  gain: 0.0
+
+  trigger_mode: software
+  pixel_format: mono8
+  save_format: bmp
+
+  save_options:
+    create_dir_if_missing: true
+    overwrite: true

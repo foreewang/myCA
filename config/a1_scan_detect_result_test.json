@@ -1,0 +1,2923 @@
+{
+  "task_id": "scan_a1_001",
+  "status": "success",
+  "task_type": "detect_from_existing_scan_result",
+  "plate_type": "12-well",
+  "well_name": "A1",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "A1孔左侧观测起始点",
+    "a1_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_diameter_mm": 19.5,
+    "well_gap_mm": 3.6,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.0,
+      "height": 3.0
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.7,
+      "height": 2.7
+    },
+    "point_count": 49
+  },
+  "source_scan_result_json": "C:\\colony_system\\config\\a1_scan_result.json",
+  "image_count": 49,
+  "total_clone_count": 93,
+  "images": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_001_row00_col00_vdown_+0.000_vright_+0.000_x_8563500_y_5755000.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 5755000,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 5755027,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2277,
+            3195
+          ],
+          "offset_from_image_center_px": [
+            -283,
+            635
+          ],
+          "bbox": [
+            397,
+            1438,
+            3601,
+            3525
+          ],
+          "area_px": 9433015,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_001_row00_col00_vdown_+0.000_vright_+0.000_x_8563500_y_5755000.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 5755027
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4761,
+            2583
+          ],
+          "offset_from_image_center_px": [
+            2201,
+            23
+          ],
+          "bbox": [
+            4510,
+            2309,
+            482,
+            589
+          ],
+          "area_px": 205781,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_001_row00_col00_vdown_+0.000_vright_+0.000_x_8563500_y_5755000.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 5755027
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_002_row00_col01_vdown_+0.000_vright_+2.700_x_8563500_y_5356750.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 5356750,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 5356742,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4058,
+            2400
+          ],
+          "offset_from_image_center_px": [
+            1498,
+            -160
+          ],
+          "bbox": [
+            3005,
+            1362,
+            2022,
+            2094
+          ],
+          "area_px": 2939760,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_002_row00_col01_vdown_+0.000_vright_+2.700_x_8563500_y_5356750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 5356742
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1623,
+            4289
+          ],
+          "offset_from_image_center_px": [
+            -937,
+            1729
+          ],
+          "bbox": [
+            848,
+            3513,
+            1538,
+            1539
+          ],
+          "area_px": 1553181,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_002_row00_col01_vdown_+0.000_vright_+2.700_x_8563500_y_5356750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 5356742
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_003_row00_col02_vdown_+0.000_vright_+5.400_x_8563500_y_4958500.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 4958500,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 4958501,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3619,
+            1666
+          ],
+          "offset_from_image_center_px": [
+            1059,
+            -894
+          ],
+          "bbox": [
+            2079,
+            158,
+            2947,
+            3071
+          ],
+          "area_px": 6529906,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_003_row00_col02_vdown_+0.000_vright_+5.400_x_8563500_y_4958500.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4958501
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4062,
+            3859
+          ],
+          "offset_from_image_center_px": [
+            1502,
+            1299
+          ],
+          "bbox": [
+            3027,
+            2861,
+            2048,
+            2041
+          ],
+          "area_px": 2934545,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_003_row00_col02_vdown_+0.000_vright_+5.400_x_8563500_y_4958500.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4958501
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            1949,
+            3087
+          ],
+          "offset_from_image_center_px": [
+            -611,
+            527
+          ],
+          "bbox": [
+            1289,
+            2357,
+            1318,
+            1453
+          ],
+          "area_px": 1467670,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_003_row00_col02_vdown_+0.000_vright_+5.400_x_8563500_y_4958500.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4958501
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_004_row00_col03_vdown_+0.000_vright_+8.100_x_8563500_y_4560250.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 4560250,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 4560257,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3867,
+            1558
+          ],
+          "offset_from_image_center_px": [
+            1307,
+            -1002
+          ],
+          "bbox": [
+            2621,
+            333,
+            2397,
+            2394
+          ],
+          "area_px": 4042792,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_004_row00_col03_vdown_+0.000_vright_+8.100_x_8563500_y_4560250.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4560257
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            616,
+            1516
+          ],
+          "offset_from_image_center_px": [
+            -1944,
+            -1044
+          ],
+          "bbox": [
+            19,
+            942,
+            1175,
+            1160
+          ],
+          "area_px": 954252,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_004_row00_col03_vdown_+0.000_vright_+8.100_x_8563500_y_4560250.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4560257
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            2529,
+            3633
+          ],
+          "offset_from_image_center_px": [
+            -31,
+            1073
+          ],
+          "bbox": [
+            2124,
+            3225,
+            795,
+            704
+          ],
+          "area_px": 318330,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_004_row00_col03_vdown_+0.000_vright_+8.100_x_8563500_y_4560250.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4560257
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_005_row00_col04_vdown_+0.000_vright_+10.800_x_8563500_y_4162000.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 4162000,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 4162023,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3943,
+            1884
+          ],
+          "offset_from_image_center_px": [
+            1383,
+            -676
+          ],
+          "bbox": [
+            2851,
+            751,
+            2167,
+            2236
+          ],
+          "area_px": 3610429,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_005_row00_col04_vdown_+0.000_vright_+10.800_x_8563500_y_4162000.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4162023
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4406,
+            4399
+          ],
+          "offset_from_image_center_px": [
+            1846,
+            1839
+          ],
+          "bbox": [
+            3735,
+            3737,
+            1346,
+            1323
+          ],
+          "area_px": 1303836,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_005_row00_col04_vdown_+0.000_vright_+10.800_x_8563500_y_4162000.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4162023
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            2237,
+            2405
+          ],
+          "offset_from_image_center_px": [
+            -323,
+            -155
+          ],
+          "bbox": [
+            1772,
+            1973,
+            948,
+            911
+          ],
+          "area_px": 533509,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_005_row00_col04_vdown_+0.000_vright_+10.800_x_8563500_y_4162000.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 4162023
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_006_row00_col05_vdown_+0.000_vright_+13.500_x_8563500_y_3763750.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 3763750,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 3763781,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4179,
+            1581
+          ],
+          "offset_from_image_center_px": [
+            1619,
+            -979
+          ],
+          "bbox": [
+            3339,
+            749,
+            1728,
+            1700
+          ],
+          "area_px": 2071157,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_006_row00_col05_vdown_+0.000_vright_+13.500_x_8563500_y_3763750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 3763781
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "row_index": 0,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_007_row00_col06_vdown_+0.000_vright_+16.200_x_8563500_y_3365500.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 3365500,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 3365500,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3777,
+            1194
+          ],
+          "offset_from_image_center_px": [
+            1217,
+            -1366
+          ],
+          "bbox": [
+            3093,
+            461,
+            1412,
+            1487
+          ],
+          "area_px": 1529228,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_007_row00_col06_vdown_+0.000_vright_+16.200_x_8563500_y_3365500.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 3365500
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "row_index": 0,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_008_row00_col07_vdown_+0.000_vright_+18.900_x_8563500_y_2967250.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 2967250,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 2967293,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1368,
+            2454
+          ],
+          "offset_from_image_center_px": [
+            -1192,
+            -106
+          ],
+          "bbox": [
+            35,
+            1024,
+            2524,
+            2910
+          ],
+          "area_px": 5102539,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_008_row00_col07_vdown_+0.000_vright_+18.900_x_8563500_y_2967250.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 2967293
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            498,
+            3598
+          ],
+          "offset_from_image_center_px": [
+            -2062,
+            1038
+          ],
+          "bbox": [
+            200,
+            3132,
+            589,
+            881
+          ],
+          "area_px": 366727,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_008_row00_col07_vdown_+0.000_vright_+18.900_x_8563500_y_2967250.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 2967293
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "row_index": 0,
+      "col_index": 8,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_009_row00_col08_vdown_+0.000_vright_+19.500_x_8563500_y_2878750.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 2878750,
+      "stage_x_actual": 8563553,
+      "stage_y_actual": 2878769,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1565,
+            3308
+          ],
+          "offset_from_image_center_px": [
+            -995,
+            748
+          ],
+          "bbox": [
+            236,
+            2247,
+            2467,
+            2333
+          ],
+          "area_px": 3239683,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_009_row00_col08_vdown_+0.000_vright_+19.500_x_8563500_y_2878750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 2878769
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            942,
+            963
+          ],
+          "offset_from_image_center_px": [
+            -1618,
+            -1597
+          ],
+          "bbox": [
+            67,
+            92,
+            1856,
+            1805
+          ],
+          "area_px": 2357776,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_009_row00_col08_vdown_+0.000_vright_+19.500_x_8563500_y_2878750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 2878769
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3204,
+            2584
+          ],
+          "offset_from_image_center_px": [
+            644,
+            24
+          ],
+          "bbox": [
+            2723,
+            2074,
+            709,
+            969
+          ],
+          "area_px": 372089,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_009_row00_col08_vdown_+0.000_vright_+19.500_x_8563500_y_2878750.bmp",
+          "stage_x_actual": 8563553,
+          "stage_y_actual": 2878769
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_010_row01_col00_vdown_-2.700_vright_+19.119_x_8961750_y_2934992.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 2934992,
+      "stage_x_actual": 8961674,
+      "stage_y_actual": 2934952,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2148,
+            2373
+          ],
+          "offset_from_image_center_px": [
+            -412,
+            -187
+          ],
+          "bbox": [
+            768,
+            871,
+            2786,
+            3076
+          ],
+          "area_px": 5806989,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_010_row01_col00_vdown_-2.700_vright_+19.119_x_8961750_y_2934992.bmp",
+          "stage_x_actual": 8961674,
+          "stage_y_actual": 2934952
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3016,
+            2605
+          ],
+          "offset_from_image_center_px": [
+            456,
+            45
+          ],
+          "bbox": [
+            1898,
+            1276,
+            2740,
+            2535
+          ],
+          "area_px": 3668504,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_010_row01_col00_vdown_-2.700_vright_+19.119_x_8961750_y_2934992.bmp",
+          "stage_x_actual": 8961674,
+          "stage_y_actual": 2934952
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_011_row01_col01_vdown_-2.700_vright_+16.581_x_8961750_y_3309258.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 3309258,
+      "stage_x_actual": 8961675,
+      "stage_y_actual": 3309203,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_012_row01_col02_vdown_-2.700_vright_+13.881_x_8961750_y_3707508.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 3707508,
+      "stage_x_actual": 8961675,
+      "stage_y_actual": 3707515,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 13,
+      "row_index": 1,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_013_row01_col03_vdown_-2.700_vright_+11.181_x_8961750_y_4105758.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 4105758,
+      "stage_x_actual": 8961675,
+      "stage_y_actual": 4105724,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4445,
+            3786
+          ],
+          "offset_from_image_center_px": [
+            1885,
+            1226
+          ],
+          "bbox": [
+            3830,
+            3152,
+            1219,
+            1276
+          ],
+          "area_px": 1158648,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_013_row01_col03_vdown_-2.700_vright_+11.181_x_8961750_y_4105758.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4105724
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2752,
+            4065
+          ],
+          "offset_from_image_center_px": [
+            192,
+            1505
+          ],
+          "bbox": [
+            2297,
+            3592,
+            915,
+            941
+          ],
+          "area_px": 612164,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_013_row01_col03_vdown_-2.700_vright_+11.181_x_8961750_y_4105758.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4105724
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "row_index": 1,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_014_row01_col04_vdown_-2.700_vright_+8.481_x_8961750_y_4504008.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 4504008,
+      "stage_x_actual": 8961675,
+      "stage_y_actual": 4503942,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 4,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3797,
+            1849
+          ],
+          "offset_from_image_center_px": [
+            1237,
+            -711
+          ],
+          "bbox": [
+            2571,
+            550,
+            2494,
+            2609
+          ],
+          "area_px": 4752088,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_014_row01_col04_vdown_-2.700_vright_+8.481_x_8961750_y_4504008.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4503942
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            2417,
+            757
+          ],
+          "offset_from_image_center_px": [
+            -143,
+            -1803
+          ],
+          "bbox": [
+            1576,
+            22,
+            1415,
+            1504
+          ],
+          "area_px": 1146846,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_014_row01_col04_vdown_-2.700_vright_+8.481_x_8961750_y_4504008.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4503942
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4150,
+            3607
+          ],
+          "offset_from_image_center_px": [
+            1590,
+            1047
+          ],
+          "bbox": [
+            3512,
+            2988,
+            1228,
+            1286
+          ],
+          "area_px": 1133981,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_014_row01_col04_vdown_-2.700_vright_+8.481_x_8961750_y_4504008.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4503942
+        },
+        {
+          "clone_id": "C04",
+          "center_px": [
+            3044,
+            595
+          ],
+          "offset_from_image_center_px": [
+            484,
+            -1965
+          ],
+          "bbox": [
+            2610,
+            156,
+            861,
+            860
+          ],
+          "area_px": 496536,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_014_row01_col04_vdown_-2.700_vright_+8.481_x_8961750_y_4504008.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 4503942
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "row_index": 1,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_015_row01_col05_vdown_-2.700_vright_+5.781_x_8961750_y_4902258.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 4902258,
+      "stage_x_actual": 8961676,
+      "stage_y_actual": 4902246,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4045,
+            2564
+          ],
+          "offset_from_image_center_px": [
+            1485,
+            4
+          ],
+          "bbox": [
+            3031,
+            1541,
+            2004,
+            2022
+          ],
+          "area_px": 2999221,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_015_row01_col05_vdown_-2.700_vright_+5.781_x_8961750_y_4902258.bmp",
+          "stage_x_actual": 8961676,
+          "stage_y_actual": 4902246
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2496,
+            797
+          ],
+          "offset_from_image_center_px": [
+            -64,
+            -1763
+          ],
+          "bbox": [
+            2064,
+            366,
+            910,
+            911
+          ],
+          "area_px": 469819,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_015_row01_col05_vdown_-2.700_vright_+5.781_x_8961750_y_4902258.bmp",
+          "stage_x_actual": 8961676,
+          "stage_y_actual": 4902246
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "row_index": 1,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_016_row01_col06_vdown_-2.700_vright_+3.081_x_8961750_y_5300508.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 5300508,
+      "stage_x_actual": 8961675,
+      "stage_y_actual": 5300507,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3483,
+            3234
+          ],
+          "offset_from_image_center_px": [
+            923,
+            674
+          ],
+          "bbox": [
+            1908,
+            1558,
+            3059,
+            3353
+          ],
+          "area_px": 7254236,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_016_row01_col06_vdown_-2.700_vright_+3.081_x_8961750_y_5300508.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 5300507
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3385,
+            1097
+          ],
+          "offset_from_image_center_px": [
+            825,
+            -1463
+          ],
+          "bbox": [
+            2654,
+            398,
+            1397,
+            1417
+          ],
+          "area_px": 1411335,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_016_row01_col06_vdown_-2.700_vright_+3.081_x_8961750_y_5300508.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 5300507
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            1619,
+            538
+          ],
+          "offset_from_image_center_px": [
+            -941,
+            -2022
+          ],
+          "bbox": [
+            1175,
+            64,
+            920,
+            882
+          ],
+          "area_px": 505166,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_016_row01_col06_vdown_-2.700_vright_+3.081_x_8961750_y_5300508.bmp",
+          "stage_x_actual": 8961675,
+          "stage_y_actual": 5300507
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "row_index": 1,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_017_row01_col07_vdown_-2.700_vright_+0.381_x_8961750_y_5698758.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 5698758,
+      "stage_x_actual": 8961676,
+      "stage_y_actual": 5698707,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3493,
+            1868
+          ],
+          "offset_from_image_center_px": [
+            933,
+            -692
+          ],
+          "bbox": [
+            1856,
+            218,
+            3205,
+            3422
+          ],
+          "area_px": 7647878,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_017_row01_col07_vdown_-2.700_vright_+0.381_x_8961750_y_5698758.bmp",
+          "stage_x_actual": 8961676,
+          "stage_y_actual": 5698707
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4425,
+            3222
+          ],
+          "offset_from_image_center_px": [
+            1865,
+            662
+          ],
+          "bbox": [
+            3815,
+            2701,
+            1139,
+            1139
+          ],
+          "area_px": 719276,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_017_row01_col07_vdown_-2.700_vright_+0.381_x_8961750_y_5698758.bmp",
+          "stage_x_actual": 8961676,
+          "stage_y_actual": 5698707
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_018_row02_col00_vdown_+2.700_vright_+0.381_x_8165250_y_5698758.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 5698758,
+      "stage_x_actual": 8165317,
+      "stage_y_actual": 5698703,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3440,
+            2479
+          ],
+          "offset_from_image_center_px": [
+            880,
+            -81
+          ],
+          "bbox": [
+            2445,
+            1383,
+            1942,
+            2159
+          ],
+          "area_px": 2585205,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_018_row02_col00_vdown_+2.700_vright_+0.381_x_8165250_y_5698758.bmp",
+          "stage_x_actual": 8165317,
+          "stage_y_actual": 5698703
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4047,
+            2581
+          ],
+          "offset_from_image_center_px": [
+            1487,
+            21
+          ],
+          "bbox": [
+            3206,
+            1831,
+            1856,
+            1608
+          ],
+          "area_px": 1828424,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_018_row02_col00_vdown_+2.700_vright_+0.381_x_8165250_y_5698758.bmp",
+          "stage_x_actual": 8165317,
+          "stage_y_actual": 5698703
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4822,
+            1527
+          ],
+          "offset_from_image_center_px": [
+            2262,
+            -1033
+          ],
+          "bbox": [
+            4621,
+            1306,
+            410,
+            448
+          ],
+          "area_px": 151660,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_018_row02_col00_vdown_+2.700_vright_+0.381_x_8165250_y_5698758.bmp",
+          "stage_x_actual": 8165317,
+          "stage_y_actual": 5698703
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "row_index": 2,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_019_row02_col01_vdown_+2.700_vright_+3.081_x_8165250_y_5300508.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 5300508,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 5300578,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3765,
+            1748
+          ],
+          "offset_from_image_center_px": [
+            1205,
+            -812
+          ],
+          "bbox": [
+            2416,
+            431,
+            2615,
+            2629
+          ],
+          "area_px": 5119837,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_019_row02_col01_vdown_+2.700_vright_+3.081_x_8165250_y_5300508.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 5300578
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1481,
+            3482
+          ],
+          "offset_from_image_center_px": [
+            -1079,
+            922
+          ],
+          "bbox": [
+            647,
+            2665,
+            1626,
+            1661
+          ],
+          "area_px": 1781767,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_019_row02_col01_vdown_+2.700_vright_+3.081_x_8165250_y_5300508.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 5300578
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4717,
+            1817
+          ],
+          "offset_from_image_center_px": [
+            2157,
+            -743
+          ],
+          "bbox": [
+            4328,
+            1453,
+            755,
+            758
+          ],
+          "area_px": 375630,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_019_row02_col01_vdown_+2.700_vright_+3.081_x_8165250_y_5300508.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 5300578
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "row_index": 2,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_020_row02_col02_vdown_+2.700_vright_+5.781_x_8165250_y_4902258.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 4902258,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 4902283,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3783,
+            1881
+          ],
+          "offset_from_image_center_px": [
+            1223,
+            -679
+          ],
+          "bbox": [
+            2543,
+            594,
+            2539,
+            2611
+          ],
+          "area_px": 5195302,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_020_row02_col02_vdown_+2.700_vright_+5.781_x_8165250_y_4902258.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 4902283
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2668,
+            2087
+          ],
+          "offset_from_image_center_px": [
+            108,
+            -473
+          ],
+          "bbox": [
+            2195,
+            1660,
+            879,
+            874
+          ],
+          "area_px": 386084,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_020_row02_col02_vdown_+2.700_vright_+5.781_x_8165250_y_4902258.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 4902283
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "row_index": 2,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_021_row02_col03_vdown_+2.700_vright_+8.481_x_8165250_y_4504008.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 4504008,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 4504126,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3843,
+            3399
+          ],
+          "offset_from_image_center_px": [
+            1283,
+            839
+          ],
+          "bbox": [
+            2608,
+            2177,
+            2441,
+            2532
+          ],
+          "area_px": 4373231,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_021_row02_col03_vdown_+2.700_vright_+8.481_x_8165250_y_4504008.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 4504126
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3754,
+            1130
+          ],
+          "offset_from_image_center_px": [
+            1194,
+            -1430
+          ],
+          "bbox": [
+            2666,
+            53,
+            2174,
+            2139
+          ],
+          "area_px": 3295435,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_021_row02_col03_vdown_+2.700_vright_+8.481_x_8165250_y_4504008.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 4504126
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "row_index": 2,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_022_row02_col04_vdown_+2.700_vright_+11.181_x_8165250_y_4105758.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 4105758,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 4105802,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3847,
+            1889
+          ],
+          "offset_from_image_center_px": [
+            1287,
+            -671
+          ],
+          "bbox": [
+            3178,
+            1257,
+            1283,
+            1279
+          ],
+          "area_px": 1122761,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_022_row02_col04_vdown_+2.700_vright_+11.181_x_8165250_y_4105758.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 4105802
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "row_index": 2,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_023_row02_col05_vdown_+2.700_vright_+13.881_x_8165250_y_3707508.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 3707508,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 3707496,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2342,
+            2623
+          ],
+          "offset_from_image_center_px": [
+            -218,
+            63
+          ],
+          "bbox": [
+            1114,
+            1606,
+            2304,
+            2127
+          ],
+          "area_px": 3358353,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_023_row02_col05_vdown_+2.700_vright_+13.881_x_8165250_y_3707508.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 3707496
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3464,
+            3457
+          ],
+          "offset_from_image_center_px": [
+            904,
+            897
+          ],
+          "bbox": [
+            2856,
+            2846,
+            1239,
+            1252
+          ],
+          "area_px": 1160762,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_023_row02_col05_vdown_+2.700_vright_+13.881_x_8165250_y_3707508.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 3707496
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "row_index": 2,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_024_row02_col06_vdown_+2.700_vright_+16.581_x_8165250_y_3309258.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 3309258,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 3309259,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3042,
+            1453
+          ],
+          "offset_from_image_center_px": [
+            482,
+            -1107
+          ],
+          "bbox": [
+            1901,
+            231,
+            2287,
+            2489
+          ],
+          "area_px": 4006124,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_024_row02_col06_vdown_+2.700_vright_+16.581_x_8165250_y_3309258.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 3309259
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4475,
+            1292
+          ],
+          "offset_from_image_center_px": [
+            1915,
+            -1268
+          ],
+          "bbox": [
+            3821,
+            675,
+            1256,
+            1178
+          ],
+          "area_px": 1038090,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_024_row02_col06_vdown_+2.700_vright_+16.581_x_8165250_y_3309258.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 3309259
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "row_index": 2,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_025_row02_col07_vdown_+2.700_vright_+19.119_x_8165250_y_2934992.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 2934992,
+      "stage_x_actual": 8165316,
+      "stage_y_actual": 2935012,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3119,
+            2422
+          ],
+          "offset_from_image_center_px": [
+            559,
+            -138
+          ],
+          "bbox": [
+            1590,
+            828,
+            3126,
+            3200
+          ],
+          "area_px": 6484370,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_025_row02_col07_vdown_+2.700_vright_+19.119_x_8165250_y_2934992.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 2935012
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            527,
+            1855
+          ],
+          "offset_from_image_center_px": [
+            -2033,
+            -705
+          ],
+          "bbox": [
+            111,
+            1404,
+            871,
+            926
+          ],
+          "area_px": 617839,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_025_row02_col07_vdown_+2.700_vright_+19.119_x_8165250_y_2934992.bmp",
+          "stage_x_actual": 8165316,
+          "stage_y_actual": 2935012
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "row_index": 3,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_026_row03_col00_vdown_-5.400_vright_+17.868_x_9360000_y_3119465.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 3119465,
+      "stage_x_actual": 9359927,
+      "stage_y_actual": 3119445,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3108,
+            2800
+          ],
+          "offset_from_image_center_px": [
+            548,
+            240
+          ],
+          "bbox": [
+            1431,
+            999,
+            3608,
+            3511
+          ],
+          "area_px": 7937688,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_026_row03_col00_vdown_-5.400_vright_+17.868_x_9360000_y_3119465.bmp",
+          "stage_x_actual": 9359927,
+          "stage_y_actual": 3119445
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "row_index": 3,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_027_row03_col01_vdown_-5.400_vright_+15.132_x_9360000_y_3523035.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 3523035,
+      "stage_x_actual": 9359925,
+      "stage_y_actual": 3522985,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4038,
+            2211
+          ],
+          "offset_from_image_center_px": [
+            1478,
+            -349
+          ],
+          "bbox": [
+            3095,
+            1221,
+            1944,
+            2001
+          ],
+          "area_px": 2805007,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_027_row03_col01_vdown_-5.400_vright_+15.132_x_9360000_y_3523035.bmp",
+          "stage_x_actual": 9359925,
+          "stage_y_actual": 3522985
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "row_index": 3,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_028_row03_col02_vdown_-5.400_vright_+12.432_x_9360000_y_3921285.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 3921285,
+      "stage_x_actual": 9359924,
+      "stage_y_actual": 3921262,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3533,
+            997
+          ],
+          "offset_from_image_center_px": [
+            973,
+            -1563
+          ],
+          "bbox": [
+            2580,
+            124,
+            1879,
+            1814
+          ],
+          "area_px": 2338817,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_028_row03_col02_vdown_-5.400_vright_+12.432_x_9360000_y_3921285.bmp",
+          "stage_x_actual": 9359924,
+          "stage_y_actual": 3921262
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3829,
+            4065
+          ],
+          "offset_from_image_center_px": [
+            1269,
+            1505
+          ],
+          "bbox": [
+            3185,
+            3425,
+            1259,
+            1302
+          ],
+          "area_px": 1152949,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_028_row03_col02_vdown_-5.400_vright_+12.432_x_9360000_y_3921285.bmp",
+          "stage_x_actual": 9359924,
+          "stage_y_actual": 3921262
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "row_index": 3,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_029_row03_col03_vdown_-5.400_vright_+9.732_x_9360000_y_4319535.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 4319535,
+      "stage_x_actual": 9359925,
+      "stage_y_actual": 4319567,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4034,
+            2715
+          ],
+          "offset_from_image_center_px": [
+            1474,
+            155
+          ],
+          "bbox": [
+            3008,
+            1652,
+            2014,
+            2069
+          ],
+          "area_px": 2971015,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_029_row03_col03_vdown_-5.400_vright_+9.732_x_9360000_y_4319535.bmp",
+          "stage_x_actual": 9359925,
+          "stage_y_actual": 4319567
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "row_index": 3,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_030_row03_col04_vdown_-5.400_vright_+7.032_x_9360000_y_4717785.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 4717785,
+      "stage_x_actual": 9359924,
+      "stage_y_actual": 4717777,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3825,
+            3063
+          ],
+          "offset_from_image_center_px": [
+            1265,
+            503
+          ],
+          "bbox": [
+            2458,
+            1733,
+            2598,
+            2671
+          ],
+          "area_px": 4856645,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_030_row03_col04_vdown_-5.400_vright_+7.032_x_9360000_y_4717785.bmp",
+          "stage_x_actual": 9359924,
+          "stage_y_actual": 4717777
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "row_index": 3,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_031_row03_col05_vdown_-5.400_vright_+4.332_x_9360000_y_5116035.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 5116035,
+      "stage_x_actual": 9359924,
+      "stage_y_actual": 5116012,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4196,
+            1645
+          ],
+          "offset_from_image_center_px": [
+            1636,
+            -915
+          ],
+          "bbox": [
+            3328,
+            764,
+            1737,
+            1814
+          ],
+          "area_px": 2321073,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_031_row03_col05_vdown_-5.400_vright_+4.332_x_9360000_y_5116035.bmp",
+          "stage_x_actual": 9359924,
+          "stage_y_actual": 5116012
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1515,
+            4862
+          ],
+          "offset_from_image_center_px": [
+            -1045,
+            2302
+          ],
+          "bbox": [
+            1311,
+            4683,
+            413,
+            383
+          ],
+          "area_px": 114254,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_031_row03_col05_vdown_-5.400_vright_+4.332_x_9360000_y_5116035.bmp",
+          "stage_x_actual": 9359924,
+          "stage_y_actual": 5116012
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "row_index": 3,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_032_row03_col06_vdown_-5.400_vright_+1.632_x_9360000_y_5514285.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 5514285,
+      "stage_x_actual": 9359925,
+      "stage_y_actual": 5514310,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3138,
+            3117
+          ],
+          "offset_from_image_center_px": [
+            578,
+            557
+          ],
+          "bbox": [
+            781,
+            1037,
+            4220,
+            3998
+          ],
+          "area_px": 10670624,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_032_row03_col06_vdown_-5.400_vright_+1.632_x_9360000_y_5514285.bmp",
+          "stage_x_actual": 9359925,
+          "stage_y_actual": 5514310
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "row_index": 4,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_033_row04_col00_vdown_+5.400_vright_+1.632_x_7767000_y_5514285.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 5514285,
+      "stage_x_actual": 7767048,
+      "stage_y_actual": 5514311,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4036,
+            2205
+          ],
+          "offset_from_image_center_px": [
+            1476,
+            -355
+          ],
+          "bbox": [
+            2877,
+            1110,
+            2243,
+            2253
+          ],
+          "area_px": 3028717,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_033_row04_col00_vdown_+5.400_vright_+1.632_x_7767000_y_5514285.bmp",
+          "stage_x_actual": 7767048,
+          "stage_y_actual": 5514311
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "row_index": 4,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_034_row04_col01_vdown_+5.400_vright_+4.332_x_7767000_y_5116035.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 5116035,
+      "stage_x_actual": 7767049,
+      "stage_y_actual": 5116053,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3652,
+            1067
+          ],
+          "offset_from_image_center_px": [
+            1092,
+            -1493
+          ],
+          "bbox": [
+            2587,
+            38,
+            2095,
+            2104
+          ],
+          "area_px": 2927399,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_034_row04_col01_vdown_+5.400_vright_+4.332_x_7767000_y_5116035.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 5116053
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3630,
+            3139
+          ],
+          "offset_from_image_center_px": [
+            1070,
+            579
+          ],
+          "bbox": [
+            2938,
+            2404,
+            1362,
+            1507
+          ],
+          "area_px": 1468888,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_034_row04_col01_vdown_+5.400_vright_+4.332_x_7767000_y_5116035.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 5116053
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "row_index": 4,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_035_row04_col02_vdown_+5.400_vright_+7.032_x_7767000_y_4717785.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 4717785,
+      "stage_x_actual": 7767049,
+      "stage_y_actual": 4717806,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3882,
+            2714
+          ],
+          "offset_from_image_center_px": [
+            1322,
+            154
+          ],
+          "bbox": [
+            2769,
+            1519,
+            2236,
+            2373
+          ],
+          "area_px": 4038235,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_035_row04_col02_vdown_+5.400_vright_+7.032_x_7767000_y_4717785.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 4717806
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2112,
+            4204
+          ],
+          "offset_from_image_center_px": [
+            -448,
+            1644
+          ],
+          "bbox": [
+            1278,
+            3408,
+            1536,
+            1625
+          ],
+          "area_px": 1433148,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_035_row04_col02_vdown_+5.400_vright_+7.032_x_7767000_y_4717785.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 4717806
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            2564,
+            787
+          ],
+          "offset_from_image_center_px": [
+            4,
+            -1773
+          ],
+          "bbox": [
+            1999,
+            205,
+            1098,
+            1097
+          ],
+          "area_px": 844555,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_035_row04_col02_vdown_+5.400_vright_+7.032_x_7767000_y_4717785.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 4717806
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "row_index": 4,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_036_row04_col03_vdown_+5.400_vright_+9.732_x_7767000_y_4319535.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 4319535,
+      "stage_x_actual": 7767049,
+      "stage_y_actual": 4319701,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3890,
+            2372
+          ],
+          "offset_from_image_center_px": [
+            1330,
+            -188
+          ],
+          "bbox": [
+            2659,
+            1204,
+            2415,
+            2440
+          ],
+          "area_px": 3988526,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_036_row04_col03_vdown_+5.400_vright_+9.732_x_7767000_y_4319535.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 4319701
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "row_index": 4,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 3921285,
+      "stage_x_actual": 7767049,
+      "stage_y_actual": 3921295,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 5,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4347,
+            1022
+          ],
+          "offset_from_image_center_px": [
+            1787,
+            -1538
+          ],
+          "bbox": [
+            3631,
+            362,
+            1463,
+            1400
+          ],
+          "area_px": 1431348,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3921295
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3768,
+            1765
+          ],
+          "offset_from_image_center_px": [
+            1208,
+            -795
+          ],
+          "bbox": [
+            3244,
+            1242,
+            1046,
+            1060
+          ],
+          "area_px": 817177,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3921295
+        },
+        {
+          "clone_id": "C04",
+          "center_px": [
+            2466,
+            4416
+          ],
+          "offset_from_image_center_px": [
+            -94,
+            1856
+          ],
+          "bbox": [
+            1886,
+            3914,
+            1140,
+            987
+          ],
+          "area_px": 814346,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3921295
+        },
+        {
+          "clone_id": "C05",
+          "center_px": [
+            2390,
+            410
+          ],
+          "offset_from_image_center_px": [
+            -170,
+            -2150
+          ],
+          "bbox": [
+            1965,
+            36,
+            803,
+            750
+          ],
+          "area_px": 361587,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3921295
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            3486,
+            3439
+          ],
+          "offset_from_image_center_px": [
+            926,
+            879
+          ],
+          "bbox": [
+            3199,
+            3153,
+            575,
+            599
+          ],
+          "area_px": 184470,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_037_row04_col04_vdown_+5.400_vright_+12.432_x_7767000_y_3921285.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3921295
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "row_index": 4,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_038_row04_col05_vdown_+5.400_vright_+15.132_x_7767000_y_3523035.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 3523035,
+      "stage_x_actual": 7767049,
+      "stage_y_actual": 3523031,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2855,
+            4338
+          ],
+          "offset_from_image_center_px": [
+            295,
+            1778
+          ],
+          "bbox": [
+            2196,
+            3661,
+            1350,
+            1421
+          ],
+          "area_px": 1130196,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_038_row04_col05_vdown_+5.400_vright_+15.132_x_7767000_y_3523035.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3523031
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4145,
+            2218
+          ],
+          "offset_from_image_center_px": [
+            1585,
+            -342
+          ],
+          "bbox": [
+            3673,
+            1714,
+            964,
+            1010
+          ],
+          "area_px": 699413,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_038_row04_col05_vdown_+5.400_vright_+15.132_x_7767000_y_3523035.bmp",
+          "stage_x_actual": 7767049,
+          "stage_y_actual": 3523031
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "row_index": 4,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_039_row04_col06_vdown_+5.400_vright_+17.868_x_7767000_y_3119465.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 3119465,
+      "stage_x_actual": 7767050,
+      "stage_y_actual": 3119466,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2972,
+            1864
+          ],
+          "offset_from_image_center_px": [
+            412,
+            -696
+          ],
+          "bbox": [
+            1276,
+            99,
+            3588,
+            3575
+          ],
+          "area_px": 8666001,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_039_row04_col06_vdown_+5.400_vright_+17.868_x_7767000_y_3119465.bmp",
+          "stage_x_actual": 7767050,
+          "stage_y_actual": 3119466
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            673,
+            1017
+          ],
+          "offset_from_image_center_px": [
+            -1887,
+            -1543
+          ],
+          "bbox": [
+            61,
+            384,
+            1219,
+            1322
+          ],
+          "area_px": 1171655,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_039_row04_col06_vdown_+5.400_vright_+17.868_x_7767000_y_3119465.bmp",
+          "stage_x_actual": 7767050,
+          "stage_y_actual": 3119466
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "row_index": 5,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_040_row05_col00_vdown_-8.100_vright_+15.177_x_9758250_y_3516390.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 3516390,
+      "stage_x_actual": 9758187,
+      "stage_y_actual": 3516362,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2812,
+            2301
+          ],
+          "offset_from_image_center_px": [
+            252,
+            -259
+          ],
+          "bbox": [
+            700,
+            346,
+            4139,
+            3883
+          ],
+          "area_px": 10893407,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_040_row05_col00_vdown_-8.100_vright_+15.177_x_9758250_y_3516390.bmp",
+          "stage_x_actual": 9758187,
+          "stage_y_actual": 3516362
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "row_index": 5,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_041_row05_col01_vdown_-8.100_vright_+12.423_x_9758250_y_3922610.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 3922610,
+      "stage_x_actual": 9758183,
+      "stage_y_actual": 3922591,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2223,
+            4359
+          ],
+          "offset_from_image_center_px": [
+            -337,
+            1799
+          ],
+          "bbox": [
+            1472,
+            3641,
+            1507,
+            1479
+          ],
+          "area_px": 1424098,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_041_row05_col01_vdown_-8.100_vright_+12.423_x_9758250_y_3922610.bmp",
+          "stage_x_actual": 9758183,
+          "stage_y_actual": 3922591
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "row_index": 5,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_042_row05_col02_vdown_-8.100_vright_+9.723_x_9758250_y_4320860.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 4320860,
+      "stage_x_actual": 9758181,
+      "stage_y_actual": 4320863,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2328,
+            4799
+          ],
+          "offset_from_image_center_px": [
+            -232,
+            2239
+          ],
+          "bbox": [
+            2044,
+            4660,
+            559,
+            286
+          ],
+          "area_px": 130145,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_042_row05_col02_vdown_-8.100_vright_+9.723_x_9758250_y_4320860.bmp",
+          "stage_x_actual": 9758181,
+          "stage_y_actual": 4320863
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "row_index": 5,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_043_row05_col03_vdown_-8.100_vright_+7.023_x_9758250_y_4719110.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 4719110,
+      "stage_x_actual": 9758180,
+      "stage_y_actual": 4718956,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3012,
+            4514
+          ],
+          "offset_from_image_center_px": [
+            452,
+            1954
+          ],
+          "bbox": [
+            2398,
+            4011,
+            1191,
+            1020
+          ],
+          "area_px": 899078,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_043_row05_col03_vdown_-8.100_vright_+7.023_x_9758250_y_4719110.bmp",
+          "stage_x_actual": 9758180,
+          "stage_y_actual": 4718956
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "row_index": 5,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_044_row05_col04_vdown_-8.100_vright_+4.323_x_9758250_y_5117360.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 5117360,
+      "stage_x_actual": 9758180,
+      "stage_y_actual": 5117284,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3084,
+            1921
+          ],
+          "offset_from_image_center_px": [
+            524,
+            -639
+          ],
+          "bbox": [
+            1430,
+            56,
+            3247,
+            3661
+          ],
+          "area_px": 8994119,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_044_row05_col04_vdown_-8.100_vright_+4.323_x_9758250_y_5117360.bmp",
+          "stage_x_actual": 9758180,
+          "stage_y_actual": 5117284
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "row_index": 6,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_045_row06_col00_vdown_+8.100_vright_+4.323_x_7368750_y_5117360.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 5117360,
+      "stage_x_actual": 7368860,
+      "stage_y_actual": 5117287,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3134,
+            1091
+          ],
+          "offset_from_image_center_px": [
+            574,
+            -1469
+          ],
+          "bbox": [
+            1835,
+            47,
+            2453,
+            2236
+          ],
+          "area_px": 3347671,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_045_row06_col00_vdown_+8.100_vright_+4.323_x_7368750_y_5117360.bmp",
+          "stage_x_actual": 7368860,
+          "stage_y_actual": 5117287
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "row_index": 6,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_046_row06_col01_vdown_+8.100_vright_+7.023_x_7368750_y_4719110.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 4719110,
+      "stage_x_actual": 7368858,
+      "stage_y_actual": 4719103,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 4,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4184,
+            3625
+          ],
+          "offset_from_image_center_px": [
+            1624,
+            1065
+          ],
+          "bbox": [
+            3256,
+            2743,
+            1794,
+            1777
+          ],
+          "area_px": 2231994,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_046_row06_col01_vdown_+8.100_vright_+7.023_x_7368750_y_4719110.bmp",
+          "stage_x_actual": 7368858,
+          "stage_y_actual": 4719103
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            3292,
+            1926
+          ],
+          "offset_from_image_center_px": [
+            732,
+            -634
+          ],
+          "bbox": [
+            2633,
+            1306,
+            1288,
+            1282
+          ],
+          "area_px": 1150575,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_046_row06_col01_vdown_+8.100_vright_+7.023_x_7368750_y_4719110.bmp",
+          "stage_x_actual": 7368858,
+          "stage_y_actual": 4719103
+        },
+        {
+          "clone_id": "C04",
+          "center_px": [
+            2800,
+            4142
+          ],
+          "offset_from_image_center_px": [
+            240,
+            1582
+          ],
+          "bbox": [
+            2261,
+            3585,
+            1130,
+            1119
+          ],
+          "area_px": 845954,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_046_row06_col01_vdown_+8.100_vright_+7.023_x_7368750_y_4719110.bmp",
+          "stage_x_actual": 7368858,
+          "stage_y_actual": 4719103
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3429,
+            630
+          ],
+          "offset_from_image_center_px": [
+            869,
+            -1930
+          ],
+          "bbox": [
+            2853,
+            106,
+            1141,
+            1053
+          ],
+          "area_px": 832743,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_046_row06_col01_vdown_+8.100_vright_+7.023_x_7368750_y_4719110.bmp",
+          "stage_x_actual": 7368858,
+          "stage_y_actual": 4719103
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "row_index": 6,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_047_row06_col02_vdown_+8.100_vright_+9.723_x_7368750_y_4320860.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 4320860,
+      "stage_x_actual": 7368857,
+      "stage_y_actual": 4320861,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2856,
+            4672
+          ],
+          "offset_from_image_center_px": [
+            296,
+            2112
+          ],
+          "bbox": [
+            2412,
+            4235,
+            831,
+            829
+          ],
+          "area_px": 411454,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_047_row06_col02_vdown_+8.100_vright_+9.723_x_7368750_y_4320860.bmp",
+          "stage_x_actual": 7368857,
+          "stage_y_actual": 4320861
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            920,
+            4339
+          ],
+          "offset_from_image_center_px": [
+            -1640,
+            1779
+          ],
+          "bbox": [
+            633,
+            3974,
+            587,
+            662
+          ],
+          "area_px": 160499,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_047_row06_col02_vdown_+8.100_vright_+9.723_x_7368750_y_4320860.bmp",
+          "stage_x_actual": 7368857,
+          "stage_y_actual": 4320861
+        }
+      ]
+    },
+    {
+      "index": 48,
+      "row_index": 6,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_048_row06_col03_vdown_+8.100_vright_+12.423_x_7368750_y_3922610.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 3922610,
+      "stage_x_actual": 7368857,
+      "stage_y_actual": 3922571,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4132,
+            2612
+          ],
+          "offset_from_image_center_px": [
+            1572,
+            52
+          ],
+          "bbox": [
+            3142,
+            1694,
+            1978,
+            1886
+          ],
+          "area_px": 2728494,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_048_row06_col03_vdown_+8.100_vright_+12.423_x_7368750_y_3922610.bmp",
+          "stage_x_actual": 7368857,
+          "stage_y_actual": 3922571
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            921,
+            363
+          ],
+          "offset_from_image_center_px": [
+            -1639,
+            -2197
+          ],
+          "bbox": [
+            595,
+            115,
+            636,
+            495
+          ],
+          "area_px": 209602,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_048_row06_col03_vdown_+8.100_vright_+12.423_x_7368750_y_3922610.bmp",
+          "stage_x_actual": 7368857,
+          "stage_y_actual": 3922571
+        }
+      ]
+    },
+    {
+      "index": 49,
+      "row_index": 6,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_049_row06_col04_vdown_+8.100_vright_+15.177_x_7368750_y_3516390.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 3516390,
+      "stage_x_actual": 7368856,
+      "stage_y_actual": 3516411,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2556,
+            1822
+          ],
+          "offset_from_image_center_px": [
+            -4,
+            -738
+          ],
+          "bbox": [
+            632,
+            39,
+            3814,
+            3597
+          ],
+          "area_px": 9952634,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_049_row06_col04_vdown_+8.100_vright_+15.177_x_7368750_y_3516390.bmp",
+          "stage_x_actual": 7368856,
+          "stage_y_actual": 3516411
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            797,
+            474
+          ],
+          "offset_from_image_center_px": [
+            -1763,
+            -2086
+          ],
+          "bbox": [
+            334,
+            0,
+            936,
+            969
+          ],
+          "area_px": 621565,
+          "source_image_path": "C:\\colony_system\\data\\images\\A1_scan\\A1_049_row06_col04_vdown_+8.100_vright_+15.177_x_7368750_y_3516390.bmp",
+          "stage_x_actual": 7368856,
+          "stage_y_actual": 3516411
+        }
+      ]
+    }
+  ]
+}
