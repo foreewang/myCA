@@ -74,8 +74,14 @@ def _default_stages(task: Dict[str, Any]) -> List[str]:
         return [str(x).strip().lower() for x in stages]
 
     task_type = str(task.get("task_type") or "").strip().lower()
-    if task_type in {"capture", "pipeline", "compensate"}:
+    if task_type == "capture":
         return ["capture"]
+
+    if task_type == "pipeline":
+        return ["capture"]
+
+    if task_type == "compensate":
+        return []
 
     raise ValueError(f"无法推断 stages，请在 task 中显式提供 stages。task_type={task_type!r}")
 
