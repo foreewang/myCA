@@ -1,10 +1,12 @@
 """
 为单个培养孔生成扫描路径点位
+
+路径点全部生成后，先检查每个点是否在限位范围内。
 """
 from __future__ import annotations
 
 from math import sqrt
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from workflow.plate_geometry import (
     compute_well_start,
@@ -106,8 +108,84 @@ def _x_positions_for_row(abs_vdown_mm: float, step_x: float, radius: float) -> L
 
     return xs
 
+def _get_stage_limits(plate: Dict[str, Any]) -> Dict[str, Any]:
+    cfg = plate.get("stage_limits", {}) or {}
+    return {
+        "enabled": bool(cfg.get("enabled", False)),
+        "x_min": int(cfg.get("x_min", 0)) if cfg.get("x_min") is not None else None,
+        "x_max": int(cfg.get("x_max", 0)) if cfg.get("x_max") is not None else None,
+        "y_min": int(cfg.get("y_min", 0)) if cfg.get("y_min") is not None else None,
+        "y_max": int(cfg.get("y_max", 0)) if cfg.get("y_max") is not None else None,
+        "safety_margin": int(cfg.get("safety_margin", 0)),
+    }
 
-def plan_single_well_scan(ctx: Dict, params: Dict) -> Dict:
+
+def _precheck_stage_limits(points: List[Dict[str, Any]], stage_limits: Dict[str, Any]) -> Dict[str, Any]:
+    if not stage_limits["enabled"]:
+        return {
+            "enabled": False,
+            "violations": [],
+            "checked_point_count": len(points),
+        }
+
+    required = ["x_min", "x_max", "y_min", "y_max"]
+    for k in required:
+        if stage_limits[k] is None:
+            raise ValueError(f"stage_limits.enabled=true，但缺少 {k}")
+
+    x_lo = stage_limits["x_min"] + stage_limits["safety_margin"]
+    x_hi = stage_limits["x_max"] - stage_limits["safety_margin"]
+    y_lo = stage_limits["y_min"] + stage_limits["safety_margin"]
+    y_hi = stage_limits["y_max"] - stage_limits["safety_margin"]
+
+    violations: List[Dict[str, Any]] = []
+    for p in points:
+        x = int(p["stage_x_target"])
+        y = int(p["stage_y_target"])
+
+        reasons = []
+        if x < x_lo:
+            reasons.append(f"x<{x_lo}")
+        if x > x_hi:
+            reasons.append(f"x>{x_hi}")
+        if y < y_lo:
+            reasons.append(f"y<{y_lo}")
+        if y > y_hi:
+            reasons.append(f"y>{y_hi}")
+
+        if reasons:
+            violations.append(
+                {
+                    "index": int(p["index"]),
+                    "row_index": int(p["row_index"]),
+                    "col_index": int(p["col_index"]),
+                    "stage_x_target": x,
+                    "stage_y_target": y,
+                    "reason": "; ".join(reasons),
+                }
+            )
+
+    if violations:
+        preview = violations[:5]
+        raise ValueError(
+            "扫描路径越出位移台安全范围，任务已在扫描前终止。"
+            f" 共 {len(violations)} 个点越界，示例: {preview}"
+        )
+
+    return {
+        "enabled": True,
+        "checked_point_count": len(points),
+        "safe_range": {
+            "x_min_safe": x_lo,
+            "x_max_safe": x_hi,
+            "y_min_safe": y_lo,
+            "y_max_safe": y_hi,
+        },
+        "violations": [],
+    }
+
+
+def plan_single_well_scan(ctx: Dict[str,Any], params: Dict[str,Any]) -> Dict[str,Any]:
     """
     为单个培养孔生成完整扫描计划。
 

@@ -22,6 +22,21 @@ plates:
     x_stage_sign_for_view_down: -1   # 图像中“向下”对应的位移台 X 轴运动方向符号
     y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
 
+    stage_limits:
+    enabled: true
+    x_min: null        # 按你的真实机器范围改
+    x_max: null
+    y_min: null
+    y_max: null
+    safety_margin: null  # 离硬限位保留的安全边界（pulse）
+
+  runtime_guard:
+    enabled: true
+    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
+    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
+    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    abort_on_motion_failure: true
+
     # 兼容旧字段（可保留）
     point_12: [8563500, 5755000] # 旧版 12 孔板 A1 起始点坐标，单位：脉冲
     point_12_d: 195              # 旧版孔径参数，单位通常为 0.1 mm，即 195 表示 19.5 mm
@@ -47,11 +62,27 @@ plates:
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: null        # 行方向的位移台运动符号，使用前需根据实测结果填写
-    col_stage_sign: null        # 列方向的位移台运动符号，使用前需根据实测结果填写
-    x_stage_sign_for_view_down: null   # 图像向下对应的 X 轴方向符号，需实测确认
-    y_stage_sign_for_view_right: null  # 图像向右对应的 Y 轴方向符号，需实测确认
+    row_stage_sign: -1        # 行方向的位移台运动符号，使用前需根据实测结果填写
+    col_stage_sign: -1        # 列方向的位移台运动符号，使用前需根据实测结果填写
+    x_stage_sign_for_view_down: -1   # 图像向下对应的 X 轴方向符号，需实测确认
+    y_stage_sign_for_view_right: -1  # 图像向右对应的 Y 轴方向符号，需实测确认
 
+    stage_limits:
+    enabled: true
+    x_min: null        # 按你的真实机器范围改
+    x_max: null
+    y_min: null
+    y_max: null
+    safety_margin: null  # 离硬限位保留的安全边界（pulse）
+
+  runtime_guard:
+    enabled: true
+    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
+    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
+    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    abort_on_motion_failure: true
+
+    # 兼容旧字段（可保留）
     axis_mapping:
       image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
       image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
@@ -71,11 +102,27 @@ plates:
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: null        # 行方向的位移台运动符号，使用前需根据实测结果填写
-    col_stage_sign: null        # 列方向的位移台运动符号，使用前需根据实测结果填写
-    x_stage_sign_for_view_down: null   # 图像向下对应的 X 轴方向符号，需实测确认
-    y_stage_sign_for_view_right: null  # 图像向右对应的 Y 轴方向符号，需实测确认
+    row_stage_sign: -1        # 行方向的位移台运动符号，使用前需根据实测结果填写
+    col_stage_sign: -1        # 列方向的位移台运动符号，使用前需根据实测结果填写
+    x_stage_sign_for_view_down: -1    # 图像向下对应的 X 轴方向符号，需实测确认
+    y_stage_sign_for_view_right: -1   # 图像向右对应的 Y 轴方向符号，需实测确认
 
+    stage_limits:
+    enabled: true
+    x_min: null        # 按你的真实机器范围改
+    x_max: null
+    y_min: null
+    y_max: null
+    safety_margin: null  # 离硬限位保留的安全边界（pulse）
+
+    runtime_guard:
+      enabled: true
+      stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
+      stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
+      max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+      abort_on_motion_failure: true
+
+    # 兼容旧字段（可保留）
     axis_mapping:
       image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
       image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴

@@ -1,7 +1,7 @@
 """
 作为 workflow 层对底层相机控制器的二次封装，为上层扫描流程提供更稳定、统一的拍照接口
 2026/4/21
-修复了前一版“set_exposure_time 调错接口并被静默吞掉”的问题，（未测试）
+修复了前一版“set_exposure_time 调错接口并被静默吞掉”的问题
 """
 from __future__ import annotations
 

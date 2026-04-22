@@ -74,7 +74,7 @@ def _default_stages(task: Dict[str, Any]) -> List[str]:
         return [str(x).strip().lower() for x in stages]
 
     task_type = str(task.get("task_type") or "").strip().lower()
-    if task_type in {"capture", "pipeline"}:
+    if task_type in {"capture", "pipeline", "compensate"}:
         return ["capture"]
 
     raise ValueError(f"无法推断 stages，请在 task 中显式提供 stages。task_type={task_type!r}")
@@ -132,7 +132,14 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "detect_output_json": detect_cfg.get("output_json") or output_cfg.get("detect_json"),
         "scan_result_json": detect_cfg.get("input_scan_result_json") or output_cfg.get("scan_json") or scan_cfg.get("output_json"),
         "compensate_selector": compensate_cfg.get("selector", {}) or {},
-        "compensate_output_json": compensate_cfg.get("output_json") or output_cfg.get("compensate_json"),
+        "compensate_input_detect_json": (
+            compensate_cfg.get("input_detect_json")
+            or output_cfg.get("detect_json")
+        ),
+        "compensate_output_json": (
+            compensate_cfg.get("output_json")
+            or output_cfg.get("compensate_json")
+        ),
         "result_output_json": output_cfg.get("result_json"),
     }
 
@@ -159,7 +166,22 @@ def run_single_well_compensate(ctx: Dict[str, Any], params: Dict[str, Any], dete
 
     return execute_compensate_on_detect_result(ctx, params, detect_result)
 
+def run_compensate_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+    detect_json = params.get("compensate_input_detect_json")
+    if not detect_json:
+        raise ValueError("独立 compensate 任务要求 compensate.input_detect_json 非空")
 
+    detect_path = Path(detect_json)
+    if not detect_path.exists():
+        raise FileNotFoundError(f"未找到 detect_result.json: {detect_json}")
+
+    detect_result = json.loads(detect_path.read_text(encoding="utf-8"))
+
+    # 独立 compensate 建议只针对单孔 detect_result
+    if "images" not in detect_result:
+        raise ValueError("输入的 detect_result.json 不符合单孔 detect 结果格式，缺少 images 字段")
+
+    return run_single_well_compensate(ctx, params, detect_result)
 
 def _default_result_paths(base_save_dir: Path, well_name: str) -> Dict[str, str]:
     well_dir = base_save_dir / well_name
@@ -216,8 +238,8 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Di
     result = {
         "task_id": params["task_id"],
         "status": "success",
-        "task_type": "pipeline",
-        "stages": stages,
+        "task_type": params["task_type"],
+        "stages": params["stages"],
         "observe_scope": "single_well",
         "plate_type": params["plate_type"],
         "well_name": params["well_name"],
@@ -257,7 +279,7 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
     return {
         "task_id": params["task_id"],
         "status": "success",
-        "task_type": "pipeline",
+        "task_type": params["task_type"],
         "stages": params["stages"],
         "observe_scope": "well_list",
         "plate_type": params["plate_type"],
@@ -313,8 +335,8 @@ def main() -> None:
 
     task = raw_task_cfg["task"]
     task_type = str(task.get("task_type") or "").strip().lower()
-    if task_type not in {"capture", "pipeline"}:
-        raise ValueError("当前版本要求 task_type 为 capture 或 pipeline")
+    if task_type not in {"capture", "pipeline", "compensate"}:
+        raise ValueError("当前版本要求 task_type 为 capture , pipeline或compensate")
 
     from workflow.config_loader import load_runtime_context
 
@@ -340,12 +362,16 @@ def main() -> None:
                 pass
 
     params = build_pipeline_params(ctx)
-    result = run_pipeline_task(ctx, params)
+
+    if task_type == "compensate":
+        result = run_compensate_task(ctx, params)
+    else:
+        result = run_pipeline_task(ctx, params)
+
     save_result(
         result,
-        args.dump_json or params.get("result_output_json"),
+        args.dump_json or params.get("result_output_json") or params.get("compensate_output_json"),
     )
-
 
 if __name__ == "__main__":
     main()
