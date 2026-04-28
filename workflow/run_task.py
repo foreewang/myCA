@@ -16,26 +16,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 def load_structured_file(path: str | Path) -> Dict[str, Any]:
-    """读取 JSON/YAML 结构化文件。"""
     path = Path(path)
     text = path.read_text(encoding="utf-8")
     return json.loads(text) if path.suffix.lower() == ".json" else (yaml.safe_load(text) or {})
 
 
-
-def task_path_for_runtime_context(task_path: str | Path) -> Tuple[str, str | None]:
-    """
-    为 load_runtime_context 提供任务文件路径。
-
-    当前 workflow.config_loader 以 YAML 读取为主，这里兼容 JSON 任务：
-    - 若输入是 YAML，直接返回原路径
-    - 若输入是 JSON，先临时转换成 YAML，再把临时路径传给下游
-    """
-    task_path = Path(task_path)
-    if task_path.suffix.lower() != ".json":
-        return str(task_path), None
-
-    raw = load_structured_file(task_path)
+def task_cfg_to_runtime_yaml(raw_task_cfg: Dict[str, Any]) -> Tuple[str, str]:
     tmp = tempfile.NamedTemporaryFile(
         prefix="task_",
         suffix=".yaml",
@@ -43,15 +29,22 @@ def task_path_for_runtime_context(task_path: str | Path) -> Tuple[str, str | Non
         mode="w",
         encoding="utf-8",
     )
-    yaml.safe_dump(raw, tmp, allow_unicode=True, sort_keys=False)
+    yaml.safe_dump(raw_task_cfg, tmp, allow_unicode=True, sort_keys=False)
     tmp_path = tmp.name
     tmp.close()
     return tmp_path, tmp_path
 
 
+def task_path_for_runtime_context(task_path: str | Path) -> Tuple[str, str | None]:
+    task_path = Path(task_path)
+    if task_path.suffix.lower() != ".json":
+        return str(task_path), None
+
+    raw = load_structured_file(task_path)
+    return task_cfg_to_runtime_yaml(raw)
+
 
 def save_result(result: Dict[str, Any], dump_json: str | None) -> None:
-    """打印结果，并按需落盘。"""
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if dump_json:
         out_path = Path(dump_json)
@@ -59,16 +52,14 @@ def save_result(result: Dict[str, Any], dump_json: str | None) -> None:
         out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def write_result(result: Dict[str, Any], dump_json: str | None) -> None:
+    if dump_json:
+        out_path = Path(dump_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 def _default_stages(task: Dict[str, Any]) -> List[str]:
-    """
-    计算默认 stages。
-
-    兼容策略：
-    - task_type == 'capture' -> ['capture']
-    - task_type == 'pipeline' 且未提供 stages -> ['capture']
-    - 显式提供 stages 时，以 stages 为准
-    """
     stages = task.get("stages")
     if stages:
         return [str(x).strip().lower() for x in stages]
@@ -76,19 +67,15 @@ def _default_stages(task: Dict[str, Any]) -> List[str]:
     task_type = str(task.get("task_type") or "").strip().lower()
     if task_type == "capture":
         return ["capture"]
-
     if task_type == "pipeline":
         return ["capture"]
-
     if task_type == "compensate":
         return []
 
     raise ValueError(f"无法推断 stages，请在 task 中显式提供 stages。task_type={task_type!r}")
 
 
-
 def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """把 task/camera/objective 配置整理成 pipeline 执行参数。"""
     task = ctx["task"]
     objective = ctx["objective"]
     camera = ctx["camera"]
@@ -138,56 +125,48 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "detect_output_json": detect_cfg.get("output_json") or output_cfg.get("detect_json"),
         "scan_result_json": detect_cfg.get("input_scan_result_json") or output_cfg.get("scan_json") or scan_cfg.get("output_json"),
         "compensate_selector": compensate_cfg.get("selector", {}) or {},
-        "compensate_input_detect_json": (
-            compensate_cfg.get("input_detect_json")
-            or output_cfg.get("detect_json")
-        ),
-        "compensate_output_json": (
-            compensate_cfg.get("output_json")
-            or output_cfg.get("compensate_json")
-        ),
+        "compensate_input_detect_json": compensate_cfg.get("input_detect_json") or output_cfg.get("detect_json"),
+        "compensate_input_detect_result": compensate_cfg.get("input_detect_result"),
+        "compensate_output_json": compensate_cfg.get("output_json") or output_cfg.get("compensate_json"),
         "result_output_json": output_cfg.get("result_json"),
     }
-
 
 
 def run_single_well_capture(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.scan_planner import plan_single_well_scan
     from workflow.scan_executor import execute_scan_capture
-
     plan = plan_single_well_scan(ctx, params)
     return execute_scan_capture(ctx, params, plan)
 
 
-
 def run_single_well_detect(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.detect_executor import execute_detect_on_scan_result
-
     return execute_detect_on_scan_result(ctx, params, scan_result)
-
 
 
 def run_single_well_compensate(ctx: Dict[str, Any], params: Dict[str, Any], detect_result: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.compensate_executor import execute_compensate_on_detect_result
-
     return execute_compensate_on_detect_result(ctx, params, detect_result)
 
+
 def run_compensate_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
-    detect_json = params.get("compensate_input_detect_json")
-    if not detect_json:
-        raise ValueError("独立 compensate 任务要求 compensate.input_detect_json 非空")
+    detect_result = params.get("compensate_input_detect_result")
+    if detect_result is None:
+        detect_json = params.get("compensate_input_detect_json")
+        if not detect_json:
+            raise ValueError("独立 compensate 任务要求 compensate.input_detect_json 或 compensate.input_detect_result 非空")
 
-    detect_path = Path(detect_json)
-    if not detect_path.exists():
-        raise FileNotFoundError(f"未找到 detect_result.json: {detect_json}")
+        detect_path = Path(detect_json)
+        if not detect_path.exists():
+            raise FileNotFoundError(f"未找到 detect_result.json: {detect_json}")
 
-    detect_result = json.loads(detect_path.read_text(encoding="utf-8"))
+        detect_result = json.loads(detect_path.read_text(encoding="utf-8"))
 
-    # 独立 compensate 建议只针对单孔 detect_result
     if "images" not in detect_result:
-        raise ValueError("输入的 detect_result.json 不符合单孔 detect 结果格式，缺少 images 字段")
+        raise ValueError("输入的 detect_result 不符合单孔 detect 结果格式，缺少 images 字段")
 
     return run_single_well_compensate(ctx, params, detect_result)
+
 
 def _default_result_paths(base_save_dir: Path, well_name: str) -> Dict[str, str]:
     well_dir = base_save_dir / well_name
@@ -199,9 +178,7 @@ def _default_result_paths(base_save_dir: Path, well_name: str) -> Dict[str, str]
     }
 
 
-
 def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any], well_name: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """为 well_list/full_plate 任务派生单孔上下文。"""
     well_ctx = copy.deepcopy(base_ctx)
     well_params = copy.deepcopy(base_params)
 
@@ -223,7 +200,6 @@ def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any
     return well_ctx, well_params
 
 
-
 def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     stages = params["stages"]
     stage_results: Dict[str, Any] = {}
@@ -241,7 +217,7 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Di
             raise ValueError("compensate 依赖 detect，请在 stages 中包含 detect。")
         stage_results["compensate"] = run_single_well_compensate(ctx, params, stage_results["detect"])
 
-    result = {
+    return {
         "task_id": params["task_id"],
         "status": "success",
         "task_type": params["task_type"],
@@ -254,15 +230,12 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Di
         "detect_result": stage_results.get("detect"),
         "compensate_result": stage_results.get("compensate"),
     }
-    return result
-
 
 
 def run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     if not params.get("well_name"):
         raise ValueError("single_well 流程要求 well_name 非空")
     return _run_single_well_pipeline(ctx, params)
-
 
 
 def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_list: List[str]) -> Dict[str, Any]:
@@ -296,15 +269,12 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
     }
 
 
-
 def run_full_plate_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.plate_geometry import all_well_names
-
     wells = all_well_names(ctx["plate"])
     result = run_well_list_pipeline(ctx, params, wells)
     result["observe_scope"] = "full_plate"
     return result
-
 
 
 def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
@@ -325,33 +295,31 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run capture/detect/compensate pipeline task")
-    parser.add_argument("--task", required=True, help="task json/yaml path")
-    parser.add_argument("--camera", default=None)
-    parser.add_argument("--objectives", default=None)
-    parser.add_argument("--plates", default=None)
-    parser.add_argument("--dump-json", default=None, help="output result json path")
-    args = parser.parse_args()
-
-    raw_task_cfg = load_structured_file(args.task)
+def execute_task_request(
+    raw_task_cfg: Dict[str, Any],
+    *,
+    camera_path: str | None = None,
+    objectives_path: str | None = None,
+    plates_path: str | None = None,
+    dump_json: str | None = None,
+    persist_result: bool = True,
+) -> Dict[str, Any]:
     if "task" not in raw_task_cfg:
-        raise KeyError(f"task 文件缺少顶层字段 'task': {args.task}")
+        raise KeyError("task 文件缺少顶层字段 'task'")
 
     task = raw_task_cfg["task"]
     task_type = str(task.get("task_type") or "").strip().lower()
     if task_type not in {"capture", "pipeline", "compensate"}:
-        raise ValueError("当前版本要求 task_type 为 capture , pipeline或compensate")
+        raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate")
 
     from workflow.config_loader import load_runtime_context
 
-    runtime_task_path, tmp_task_path = task_path_for_runtime_context(args.task)
+    runtime_task_path, tmp_task_path = task_cfg_to_runtime_yaml(raw_task_cfg)
 
     default_config_dir = PROJECT_ROOT / "config"
-    camera_path = args.camera or str(default_config_dir / "camera.yaml")
-    objectives_path = args.objectives or str(default_config_dir / "objectives.yaml")
-    plates_path = args.plates or str(default_config_dir / "plates.yaml")
+    camera_path = camera_path or str(default_config_dir / "camera.yaml")
+    objectives_path = objectives_path or str(default_config_dir / "objectives.yaml")
+    plates_path = plates_path or str(default_config_dir / "plates.yaml")
 
     try:
         ctx = load_runtime_context(
@@ -374,10 +342,33 @@ def main() -> None:
     else:
         result = run_pipeline_task(ctx, params)
 
-    save_result(
-        result,
-        args.dump_json or params.get("result_output_json") or params.get("compensate_output_json"),
+    output_path = dump_json or params.get("result_output_json") or params.get("compensate_output_json")
+    if persist_result:
+        write_result(result, output_path)
+
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run capture/detect/compensate pipeline task")
+    parser.add_argument("--task", required=True, help="task json/yaml path")
+    parser.add_argument("--camera", default=None)
+    parser.add_argument("--objectives", default=None)
+    parser.add_argument("--plates", default=None)
+    parser.add_argument("--dump-json", default=None, help="output result json path")
+    args = parser.parse_args()
+
+    raw_task_cfg = load_structured_file(args.task)
+    result = execute_task_request(
+        raw_task_cfg,
+        camera_path=args.camera,
+        objectives_path=args.objectives,
+        plates_path=args.plates,
+        dump_json=args.dump_json,
+        persist_result=True,
     )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
 
 if __name__ == "__main__":
     main()
