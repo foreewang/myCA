@@ -1,0 +1,90 @@
+{
+  "task_id": "compensate_mock_a1_001",
+  "status": "success",
+  "task_type": "compensate",
+  "plate_type": "12-well",
+  "well_name": "A1",
+  "objective_name": "4x",
+  "selector": {
+    "mode": "image_and_clone",
+    "image_index": 13,
+    "clone_id": "C01"
+  },
+  "selected_image_index": 13,
+  "selected_clone": {
+    "clone_id": "C01",
+    "center_px": [
+      2680,
+      2480
+    ],
+    "offset_from_image_center_px": [
+      120,
+      -80
+    ],
+    "bbox": [
+      2500,
+      2300,
+      2860,
+      2660
+    ],
+    "area_px": 82000
+  },
+  "base_stage": {
+    "x": 8961671,
+    "y": 4105664
+  },
+  "offset_from_image_center_px": [
+    120,
+    -80
+  ],
+  "offset_mm": {
+    "view_right_mm": 0.0703125,
+    "view_down_mm": -0.046875
+  },
+  "compensate_target": {
+    "x": 8968585,
+    "y": 4095293
+  },
+  "move_result": {
+    "target": {
+      "x": 8968585,
+      "y": 4095293
+    },
+    "before": {
+      "x": {
+        "axis": "x",
+        "slave": 1,
+        "current_pos": 3961621,
+        "statusword": 545
+      },
+      "y": {
+        "axis": "y",
+        "slave": 2,
+        "current_pos": 3516387,
+        "statusword": 545
+      }
+    },
+    "move_result": {
+      "x_diff": 0,
+      "y_diff": 0
+    },
+    "after": {
+      "x": {
+        "axis": "x",
+        "slave": 1,
+        "current_pos": 8968521,
+        "statusword": 545
+      },
+      "y": {
+        "axis": "y",
+        "slave": 2,
+        "current_pos": 4095227,
+        "statusword": 545
+      }
+    },
+    "err_to_target": {
+      "x": -64,
+      "y": -66
+    }
+  }
+}

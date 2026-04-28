@@ -1,0 +1,30 @@
+{
+  "task": {
+    "task_id": "compensate_a1_001",
+    "task_type": "compensate",
+    "plate_type": "12-well",
+    "objective": "4x",
+    "well_name": "A1",
+    "motion": {
+      "port": "COM3",
+      "baudrate": 115200,
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 200000,
+      "profile_acc": 50000,
+      "profile_dec": 50000
+    },
+    "compensate": {
+      "input_detect_json": "C:/colony_system/data/pipeline_a1_detect_001/detect_result.json",
+      "selector": {
+        "mode": "image_and_clone",
+        "image_index": 1,
+        "clone_id": "C01"
+      },
+      "output_json": "C:/colony_system/data/pipeline_a1_detect_001/compensate_result.json"
+    },
+    "output": {
+      "result_json": "C:/colony_system/data/pipeline_a1_detect_001/compensate_result.json"
+    }
+  }
+}

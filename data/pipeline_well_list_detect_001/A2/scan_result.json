@@ -1,0 +1,3327 @@
+{
+  "task_id": "pipeline_well_list_detect_001_A2",
+  "status": "success",
+  "task_type": "pipeline",
+  "plate_type": "12-well",
+  "well_name": "A2",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "A2孔左侧观测起始点",
+    "a1_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_start": {
+      "x": 8563500,
+      "y": 2347750
+    },
+    "well_diameter_mm": 19.5,
+    "well_gap_mm": 3.6,
+    "pitch_mm": 23.1,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.0,
+      "height": 3.0
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.7,
+      "height": 2.7
+    },
+    "point_count": 53
+  },
+  "stage_limit_precheck": null,
+  "image_count": 53,
+  "captures": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "view_down_mm": 0.0,
+      "view_right_mm": 0.0,
+      "stage_x_target": 8563500,
+      "stage_y_target": 2347750,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 2347750
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368836,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 3516390,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563472,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2347797,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -28,
+          "y": 47
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_001_row00_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_001_row00_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 1,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "view_down_mm": 0.0,
+      "view_right_mm": 2.7,
+      "stage_x_target": 8563500,
+      "stage_y_target": 1949500,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 1949500
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563472,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2347797,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1949625,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 125
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_002_row00_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_002_row00_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 2,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "view_down_mm": 0.0,
+      "view_right_mm": 5.4,
+      "stage_x_target": 8563500,
+      "stage_y_target": 1551250,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 1551250
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1949625,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1551290,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 40
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_003_row00_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_003_row00_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 3,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "view_down_mm": 0.0,
+      "view_right_mm": 8.1,
+      "stage_x_target": 8563500,
+      "stage_y_target": 1153000,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 1153000
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1551290,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1153012,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 12
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_004_row00_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_004_row00_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 4,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "view_down_mm": 0.0,
+      "view_right_mm": 10.8,
+      "stage_x_target": 8563500,
+      "stage_y_target": 754750,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 754750
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1153012,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 754773,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 23
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_005_row00_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_005_row00_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 5,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "view_down_mm": 0.0,
+      "view_right_mm": 13.5,
+      "stage_x_target": 8563500,
+      "stage_y_target": 356500,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": 356500
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 754773,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 356529,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 29
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_006_row00_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_006_row00_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 6,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 7,
+      "row_index": 0,
+      "col_index": 6,
+      "view_down_mm": 0.0,
+      "view_right_mm": 16.2,
+      "stage_x_target": 8563500,
+      "stage_y_target": -41750,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": -41750
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 356529,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -41731,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 19
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_007_row00_col06.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_007_row00_col06.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 7,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 8,
+      "row_index": 0,
+      "col_index": 7,
+      "view_down_mm": 0.0,
+      "view_right_mm": 18.9,
+      "stage_x_target": 8563500,
+      "stage_y_target": -440000,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": -440000
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -41731,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": -1,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -439903,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": 97
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_008_row00_col07.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_008_row00_col07.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 8,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 9,
+      "row_index": 0,
+      "col_index": 8,
+      "view_down_mm": 0.0,
+      "view_right_mm": 19.5,
+      "stage_x_target": 8563500,
+      "stage_y_target": -528500,
+      "motion_result": {
+        "target": {
+          "x": 8563500,
+          "y": -528500
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -439903,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -528505,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -27,
+          "y": -5
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_009_row00_col08.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_009_row00_col08.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 9,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 0,
+      "view_down_mm": -2.7,
+      "view_right_mm": 19.118698,
+      "stage_x_target": 8961750,
+      "stage_y_target": -472258,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": -472258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8563473,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -528505,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961696,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -472334,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -54,
+          "y": -76
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_010_row01_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_010_row01_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 10,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 1,
+      "view_down_mm": -2.7,
+      "view_right_mm": 16.581302,
+      "stage_x_target": 8961750,
+      "stage_y_target": -97992,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": -97992
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961696,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -472334,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -98025,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": -33
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_011_row01_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_011_row01_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 11,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 2,
+      "view_down_mm": -2.7,
+      "view_right_mm": 13.881302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 300258,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 300258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -98025,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 300289,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": 31
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_012_row01_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_012_row01_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 12,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 13,
+      "row_index": 1,
+      "col_index": 3,
+      "view_down_mm": -2.7,
+      "view_right_mm": 11.181302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 698508,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 698508
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 300289,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 698486,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": -22
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_013_row01_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_013_row01_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 13,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 14,
+      "row_index": 1,
+      "col_index": 4,
+      "view_down_mm": -2.7,
+      "view_right_mm": 8.481302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 1096758,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 1096758
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 698486,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1096626,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": -132
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_014_row01_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_014_row01_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 14,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 15,
+      "row_index": 1,
+      "col_index": 5,
+      "view_down_mm": -2.7,
+      "view_right_mm": 5.781302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 1495008,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 1495008
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1096626,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1495011,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": 3
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_015_row01_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_015_row01_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 15,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 16,
+      "row_index": 1,
+      "col_index": 6,
+      "view_down_mm": -2.7,
+      "view_right_mm": 3.081302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 1893258,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 1893258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1495011,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961696,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1893267,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -54,
+          "y": 9
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_016_row01_col06.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_016_row01_col06.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 16,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 17,
+      "row_index": 1,
+      "col_index": 7,
+      "view_down_mm": -2.7,
+      "view_right_mm": 0.381302,
+      "stage_x_target": 8961750,
+      "stage_y_target": 2291508,
+      "motion_result": {
+        "target": {
+          "x": 8961750,
+          "y": 2291508
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961696,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1893267,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2291394,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -53,
+          "y": -114
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_017_row01_col07.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_017_row01_col07.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 17,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 0,
+      "view_down_mm": 2.7,
+      "view_right_mm": 0.381302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 2291508,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 2291508
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8961697,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2291394,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165340,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2291399,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 90,
+          "y": -109
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_018_row02_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_018_row02_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 18,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 19,
+      "row_index": 2,
+      "col_index": 1,
+      "view_down_mm": 2.7,
+      "view_right_mm": 3.081302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 1893258,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 1893258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165340,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2291399,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165343,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1893345,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 93,
+          "y": 87
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_019_row02_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_019_row02_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 19,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 20,
+      "row_index": 2,
+      "col_index": 2,
+      "view_down_mm": 2.7,
+      "view_right_mm": 5.781302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 1495008,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 1495008
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165343,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1893345,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165344,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1495038,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 94,
+          "y": 30
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_020_row02_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_020_row02_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 20,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 21,
+      "row_index": 2,
+      "col_index": 3,
+      "view_down_mm": 2.7,
+      "view_right_mm": 8.481302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 1096758,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 1096758
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165344,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1495038,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1096750,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 95,
+          "y": -8
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_021_row02_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_021_row02_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 21,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 22,
+      "row_index": 2,
+      "col_index": 4,
+      "view_down_mm": 2.7,
+      "view_right_mm": 11.181302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 698508,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 698508
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1096750,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 698501,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 95,
+          "y": -7
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_022_row02_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_022_row02_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 22,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 23,
+      "row_index": 2,
+      "col_index": 5,
+      "view_down_mm": 2.7,
+      "view_right_mm": 13.881302,
+      "stage_x_target": 8165250,
+      "stage_y_target": 300258,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": 300258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 698501,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 300244,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 95,
+          "y": -14
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_023_row02_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_023_row02_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 23,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 24,
+      "row_index": 2,
+      "col_index": 6,
+      "view_down_mm": 2.7,
+      "view_right_mm": 16.581302,
+      "stage_x_target": 8165250,
+      "stage_y_target": -97992,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": -97992
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165345,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 300244,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165346,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -97959,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 96,
+          "y": 33
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_024_row02_col06.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_024_row02_col06.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 24,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 25,
+      "row_index": 2,
+      "col_index": 7,
+      "view_down_mm": 2.7,
+      "view_right_mm": 19.118698,
+      "stage_x_target": 8165250,
+      "stage_y_target": -472258,
+      "motion_result": {
+        "target": {
+          "x": 8165250,
+          "y": -472258
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165346,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -97959,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165346,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -472221,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 96,
+          "y": 37
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_025_row02_col07.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_025_row02_col07.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 25,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 26,
+      "row_index": 3,
+      "col_index": 0,
+      "view_down_mm": -5.4,
+      "view_right_mm": 17.868035,
+      "stage_x_target": 9360000,
+      "stage_y_target": -287785,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": -287785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 8165346,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -472221,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359920,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -287825,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -80,
+          "y": -40
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_026_row03_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_026_row03_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 26,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 27,
+      "row_index": 3,
+      "col_index": 1,
+      "view_down_mm": -5.4,
+      "view_right_mm": 17.831965,
+      "stage_x_target": 9360000,
+      "stage_y_target": -282465,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": -282465
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359920,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -287825,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359917,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -282464,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -83,
+          "y": 1
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_027_row03_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_027_row03_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 27,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 28,
+      "row_index": 3,
+      "col_index": 2,
+      "view_down_mm": -5.4,
+      "view_right_mm": 15.131965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 115785,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 115785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359917,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -282464,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359915,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 115631,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -85,
+          "y": -154
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_028_row03_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_028_row03_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 28,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 29,
+      "row_index": 3,
+      "col_index": 3,
+      "view_down_mm": -5.4,
+      "view_right_mm": 12.431965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 514035,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 514035
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359915,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 115631,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359914,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 514023,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -86,
+          "y": -12
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_029_row03_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_029_row03_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 29,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 30,
+      "row_index": 3,
+      "col_index": 4,
+      "view_down_mm": -5.4,
+      "view_right_mm": 9.731965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 912285,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 912285
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359914,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 514023,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359914,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 912198,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -86,
+          "y": -87
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_030_row03_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_030_row03_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 30,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 31,
+      "row_index": 3,
+      "col_index": 5,
+      "view_down_mm": -5.4,
+      "view_right_mm": 7.031965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 1310535,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 1310535
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359914,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 912198,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 4
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359913,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1310159,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -87,
+          "y": -376
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_031_row03_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_031_row03_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 31,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 32,
+      "row_index": 3,
+      "col_index": 6,
+      "view_down_mm": -5.4,
+      "view_right_mm": 4.331965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 1708785,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 1708785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359913,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1310156,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359912,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1708706,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -88,
+          "y": -79
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_032_row03_col06.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_032_row03_col06.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 32,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 33,
+      "row_index": 3,
+      "col_index": 7,
+      "view_down_mm": -5.4,
+      "view_right_mm": 1.631965,
+      "stage_x_target": 9360000,
+      "stage_y_target": 2107035,
+      "motion_result": {
+        "target": {
+          "x": 9360000,
+          "y": 2107035
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359912,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1708706,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359912,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2106970,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -88,
+          "y": -65
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_033_row03_col07.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_033_row03_col07.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 33,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 34,
+      "row_index": 4,
+      "col_index": 0,
+      "view_down_mm": 5.4,
+      "view_right_mm": 1.631965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 2107035,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 2107035
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9359912,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2106970,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767092,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2106978,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 92,
+          "y": -57
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_034_row04_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_034_row04_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 34,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 35,
+      "row_index": 4,
+      "col_index": 1,
+      "view_down_mm": 5.4,
+      "view_right_mm": 4.331965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 1708785,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 1708785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767092,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 2106978,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1708789,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 4
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_035_row04_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_035_row04_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 35,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 36,
+      "row_index": 4,
+      "col_index": 2,
+      "view_down_mm": 5.4,
+      "view_right_mm": 7.031965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 1310535,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 1310535
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1708789,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1310564,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 29
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_036_row04_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_036_row04_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 36,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 37,
+      "row_index": 4,
+      "col_index": 3,
+      "view_down_mm": 5.4,
+      "view_right_mm": 9.731965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 912285,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 912285
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1310564,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 912328,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 43
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_037_row04_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_037_row04_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 37,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 38,
+      "row_index": 4,
+      "col_index": 4,
+      "view_down_mm": 5.4,
+      "view_right_mm": 12.431965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 514035,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 514035
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 912328,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 514041,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 6
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_038_row04_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_038_row04_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 38,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 39,
+      "row_index": 4,
+      "col_index": 5,
+      "view_down_mm": 5.4,
+      "view_right_mm": 15.131965,
+      "stage_x_target": 7767000,
+      "stage_y_target": 115785,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": 115785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 514040,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 115805,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 20
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_039_row04_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_039_row04_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 39,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 40,
+      "row_index": 4,
+      "col_index": 6,
+      "view_down_mm": 5.4,
+      "view_right_mm": 17.831965,
+      "stage_x_target": 7767000,
+      "stage_y_target": -282465,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": -282465
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 115805,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -282442,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 91,
+          "y": 23
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_040_row04_col06.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_040_row04_col06.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 40,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 41,
+      "row_index": 4,
+      "col_index": 7,
+      "view_down_mm": 5.4,
+      "view_right_mm": 17.868035,
+      "stage_x_target": 7767000,
+      "stage_y_target": -287785,
+      "motion_result": {
+        "target": {
+          "x": 7767000,
+          "y": -287785
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767091,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -282442,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767092,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -287750,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 92,
+          "y": 35
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_041_row04_col07.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_041_row04_col07.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 41,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 42,
+      "row_index": 5,
+      "col_index": 0,
+      "view_down_mm": -8.1,
+      "view_right_mm": 15.177016,
+      "stage_x_target": 9758250,
+      "stage_y_target": 109140,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 109140
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7767092,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -287750,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 109097,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -43
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_042_row05_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_042_row05_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 42,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 43,
+      "row_index": 5,
+      "col_index": 1,
+      "view_down_mm": -8.1,
+      "view_right_mm": 15.122984,
+      "stage_x_target": 9758250,
+      "stage_y_target": 117110,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 117110
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 109097,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 116980,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -130
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_043_row05_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_043_row05_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 43,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 44,
+      "row_index": 5,
+      "col_index": 2,
+      "view_down_mm": -8.1,
+      "view_right_mm": 12.422984,
+      "stage_x_target": 9758250,
+      "stage_y_target": 515360,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 515360
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 116980,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 515314,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -46
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_044_row05_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_044_row05_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 44,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 45,
+      "row_index": 5,
+      "col_index": 3,
+      "view_down_mm": -8.1,
+      "view_right_mm": 9.722984,
+      "stage_x_target": 9758250,
+      "stage_y_target": 913610,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 913610
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 515314,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 913592,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -18
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_045_row05_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_045_row05_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 45,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 46,
+      "row_index": 5,
+      "col_index": 4,
+      "view_down_mm": -8.1,
+      "view_right_mm": 7.022984,
+      "stage_x_target": 9758250,
+      "stage_y_target": 1311860,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 1311860
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 913592,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1311817,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -43
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_046_row05_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_046_row05_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 46,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 47,
+      "row_index": 5,
+      "col_index": 5,
+      "view_down_mm": -8.1,
+      "view_right_mm": 4.322984,
+      "stage_x_target": 9758250,
+      "stage_y_target": 1710110,
+      "motion_result": {
+        "target": {
+          "x": 9758250,
+          "y": 1710110
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1311817,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 1
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1710088,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -68,
+          "y": -22
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_047_row05_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_047_row05_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 47,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 48,
+      "row_index": 6,
+      "col_index": 0,
+      "view_down_mm": 8.1,
+      "view_right_mm": 4.322984,
+      "stage_x_target": 7368750,
+      "stage_y_target": 1710110,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 1710110
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 9758182,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1710088,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368840,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1710083,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 90,
+          "y": -27
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_048_row06_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_048_row06_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 48,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 49,
+      "row_index": 6,
+      "col_index": 1,
+      "view_down_mm": 8.1,
+      "view_right_mm": 7.022984,
+      "stage_x_target": 7368750,
+      "stage_y_target": 1311860,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 1311860
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368840,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1710083,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368836,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1311852,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 86,
+          "y": -8
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_049_row06_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_049_row06_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 49,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 50,
+      "row_index": 6,
+      "col_index": 2,
+      "view_down_mm": 8.1,
+      "view_right_mm": 9.722984,
+      "stage_x_target": 7368750,
+      "stage_y_target": 913610,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 913610
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368836,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 1311852,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368836,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 913649,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 86,
+          "y": 39
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_050_row06_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_050_row06_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 50,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 51,
+      "row_index": 6,
+      "col_index": 3,
+      "view_down_mm": 8.1,
+      "view_right_mm": 12.422984,
+      "stage_x_target": 7368750,
+      "stage_y_target": 515360,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 515360
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368836,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 913649,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368835,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 515445,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 85,
+          "y": 85
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_051_row06_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_051_row06_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 51,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 52,
+      "row_index": 6,
+      "col_index": 4,
+      "view_down_mm": 8.1,
+      "view_right_mm": 15.122984,
+      "stage_x_target": 7368750,
+      "stage_y_target": 117110,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 117110
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368835,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 515445,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368834,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 117128,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 84,
+          "y": 18
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_052_row06_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_052_row06_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 52,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 53,
+      "row_index": 6,
+      "col_index": 5,
+      "view_down_mm": 8.1,
+      "view_right_mm": 15.177016,
+      "stage_x_target": 7368750,
+      "stage_y_target": 109140,
+      "motion_result": {
+        "target": {
+          "x": 7368750,
+          "y": 109140
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368834,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 117128,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 7368834,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": 109186,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 84,
+          "y": 46
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_053_row06_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_053_row06_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 53,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "task_id": "pipeline_a1_detect_001",
+  "status": "success",
+  "task_type": "single_well_scan_and_detect",
+  "plate_type": "12-well",
+  "well_name": "A1",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "A1孔左侧观测起始点",
+    "a1_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_diameter_mm": 19.5,
+    "well_gap_mm": 3.6,
+    "pitch_mm": 23.1,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.0,
+      "height": 3.0
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.7,
+      "height": 2.7
+    },
+    "point_count": 53
+  },
+  "image_count": 1,
+  "total_clone_count": 1,
+  "images": [
+    {
+      "index": 13,
+      "row_index": 1,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_013_row01_col03.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 4105758,
+      "stage_x_actual": 8961671,
+      "stage_y_actual": 4105664,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [2560, 2560],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [2680, 2480],
+          "offset_from_image_center_px": [120, -80],
+          "bbox": [2500, 2300, 2860, 2660],
+          "area_px": 82000
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4549 @@
+{
+  "task_id": "pipeline_a1_detect_001",
+  "status": "success",
+  "task_type": "pipeline",
+  "stages": [
+    "capture",
+    "detect"
+  ],
+  "observe_scope": "single_well",
+  "plate_type": "12-well",
+  "well_name": "A1",
+  "objective_name": "4x",
+  "capture_result": {
+    "task_id": "pipeline_a1_detect_001",
+    "status": "success",
+    "task_type": "pipeline",
+    "plate_type": "12-well",
+    "well_name": "A1",
+    "objective_name": "4x",
+    "reference": {
+      "meaning": "A1孔左侧观测起始点",
+      "a1_start": {
+        "x": 8563500,
+        "y": 5755000
+      },
+      "well_start": {
+        "x": 8563500,
+        "y": 5755000
+      },
+      "well_diameter_mm": 19.5,
+      "well_gap_mm": 3.6,
+      "pitch_mm": 23.1,
+      "pulses_per_mm": 147500.0,
+      "x_stage_sign_for_view_down": -1,
+      "y_stage_sign_for_view_right": -1
+    },
+    "scan_config": {
+      "fov_mm": {
+        "width": 3.0,
+        "height": 3.0
+      },
+      "overlap": 0.1,
+      "step_mm": {
+        "width": 2.7,
+        "height": 2.7
+      },
+      "point_count": 53
+    },
+    "stage_limit_precheck": null,
+    "image_count": 53,
+    "captures": [
+      {
+        "index": 1,
+        "row_index": 0,
+        "col_index": 0,
+        "view_down_mm": 0.0,
+        "view_right_mm": 0.0,
+        "stage_x_target": 8563500,
+        "stage_y_target": 5755000,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 5755000
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 554357,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -6705304,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563459,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5754977,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -41,
+            "y": -23
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_001_row00_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_001_row00_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 1,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 2,
+        "row_index": 0,
+        "col_index": 1,
+        "view_down_mm": 0.0,
+        "view_right_mm": 2.7,
+        "stage_x_target": 8563500,
+        "stage_y_target": 5356750,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 5356750
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563459,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5754977,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5356741,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": -9
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_002_row00_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_002_row00_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 2,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 3,
+        "row_index": 0,
+        "col_index": 2,
+        "view_down_mm": 0.0,
+        "view_right_mm": 5.4,
+        "stage_x_target": 8563500,
+        "stage_y_target": 4958500,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 4958500
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5356741,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4958566,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 66
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_003_row00_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_003_row00_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 3,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 4,
+        "row_index": 0,
+        "col_index": 3,
+        "view_down_mm": 0.0,
+        "view_right_mm": 8.1,
+        "stage_x_target": 8563500,
+        "stage_y_target": 4560250,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 4560250
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4958566,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4560263,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 13
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_004_row00_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_004_row00_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 4,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 5,
+        "row_index": 0,
+        "col_index": 4,
+        "view_down_mm": 0.0,
+        "view_right_mm": 10.8,
+        "stage_x_target": 8563500,
+        "stage_y_target": 4162000,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 4162000
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4560263,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4162021,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 21
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_005_row00_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_005_row00_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 5,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 6,
+        "row_index": 0,
+        "col_index": 5,
+        "view_down_mm": 0.0,
+        "view_right_mm": 13.5,
+        "stage_x_target": 8563500,
+        "stage_y_target": 3763750,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 3763750
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4162021,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3763792,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 42
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_006_row00_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_006_row00_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 6,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 7,
+        "row_index": 0,
+        "col_index": 6,
+        "view_down_mm": 0.0,
+        "view_right_mm": 16.2,
+        "stage_x_target": 8563500,
+        "stage_y_target": 3365500,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 3365500
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3763792,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3365527,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 27
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_007_row00_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_007_row00_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 7,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 8,
+        "row_index": 0,
+        "col_index": 7,
+        "view_down_mm": 0.0,
+        "view_right_mm": 18.9,
+        "stage_x_target": 8563500,
+        "stage_y_target": 2967250,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 2967250
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3365527,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2967256,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 6
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_008_row00_col07.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_008_row00_col07.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 8,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 9,
+        "row_index": 0,
+        "col_index": 8,
+        "view_down_mm": 0.0,
+        "view_right_mm": 19.5,
+        "stage_x_target": 8563500,
+        "stage_y_target": 2878750,
+        "motion_result": {
+          "target": {
+            "x": 8563500,
+            "y": 2878750
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2967256,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2878755,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -38,
+            "y": 5
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_009_row00_col08.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_009_row00_col08.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 9,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 10,
+        "row_index": 1,
+        "col_index": 0,
+        "view_down_mm": -2.7,
+        "view_right_mm": 19.118698,
+        "stage_x_target": 8961750,
+        "stage_y_target": 2934992,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 2934992
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8563462,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2878755,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961678,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2934959,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -72,
+            "y": -33
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_010_row01_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_010_row01_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 10,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 11,
+        "row_index": 1,
+        "col_index": 1,
+        "view_down_mm": -2.7,
+        "view_right_mm": 16.581302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 3309258,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 3309258
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961678,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2934959,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961675,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3309188,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -75,
+            "y": -70
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_011_row01_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_011_row01_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 11,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 12,
+        "row_index": 1,
+        "col_index": 2,
+        "view_down_mm": -2.7,
+        "view_right_mm": 13.881302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 3707508,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 3707508
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961675,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3309188,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961672,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3707507,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -78,
+            "y": -1
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_012_row01_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_012_row01_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 12,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 13,
+        "row_index": 1,
+        "col_index": 3,
+        "view_down_mm": -2.7,
+        "view_right_mm": 11.181302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 4105758,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 4105758
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961672,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3707507,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961671,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4105664,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -79,
+            "y": -94
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_013_row01_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_013_row01_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 13,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 14,
+        "row_index": 1,
+        "col_index": 4,
+        "view_down_mm": -2.7,
+        "view_right_mm": 8.481302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 4504008,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 4504008
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961671,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4105664,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961670,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4503963,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -80,
+            "y": -45
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_014_row01_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_014_row01_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 14,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 15,
+        "row_index": 1,
+        "col_index": 5,
+        "view_down_mm": -2.7,
+        "view_right_mm": 5.781302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 4902258,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 4902258
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961670,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4503963,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961670,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4902241,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -80,
+            "y": -17
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_015_row01_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_015_row01_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 15,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 16,
+        "row_index": 1,
+        "col_index": 6,
+        "view_down_mm": -2.7,
+        "view_right_mm": 3.081302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 5300508,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 5300508
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961670,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4902241,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961669,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5300461,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -81,
+            "y": -47
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_016_row01_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_016_row01_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 16,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 17,
+        "row_index": 1,
+        "col_index": 7,
+        "view_down_mm": -2.7,
+        "view_right_mm": 0.381302,
+        "stage_x_target": 8961750,
+        "stage_y_target": 5698758,
+        "motion_result": {
+          "target": {
+            "x": 8961750,
+            "y": 5698758
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961669,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5300461,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961669,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5698686,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -81,
+            "y": -72
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_017_row01_col07.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_017_row01_col07.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 17,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 18,
+        "row_index": 2,
+        "col_index": 0,
+        "view_down_mm": 2.7,
+        "view_right_mm": 0.381302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 5698758,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 5698758
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8961669,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5698686,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165312,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5698690,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 62,
+            "y": -68
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_018_row02_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_018_row02_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 18,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 19,
+        "row_index": 2,
+        "col_index": 1,
+        "view_down_mm": 2.7,
+        "view_right_mm": 3.081302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 5300508,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 5300508
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165312,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5698690,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165320,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5300518,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 70,
+            "y": 10
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_019_row02_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_019_row02_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 19,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 20,
+        "row_index": 2,
+        "col_index": 2,
+        "view_down_mm": 2.7,
+        "view_right_mm": 5.781302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 4902258,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 4902258
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165320,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5300518,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165321,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4902304,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 71,
+            "y": 46
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_020_row02_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_020_row02_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 20,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 21,
+        "row_index": 2,
+        "col_index": 3,
+        "view_down_mm": 2.7,
+        "view_right_mm": 8.481302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 4504008,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 4504008
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165321,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4902304,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165321,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4504028,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 71,
+            "y": 20
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_021_row02_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_021_row02_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 21,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 22,
+        "row_index": 2,
+        "col_index": 4,
+        "view_down_mm": 2.7,
+        "view_right_mm": 11.181302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 4105758,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 4105758
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165321,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4504028,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4105751,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 72,
+            "y": -7
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_022_row02_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_022_row02_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 22,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 23,
+        "row_index": 2,
+        "col_index": 5,
+        "view_down_mm": 2.7,
+        "view_right_mm": 13.881302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 3707508,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 3707508
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4105751,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3707480,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 72,
+            "y": -28
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_023_row02_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_023_row02_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 23,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 24,
+        "row_index": 2,
+        "col_index": 6,
+        "view_down_mm": 2.7,
+        "view_right_mm": 16.581302,
+        "stage_x_target": 8165250,
+        "stage_y_target": 3309258,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 3309258
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3707480,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3309249,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 72,
+            "y": -9
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_024_row02_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_024_row02_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 24,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 25,
+        "row_index": 2,
+        "col_index": 7,
+        "view_down_mm": 2.7,
+        "view_right_mm": 19.118698,
+        "stage_x_target": 8165250,
+        "stage_y_target": 2934992,
+        "motion_result": {
+          "target": {
+            "x": 8165250,
+            "y": 2934992
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3309249,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2935007,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 72,
+            "y": 15
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_025_row02_col07.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_025_row02_col07.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 25,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 26,
+        "row_index": 3,
+        "col_index": 0,
+        "view_down_mm": -5.4,
+        "view_right_mm": 17.868035,
+        "stage_x_target": 9360000,
+        "stage_y_target": 3119465,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 3119465
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 8165322,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 2935007,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359875,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3119304,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -125,
+            "y": -161
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_026_row03_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_026_row03_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 26,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 27,
+        "row_index": 3,
+        "col_index": 1,
+        "view_down_mm": -5.4,
+        "view_right_mm": 17.831965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 3124785,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 3124785
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359875,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3119304,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359873,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3124761,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -127,
+            "y": -24
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_027_row03_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_027_row03_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 27,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 28,
+        "row_index": 3,
+        "col_index": 2,
+        "view_down_mm": -5.4,
+        "view_right_mm": 15.131965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 3523035,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 3523035
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359873,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3124761,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359871,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3523018,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -129,
+            "y": -17
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_028_row03_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_028_row03_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 28,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 29,
+        "row_index": 3,
+        "col_index": 3,
+        "view_down_mm": -5.4,
+        "view_right_mm": 12.431965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 3921285,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 3921285
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359871,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3523018,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359873,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3921247,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -127,
+            "y": -38
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_029_row03_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_029_row03_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 29,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 30,
+        "row_index": 3,
+        "col_index": 4,
+        "view_down_mm": -5.4,
+        "view_right_mm": 9.731965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 4319535,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 4319535
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359873,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3921247,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4319477,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -128,
+            "y": -58
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_030_row03_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_030_row03_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 30,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 31,
+        "row_index": 3,
+        "col_index": 5,
+        "view_down_mm": -5.4,
+        "view_right_mm": 7.031965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 4717785,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 4717785
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4319477,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4717593,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -128,
+            "y": -192
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_031_row03_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_031_row03_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 31,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 32,
+        "row_index": 3,
+        "col_index": 6,
+        "view_down_mm": -5.4,
+        "view_right_mm": 4.331965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 5116035,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 5116035
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4717593,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5116007,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -128,
+            "y": -28
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_032_row03_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_032_row03_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 32,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 33,
+        "row_index": 3,
+        "col_index": 7,
+        "view_down_mm": -5.4,
+        "view_right_mm": 1.631965,
+        "stage_x_target": 9360000,
+        "stage_y_target": 5514285,
+        "motion_result": {
+          "target": {
+            "x": 9360000,
+            "y": 5514285
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359872,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5116007,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359871,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5514292,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -129,
+            "y": 7
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_033_row03_col07.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_033_row03_col07.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 33,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 34,
+        "row_index": 4,
+        "col_index": 0,
+        "view_down_mm": 5.4,
+        "view_right_mm": 1.631965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 5514285,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 5514285
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9359871,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5514292,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767104,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5514293,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 104,
+            "y": 8
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_034_row04_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_034_row04_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 34,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 35,
+        "row_index": 4,
+        "col_index": 1,
+        "view_down_mm": 5.4,
+        "view_right_mm": 4.331965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 5116035,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 5116035
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767104,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5514293,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767103,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5116096,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 103,
+            "y": 61
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_035_row04_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_035_row04_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 35,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 36,
+        "row_index": 4,
+        "col_index": 2,
+        "view_down_mm": 5.4,
+        "view_right_mm": 7.031965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 4717785,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 4717785
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767103,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5116097,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4717830,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 102,
+            "y": 45
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_036_row04_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_036_row04_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 36,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 37,
+        "row_index": 4,
+        "col_index": 3,
+        "view_down_mm": 5.4,
+        "view_right_mm": 9.731965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 4319535,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 4319535
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4717830,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4319601,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 102,
+            "y": 66
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_037_row04_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_037_row04_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 37,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 38,
+        "row_index": 4,
+        "col_index": 4,
+        "view_down_mm": 5.4,
+        "view_right_mm": 12.431965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 3921285,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 3921285
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4319601,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3921342,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 102,
+            "y": 57
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_038_row04_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_038_row04_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 38,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 39,
+        "row_index": 4,
+        "col_index": 5,
+        "view_down_mm": 5.4,
+        "view_right_mm": 15.131965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 3523035,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 3523035
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3921342,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3523027,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 102,
+            "y": -8
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_039_row04_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_039_row04_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 39,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 40,
+        "row_index": 4,
+        "col_index": 6,
+        "view_down_mm": 5.4,
+        "view_right_mm": 17.831965,
+        "stage_x_target": 7767000,
+        "stage_y_target": 3124785,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 3124785
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767103,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3523027,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3124839,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 102,
+            "y": 54
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_040_row04_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_040_row04_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 40,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 41,
+        "row_index": 4,
+        "col_index": 7,
+        "view_down_mm": 5.4,
+        "view_right_mm": 17.868035,
+        "stage_x_target": 7767000,
+        "stage_y_target": 3119465,
+        "motion_result": {
+          "target": {
+            "x": 7767000,
+            "y": 3119465
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767102,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3124839,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767103,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3119504,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 103,
+            "y": 39
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_041_row04_col07.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_041_row04_col07.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 41,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 42,
+        "row_index": 5,
+        "col_index": 0,
+        "view_down_mm": -8.1,
+        "view_right_mm": 15.177016,
+        "stage_x_target": 9758250,
+        "stage_y_target": 3516390,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 3516390
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7767103,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3119504,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758173,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3516391,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -77,
+            "y": 1
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_042_row05_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_042_row05_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 42,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 43,
+        "row_index": 5,
+        "col_index": 1,
+        "view_down_mm": -8.1,
+        "view_right_mm": 15.122984,
+        "stage_x_target": 9758250,
+        "stage_y_target": 3524360,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 3524360
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758173,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3516391,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758169,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3524349,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -81,
+            "y": -11
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_043_row05_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_043_row05_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 43,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 44,
+        "row_index": 5,
+        "col_index": 2,
+        "view_down_mm": -8.1,
+        "view_right_mm": 12.422984,
+        "stage_x_target": 9758250,
+        "stage_y_target": 3922610,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 3922610
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758169,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3524349,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 1
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758168,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3922572,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -82,
+            "y": -38
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_044_row05_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_044_row05_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 44,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 45,
+        "row_index": 5,
+        "col_index": 3,
+        "view_down_mm": -8.1,
+        "view_right_mm": 9.722984,
+        "stage_x_target": 9758250,
+        "stage_y_target": 4320860,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 4320860
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758168,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3922571,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4320854,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -83,
+            "y": -6
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_045_row05_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_045_row05_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 45,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 46,
+        "row_index": 5,
+        "col_index": 4,
+        "view_down_mm": -8.1,
+        "view_right_mm": 7.022984,
+        "stage_x_target": 9758250,
+        "stage_y_target": 4719110,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 4719110
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4320854,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4719152,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -83,
+            "y": 42
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_046_row05_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_046_row05_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 46,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 47,
+        "row_index": 5,
+        "col_index": 5,
+        "view_down_mm": -8.1,
+        "view_right_mm": 4.322984,
+        "stage_x_target": 9758250,
+        "stage_y_target": 5117360,
+        "motion_result": {
+          "target": {
+            "x": 9758250,
+            "y": 5117360
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4719152,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5117329,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -83,
+            "y": -31
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_047_row05_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_047_row05_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 47,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 48,
+        "row_index": 6,
+        "col_index": 0,
+        "view_down_mm": 8.1,
+        "view_right_mm": 4.322984,
+        "stage_x_target": 7368750,
+        "stage_y_target": 5117360,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 5117360
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 9758167,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5117329,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368840,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5117324,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 90,
+            "y": -36
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_048_row06_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_048_row06_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 48,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 49,
+        "row_index": 6,
+        "col_index": 1,
+        "view_down_mm": 8.1,
+        "view_right_mm": 7.022984,
+        "stage_x_target": 7368750,
+        "stage_y_target": 4719110,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 4719110
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368840,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 5117324,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368835,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4719124,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 85,
+            "y": 14
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_049_row06_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_049_row06_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 49,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 50,
+        "row_index": 6,
+        "col_index": 2,
+        "view_down_mm": 8.1,
+        "view_right_mm": 9.722984,
+        "stage_x_target": 7368750,
+        "stage_y_target": 4320860,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 4320860
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368835,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4719124,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368834,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4321020,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 84,
+            "y": 160
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_050_row06_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_050_row06_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 50,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 51,
+        "row_index": 6,
+        "col_index": 3,
+        "view_down_mm": 8.1,
+        "view_right_mm": 12.422984,
+        "stage_x_target": 7368750,
+        "stage_y_target": 3922610,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 3922610
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368834,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 4321021,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368833,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3922604,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 83,
+            "y": -6
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_051_row06_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_051_row06_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 51,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 52,
+        "row_index": 6,
+        "col_index": 4,
+        "view_down_mm": 8.1,
+        "view_right_mm": 15.122984,
+        "stage_x_target": 7368750,
+        "stage_y_target": 3524360,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 3524360
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368833,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3922604,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368833,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3524110,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 83,
+            "y": -250
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_052_row06_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_052_row06_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 52,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 53,
+        "row_index": 6,
+        "col_index": 5,
+        "view_down_mm": 8.1,
+        "view_right_mm": 15.177016,
+        "stage_x_target": 7368750,
+        "stage_y_target": 3516390,
+        "motion_result": {
+          "target": {
+            "x": 7368750,
+            "y": 3516390
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368833,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3524110,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 7368832,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 3516380,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 82,
+            "y": -10
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_053_row06_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_053_row06_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 53,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      }
+    ]
+  },
+  "detect_result": {
+    "task_id": "pipeline_a1_detect_001",
+    "status": "success",
+    "task_type": "single_well_scan_and_detect",
+    "plate_type": "12-well",
+    "well_name": "A1",
+    "objective_name": "4x",
+    "reference": {
+      "meaning": "A1孔左侧观测起始点",
+      "a1_start": {
+        "x": 8563500,
+        "y": 5755000
+      },
+      "well_start": {
+        "x": 8563500,
+        "y": 5755000
+      },
+      "well_diameter_mm": 19.5,
+      "well_gap_mm": 3.6,
+      "pitch_mm": 23.1,
+      "pulses_per_mm": 147500.0,
+      "x_stage_sign_for_view_down": -1,
+      "y_stage_sign_for_view_right": -1
+    },
+    "scan_config": {
+      "fov_mm": {
+        "width": 3.0,
+        "height": 3.0
+      },
+      "overlap": 0.1,
+      "step_mm": {
+        "width": 2.7,
+        "height": 2.7
+      },
+      "point_count": 53
+    },
+    "scan_result_json": null,
+    "image_count": 53,
+    "total_clone_count": 0,
+    "images": [
+      {
+        "index": 1,
+        "row_index": 0,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_001_row00_col00.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 5755000,
+        "stage_x_actual": 8563459,
+        "stage_y_actual": 5754977,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 2,
+        "row_index": 0,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_002_row00_col01.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 5356750,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 5356741,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 3,
+        "row_index": 0,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_003_row00_col02.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 4958500,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 4958566,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 4,
+        "row_index": 0,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_004_row00_col03.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 4560250,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 4560263,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 5,
+        "row_index": 0,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_005_row00_col04.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 4162000,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 4162021,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 6,
+        "row_index": 0,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_006_row00_col05.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 3763750,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 3763792,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 7,
+        "row_index": 0,
+        "col_index": 6,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_007_row00_col06.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 3365500,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 3365527,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 8,
+        "row_index": 0,
+        "col_index": 7,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_008_row00_col07.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 2967250,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 2967256,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 9,
+        "row_index": 0,
+        "col_index": 8,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_009_row00_col08.bmp",
+        "stage_x_target": 8563500,
+        "stage_y_target": 2878750,
+        "stage_x_actual": 8563462,
+        "stage_y_actual": 2878755,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 10,
+        "row_index": 1,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_010_row01_col00.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 2934992,
+        "stage_x_actual": 8961678,
+        "stage_y_actual": 2934959,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 11,
+        "row_index": 1,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_011_row01_col01.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 3309258,
+        "stage_x_actual": 8961675,
+        "stage_y_actual": 3309188,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 12,
+        "row_index": 1,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_012_row01_col02.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 3707508,
+        "stage_x_actual": 8961672,
+        "stage_y_actual": 3707507,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 13,
+        "row_index": 1,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_013_row01_col03.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 4105758,
+        "stage_x_actual": 8961671,
+        "stage_y_actual": 4105664,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 14,
+        "row_index": 1,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_014_row01_col04.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 4504008,
+        "stage_x_actual": 8961670,
+        "stage_y_actual": 4503963,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 15,
+        "row_index": 1,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_015_row01_col05.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 4902258,
+        "stage_x_actual": 8961670,
+        "stage_y_actual": 4902241,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 16,
+        "row_index": 1,
+        "col_index": 6,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_016_row01_col06.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 5300508,
+        "stage_x_actual": 8961669,
+        "stage_y_actual": 5300461,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 17,
+        "row_index": 1,
+        "col_index": 7,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_017_row01_col07.bmp",
+        "stage_x_target": 8961750,
+        "stage_y_target": 5698758,
+        "stage_x_actual": 8961669,
+        "stage_y_actual": 5698686,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 18,
+        "row_index": 2,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_018_row02_col00.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 5698758,
+        "stage_x_actual": 8165312,
+        "stage_y_actual": 5698690,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 19,
+        "row_index": 2,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_019_row02_col01.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 5300508,
+        "stage_x_actual": 8165320,
+        "stage_y_actual": 5300518,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 20,
+        "row_index": 2,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_020_row02_col02.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 4902258,
+        "stage_x_actual": 8165321,
+        "stage_y_actual": 4902304,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 21,
+        "row_index": 2,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_021_row02_col03.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 4504008,
+        "stage_x_actual": 8165321,
+        "stage_y_actual": 4504028,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 22,
+        "row_index": 2,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_022_row02_col04.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 4105758,
+        "stage_x_actual": 8165322,
+        "stage_y_actual": 4105751,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 23,
+        "row_index": 2,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_023_row02_col05.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 3707508,
+        "stage_x_actual": 8165322,
+        "stage_y_actual": 3707480,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 24,
+        "row_index": 2,
+        "col_index": 6,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_024_row02_col06.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 3309258,
+        "stage_x_actual": 8165322,
+        "stage_y_actual": 3309249,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 25,
+        "row_index": 2,
+        "col_index": 7,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_025_row02_col07.bmp",
+        "stage_x_target": 8165250,
+        "stage_y_target": 2934992,
+        "stage_x_actual": 8165322,
+        "stage_y_actual": 2935007,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 26,
+        "row_index": 3,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_026_row03_col00.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 3119465,
+        "stage_x_actual": 9359875,
+        "stage_y_actual": 3119304,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 27,
+        "row_index": 3,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_027_row03_col01.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 3124785,
+        "stage_x_actual": 9359873,
+        "stage_y_actual": 3124761,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 28,
+        "row_index": 3,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_028_row03_col02.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 3523035,
+        "stage_x_actual": 9359871,
+        "stage_y_actual": 3523018,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 29,
+        "row_index": 3,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_029_row03_col03.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 3921285,
+        "stage_x_actual": 9359873,
+        "stage_y_actual": 3921247,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 30,
+        "row_index": 3,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_030_row03_col04.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 4319535,
+        "stage_x_actual": 9359872,
+        "stage_y_actual": 4319477,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 31,
+        "row_index": 3,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_031_row03_col05.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 4717785,
+        "stage_x_actual": 9359872,
+        "stage_y_actual": 4717593,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 32,
+        "row_index": 3,
+        "col_index": 6,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_032_row03_col06.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 5116035,
+        "stage_x_actual": 9359872,
+        "stage_y_actual": 5116007,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 33,
+        "row_index": 3,
+        "col_index": 7,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_033_row03_col07.bmp",
+        "stage_x_target": 9360000,
+        "stage_y_target": 5514285,
+        "stage_x_actual": 9359871,
+        "stage_y_actual": 5514292,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 34,
+        "row_index": 4,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_034_row04_col00.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 5514285,
+        "stage_x_actual": 7767104,
+        "stage_y_actual": 5514293,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 35,
+        "row_index": 4,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_035_row04_col01.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 5116035,
+        "stage_x_actual": 7767103,
+        "stage_y_actual": 5116096,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 36,
+        "row_index": 4,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_036_row04_col02.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 4717785,
+        "stage_x_actual": 7767102,
+        "stage_y_actual": 4717830,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 37,
+        "row_index": 4,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_037_row04_col03.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 4319535,
+        "stage_x_actual": 7767102,
+        "stage_y_actual": 4319601,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 38,
+        "row_index": 4,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_038_row04_col04.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 3921285,
+        "stage_x_actual": 7767102,
+        "stage_y_actual": 3921342,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 39,
+        "row_index": 4,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_039_row04_col05.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 3523035,
+        "stage_x_actual": 7767102,
+        "stage_y_actual": 3523027,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 40,
+        "row_index": 4,
+        "col_index": 6,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_040_row04_col06.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 3124785,
+        "stage_x_actual": 7767102,
+        "stage_y_actual": 3124839,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 41,
+        "row_index": 4,
+        "col_index": 7,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_041_row04_col07.bmp",
+        "stage_x_target": 7767000,
+        "stage_y_target": 3119465,
+        "stage_x_actual": 7767103,
+        "stage_y_actual": 3119504,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 42,
+        "row_index": 5,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_042_row05_col00.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 3516390,
+        "stage_x_actual": 9758173,
+        "stage_y_actual": 3516391,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 43,
+        "row_index": 5,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_043_row05_col01.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 3524360,
+        "stage_x_actual": 9758169,
+        "stage_y_actual": 3524349,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 44,
+        "row_index": 5,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_044_row05_col02.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 3922610,
+        "stage_x_actual": 9758168,
+        "stage_y_actual": 3922572,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 45,
+        "row_index": 5,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_045_row05_col03.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 4320860,
+        "stage_x_actual": 9758167,
+        "stage_y_actual": 4320854,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 46,
+        "row_index": 5,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_046_row05_col04.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 4719110,
+        "stage_x_actual": 9758167,
+        "stage_y_actual": 4719152,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 47,
+        "row_index": 5,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_047_row05_col05.bmp",
+        "stage_x_target": 9758250,
+        "stage_y_target": 5117360,
+        "stage_x_actual": 9758167,
+        "stage_y_actual": 5117329,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 48,
+        "row_index": 6,
+        "col_index": 0,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_048_row06_col00.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 5117360,
+        "stage_x_actual": 7368840,
+        "stage_y_actual": 5117324,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 49,
+        "row_index": 6,
+        "col_index": 1,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_049_row06_col01.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 4719110,
+        "stage_x_actual": 7368835,
+        "stage_y_actual": 4719124,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 50,
+        "row_index": 6,
+        "col_index": 2,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_050_row06_col02.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 4320860,
+        "stage_x_actual": 7368834,
+        "stage_y_actual": 4321020,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 51,
+        "row_index": 6,
+        "col_index": 3,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_051_row06_col03.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 3922610,
+        "stage_x_actual": 7368833,
+        "stage_y_actual": 3922604,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 52,
+        "row_index": 6,
+        "col_index": 4,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_052_row06_col04.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 3524360,
+        "stage_x_actual": 7368833,
+        "stage_y_actual": 3524110,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      },
+      {
+        "index": 53,
+        "row_index": 6,
+        "col_index": 5,
+        "image_path": "C:\\colony_system\\data\\pipeline_a1_detect_001\\A1_053_row06_col05.bmp",
+        "stage_x_target": 7368750,
+        "stage_y_target": 3516390,
+        "stage_x_actual": 7368832,
+        "stage_y_actual": 3516380,
+        "image_width_px": 5120,
+        "image_height_px": 5120,
+        "image_center_px": [
+          2560,
+          2560
+        ],
+        "mm_per_pixel": {
+          "x": 0.0005859375,
+          "y": 0.0005859375
+        },
+        "clone_count": 0,
+        "clones": []
+      }
+    ]
+  },
+  "compensate_result": null
+}

@@ -1,0 +1,1208 @@
+{
+  "task_id": "pipeline_well_list_detect_001_A2",
+  "status": "success",
+  "task_type": "single_well_scan_and_detect",
+  "plate_type": "12-well",
+  "well_name": "A2",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "A2孔左侧观测起始点",
+    "a1_start": {
+      "x": 8563500,
+      "y": 5755000
+    },
+    "well_start": {
+      "x": 8563500,
+      "y": 2347750
+    },
+    "well_diameter_mm": 19.5,
+    "well_gap_mm": 3.6,
+    "pitch_mm": 23.1,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.0,
+      "height": 3.0
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.7,
+      "height": 2.7
+    },
+    "point_count": 53
+  },
+  "scan_result_json": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\scan_result.json",
+  "image_count": 53,
+  "total_clone_count": 0,
+  "images": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_001_row00_col00.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 2347750,
+      "stage_x_actual": 8563472,
+      "stage_y_actual": 2347797,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_002_row00_col01.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 1949500,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": 1949625,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_003_row00_col02.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 1551250,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": 1551290,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_004_row00_col03.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 1153000,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": 1153012,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_005_row00_col04.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 754750,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": 754773,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_006_row00_col05.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": 356500,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": 356529,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 7,
+      "row_index": 0,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_007_row00_col06.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": -41750,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": -41731,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 8,
+      "row_index": 0,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_008_row00_col07.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": -440000,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": -439903,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 9,
+      "row_index": 0,
+      "col_index": 8,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_009_row00_col08.bmp",
+      "stage_x_target": 8563500,
+      "stage_y_target": -528500,
+      "stage_x_actual": 8563473,
+      "stage_y_actual": -528505,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_010_row01_col00.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": -472258,
+      "stage_x_actual": 8961696,
+      "stage_y_actual": -472334,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_011_row01_col01.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": -97992,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": -98025,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_012_row01_col02.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 300258,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": 300289,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 13,
+      "row_index": 1,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_013_row01_col03.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 698508,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": 698486,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 14,
+      "row_index": 1,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_014_row01_col04.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 1096758,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": 1096626,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 15,
+      "row_index": 1,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_015_row01_col05.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 1495008,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": 1495011,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 16,
+      "row_index": 1,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_016_row01_col06.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 1893258,
+      "stage_x_actual": 8961696,
+      "stage_y_actual": 1893267,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 17,
+      "row_index": 1,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_017_row01_col07.bmp",
+      "stage_x_target": 8961750,
+      "stage_y_target": 2291508,
+      "stage_x_actual": 8961697,
+      "stage_y_actual": 2291394,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_018_row02_col00.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 2291508,
+      "stage_x_actual": 8165340,
+      "stage_y_actual": 2291399,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 19,
+      "row_index": 2,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_019_row02_col01.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 1893258,
+      "stage_x_actual": 8165343,
+      "stage_y_actual": 1893345,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 20,
+      "row_index": 2,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_020_row02_col02.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 1495008,
+      "stage_x_actual": 8165344,
+      "stage_y_actual": 1495038,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 21,
+      "row_index": 2,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_021_row02_col03.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 1096758,
+      "stage_x_actual": 8165345,
+      "stage_y_actual": 1096750,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 22,
+      "row_index": 2,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_022_row02_col04.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 698508,
+      "stage_x_actual": 8165345,
+      "stage_y_actual": 698501,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 23,
+      "row_index": 2,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_023_row02_col05.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": 300258,
+      "stage_x_actual": 8165345,
+      "stage_y_actual": 300244,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 24,
+      "row_index": 2,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_024_row02_col06.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": -97992,
+      "stage_x_actual": 8165346,
+      "stage_y_actual": -97959,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 25,
+      "row_index": 2,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_025_row02_col07.bmp",
+      "stage_x_target": 8165250,
+      "stage_y_target": -472258,
+      "stage_x_actual": 8165346,
+      "stage_y_actual": -472221,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 26,
+      "row_index": 3,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_026_row03_col00.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": -287785,
+      "stage_x_actual": 9359920,
+      "stage_y_actual": -287825,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 27,
+      "row_index": 3,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_027_row03_col01.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": -282465,
+      "stage_x_actual": 9359917,
+      "stage_y_actual": -282464,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 28,
+      "row_index": 3,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_028_row03_col02.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 115785,
+      "stage_x_actual": 9359915,
+      "stage_y_actual": 115631,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 29,
+      "row_index": 3,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_029_row03_col03.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 514035,
+      "stage_x_actual": 9359914,
+      "stage_y_actual": 514023,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 30,
+      "row_index": 3,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_030_row03_col04.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 912285,
+      "stage_x_actual": 9359914,
+      "stage_y_actual": 912198,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 31,
+      "row_index": 3,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_031_row03_col05.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 1310535,
+      "stage_x_actual": 9359913,
+      "stage_y_actual": 1310159,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 32,
+      "row_index": 3,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_032_row03_col06.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 1708785,
+      "stage_x_actual": 9359912,
+      "stage_y_actual": 1708706,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 33,
+      "row_index": 3,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_033_row03_col07.bmp",
+      "stage_x_target": 9360000,
+      "stage_y_target": 2107035,
+      "stage_x_actual": 9359912,
+      "stage_y_actual": 2106970,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 34,
+      "row_index": 4,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_034_row04_col00.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 2107035,
+      "stage_x_actual": 7767092,
+      "stage_y_actual": 2106978,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 35,
+      "row_index": 4,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_035_row04_col01.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 1708785,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": 1708789,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 36,
+      "row_index": 4,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_036_row04_col02.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 1310535,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": 1310564,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 37,
+      "row_index": 4,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_037_row04_col03.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 912285,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": 912328,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 38,
+      "row_index": 4,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_038_row04_col04.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 514035,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": 514041,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 39,
+      "row_index": 4,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_039_row04_col05.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": 115785,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": 115805,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 40,
+      "row_index": 4,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_040_row04_col06.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": -282465,
+      "stage_x_actual": 7767091,
+      "stage_y_actual": -282442,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 41,
+      "row_index": 4,
+      "col_index": 7,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_041_row04_col07.bmp",
+      "stage_x_target": 7767000,
+      "stage_y_target": -287785,
+      "stage_x_actual": 7767092,
+      "stage_y_actual": -287750,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 42,
+      "row_index": 5,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_042_row05_col00.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 109140,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 109097,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 43,
+      "row_index": 5,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_043_row05_col01.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 117110,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 116980,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 44,
+      "row_index": 5,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_044_row05_col02.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 515360,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 515314,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 45,
+      "row_index": 5,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_045_row05_col03.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 913610,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 913592,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 46,
+      "row_index": 5,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_046_row05_col04.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 1311860,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 1311817,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 47,
+      "row_index": 5,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_047_row05_col05.bmp",
+      "stage_x_target": 9758250,
+      "stage_y_target": 1710110,
+      "stage_x_actual": 9758182,
+      "stage_y_actual": 1710088,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 48,
+      "row_index": 6,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_048_row06_col00.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 1710110,
+      "stage_x_actual": 7368840,
+      "stage_y_actual": 1710083,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 49,
+      "row_index": 6,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_049_row06_col01.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 1311860,
+      "stage_x_actual": 7368836,
+      "stage_y_actual": 1311852,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 50,
+      "row_index": 6,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_050_row06_col02.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 913610,
+      "stage_x_actual": 7368836,
+      "stage_y_actual": 913649,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 51,
+      "row_index": 6,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_051_row06_col03.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 515360,
+      "stage_x_actual": 7368835,
+      "stage_y_actual": 515445,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 52,
+      "row_index": 6,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_052_row06_col04.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 117110,
+      "stage_x_actual": 7368834,
+      "stage_y_actual": 117128,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 53,
+      "row_index": 6,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\pipeline_well_list_detect_001\\A2\\images\\A2_053_row06_col05.bmp",
+      "stage_x_target": 7368750,
+      "stage_y_target": 109140,
+      "stage_x_actual": 7368834,
+      "stage_y_actual": 109186,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    }
+  ]
+}
