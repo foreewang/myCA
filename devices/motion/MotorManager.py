@@ -284,7 +284,7 @@ if __name__ == "__main__":
         # x 轴逆向移动 3 毫米
         # x.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
         # y轴正向移动 3毫米
-        y.pp_relative_move(300 * rpm_mm,50000,50000,50000)
+        # y.pp_relative_move( 30 * rpm_mm,50000,50000,50000)
         # y轴逆向移动 3毫米
         # y.pp_relative_move( -30 * rpm_mm,50000,50000,50000)
 

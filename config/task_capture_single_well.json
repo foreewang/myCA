@@ -1,12 +1,12 @@
 {
   "task": {
-    "task_id": "capture_a1_001",
+    "task_id": "capture_c3_001",
     "task_type": "capture",
     "plate_type": "12-well",
     "objective": "4x",
     "observe_scope": "single_well",
     "target": {
-      "well_name": "A1"
+      "well_name": "C3"
     },
     "capture": {
       "save_dir": "C:/colony_system/data/capture_tasks/capture_a1_001",
@@ -29,7 +29,7 @@
       "settle_s": 0.8
     },
     "output": {
-      "result_json": "C:/colony_system/data/capture_tasks/capture_a1_001/result.json"
+      "result_json": "C:/colony_system/data/capture_tasks/capture_c3_001/result.json"
     }
   }
 }
