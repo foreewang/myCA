@@ -131,13 +131,11 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "result_output_json": output_cfg.get("result_json"),
     }
 
-
-def run_single_well_capture(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+def run_single_well_capture(ctx: Dict[str, Any], params: Dict[str, Any], cam=None) -> Dict[str, Any]:
     from workflow.scan_planner import plan_single_well_scan
     from workflow.scan_executor import execute_scan_capture
     plan = plan_single_well_scan(ctx, params)
-    return execute_scan_capture(ctx, params, plan)
-
+    return execute_scan_capture(ctx, params, plan, cam=cam)
 
 def run_single_well_detect(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.detect_executor import execute_detect_on_scan_result
@@ -200,12 +198,12 @@ def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any
     return well_ctx, well_params
 
 
-def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=None) -> Dict[str, Any]:
     stages = params["stages"]
     stage_results: Dict[str, Any] = {}
 
     if "capture" in stages:
-        stage_results["capture"] = run_single_well_capture(ctx, params)
+        stage_results["capture"] = run_single_well_capture(ctx, params, cam=cam)
     else:
         raise ValueError("当前 pipeline 版本要求 stages 至少包含 capture。")
 
@@ -239,21 +237,40 @@ def run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dic
 
 
 def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_list: List[str]) -> Dict[str, Any]:
+    from workflow.camera_executor import open_camera, close_camera
+
     base_save_dir = Path(params["save_dir"])
     wells: List[Dict[str, Any]] = []
 
-    for well_name in well_list:
-        well_ctx, well_params = _derive_well_ctx_params(ctx, params, well_name)
-        well_result = _run_single_well_pipeline(well_ctx, well_params)
-        wells.append(
-            {
-                "well_name": well_name,
-                "capture_result_json": well_params["scan_output_json"],
-                "detect_result_json": well_params.get("detect_output_json"),
-                "compensate_result_json": well_params.get("compensate_output_json"),
-                "result": well_result,
-            }
-        )
+    shared_cam = None
+    need_capture = "capture" in params.get("stages", [])
+
+    try:
+        if need_capture:
+            shared_cam = open_camera(
+                mvs_python_dir=params.get("mvs_python_dir"),
+                device_index=int(params["device_index"]),
+                serial_number=params.get("serial_number"),
+                exposure_us=params.get("exposure_us"),
+                gain=params.get("gain"),
+            )
+
+        for well_name in well_list:
+            well_ctx, well_params = _derive_well_ctx_params(ctx, params, well_name)
+            well_result = _run_single_well_pipeline(well_ctx, well_params, cam=shared_cam)
+            wells.append(
+                {
+                    "well_name": well_name,
+                    "capture_result_json": well_params["scan_output_json"],
+                    "detect_result_json": well_params.get("detect_output_json"),
+                    "compensate_result_json": well_params.get("compensate_output_json"),
+                    "result": well_result,
+                }
+            )
+
+    finally:
+        if shared_cam is not None:
+            close_camera(shared_cam)
 
     return {
         "task_id": params["task_id"],

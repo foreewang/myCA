@@ -130,7 +130,7 @@ def _write_result(path: str | None, result: Dict[str, Any]) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[str,Any]) -> Dict[str,Any]:
+def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[str,Any], cam = None) -> Dict[str,Any]:
     """
     按扫描计划执行“位移台移动 + 相机拍照”的采集流程。
 
@@ -178,18 +178,20 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
     
-    cam = None
+    owned_cam = False
+    local_cam = cam
     try:
-        # 相机在整个扫描任务期间只打开一次，避免逐点 open/close 带来额外开销，
-        # 也更符合实际联机采集的执行方式。
-        cam = open_camera(
-            device_index=int(params["device_index"]),
-            exposure_us=params.get("exposure_us"),
-            gain=params.get("gain"),
-        )
+        if local_cam is None:
+            local_cam = open_camera(
+                mvs_python_dir=params.get("mvs_python_dir"),
+                device_index=int(params["device_index"]),
+                serial_number=params.get("serial_number"),
+                exposure_us=params.get("exposure_us"),
+                gain=params.get("gain"),
+            )
+            owned_cam = True
 
         for point in plan["points"]:
-            # 先执行位移台运动，确保当前视野移动到计划目标点。
             motion_result = move_to_absolute(
                 port=motion.get("port", "COM3"),
                 x_target=int(point["stage_x_target"]),
@@ -202,17 +204,16 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 baudrate=int(motion.get("baudrate", 115200)),
                 settle_s=float(params["settle_s"]),
             )
+
             _check_motion_guard(ctx["plate"], point, motion_result)
-            # 位移稳定后执行拍照，并将当前点信息写入文件名模板字段。
+
             capture_result = capture_with_opened_camera(
-                cam=cam,
+                cam=local_cam,
                 save_dir=params["save_dir"],
                 filename_pattern=params["filename_pattern"],
                 format_kwargs=_format_kwargs(params, point),
             )
 
-            # 将“规划点信息 + 运动结果 + 采集结果”合并记录，
-            # 方便后续追溯每张图对应的空间位置与执行状态。
             captures.append(
                 {
                     **point,
@@ -256,7 +257,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
         raise
 
     finally:
-        close_camera(cam)
+        if owned_cam:
+            close_camera(local_cam)
             
     # finally:
     #     # 无论中途是否异常，都要确保相机被关闭，避免设备句柄泄漏。
