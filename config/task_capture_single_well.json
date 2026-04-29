@@ -9,7 +9,7 @@
       "well_name": "C3"
     },
     "capture": {
-      "save_dir": "C:/colony_system/data/capture_tasks/capture_a1_001",
+      "save_dir": "C:/colony_system/data/capture_tasks/capture_c3_001",
       "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
     },
     "motion": {
