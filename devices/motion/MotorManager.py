@@ -281,12 +281,12 @@ if __name__ == "__main__":
 
         # x 轴正向移动 3 毫米
         # x.pp_relative_move( 30 * rpm_mm, 50000,50000,50000)
-        # x 轴逆向移动 3 毫米
+        # x 轴逆向移动 3 毫米8563500,5755000
         # x.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
         # y轴正向移动 3毫米
-        # y.pp_relative_move( 30 * rpm_mm,50000,50000,50000)
+        # y.pp_relative_move( 30 * rpm_mm, 50000,50000,50000)
         # y轴逆向移动 3毫米
-        # y.pp_relative_move( -30 * rpm_mm,50000,50000,50000)
+        # y.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
 
         # 其他模式调用-轮廓速度模式启动 运行2秒后停止
         # x.pv_start(target_velocity=6000, profile_acc=6000, profile_dec=6000)
