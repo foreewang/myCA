@@ -1,4 +1,43 @@
 plates:
+  "6-well":
+    rows: 2                     # 培养板行数。6孔板通常为 2 行（A~B）
+    cols: 3                     # 培养板列数。6孔板通常为 3 列（1~3）
+
+    a1_start:
+      x: null                # A1 孔左侧观测起始点的 X 轴脉冲坐标
+      y:  null               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
+      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
+
+    well_diameter_mm: null      # 单个培养孔直径，单位：mm
+    well_gap_mm:   null          # 相邻培养孔边缘之间的间距，单位：mm
+    pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
+
+    # 与你实测换孔逻辑一致：
+    # A1 -> A2: Y 轴减小
+    # A1 -> B1: X 轴减小
+    row_stage_sign: -1          # 行方向符号。沿行方向移动（A→B→C）时，位移台 X 轴变化方向为负
+    col_stage_sign: -1          # 列方向符号。沿列方向移动（1→2→3→4）时，位移台 Y 轴变化方向为负
+
+    # 孔内扫描方向。当前沿用原脚本默认方向，显式写入，避免隐式默认。
+    x_stage_sign_for_view_down: -1   # 图像中“向下”对应的位移台 X 轴运动方向符号
+    y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
+
+    stage_limits:
+    enabled: true
+    x_min: -800000        # pulse，X轴最小允许绝对坐标
+    x_max: 10400000      # pulse，X轴最大允许绝对坐标
+    y_min: -8900000      # pulse，Y轴最小允许绝对坐标
+    y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+    safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+
+  runtime_guard:
+    enabled: true
+    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
+    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
+    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    abort_on_motion_failure: true
+
+
   "12-well":
     rows: 3                     # 培养板行数。12孔板通常为 3 行（A~C）
     cols: 4                     # 培养板列数。12孔板通常为 4 列（1~4）
