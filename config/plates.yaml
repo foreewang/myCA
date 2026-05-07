@@ -23,12 +23,12 @@ plates:
     y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
 
     stage_limits:
-    enabled: true
-    x_min: -800000        # pulse，X轴最小允许绝对坐标
-    x_max: 10400000      # pulse，X轴最大允许绝对坐标
-    y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-    y_max: 7500000       # pulse，Y轴最大允许绝对坐标
-    safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      enabled: true
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
+      x_max: 10400000      # pulse，X轴最大允许绝对坐标
+      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
+      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
   runtime_guard:
     enabled: true
@@ -62,12 +62,12 @@ plates:
     y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
 
     stage_limits:
-    enabled: true
-    x_min: -800000        # pulse，X轴最小允许绝对坐标
-    x_max: 10400000      # pulse，X轴最大允许绝对坐标
-    y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-    y_max: 7500000       # pulse，Y轴最大允许绝对坐标
-    safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      enabled: true
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
+      x_max: 10400000      # pulse，X轴最大允许绝对坐标
+      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
+      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
   runtime_guard:
     enabled: true
@@ -107,12 +107,12 @@ plates:
     y_stage_sign_for_view_right: -1  # 图像向右对应的 Y 轴方向符号，需实测确认
 
     stage_limits:
-    enabled: true
-    x_min: -800000        # pulse，X轴最小允许绝对坐标
-    x_max: 10400000      # pulse，X轴最大允许绝对坐标
-    y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-    y_max: 7500000       # pulse，Y轴最大允许绝对坐标
-    safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      enabled: true
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
+      x_max: 10400000      # pulse，X轴最大允许绝对坐标
+      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
+      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
   runtime_guard:
     enabled: true
@@ -147,12 +147,12 @@ plates:
     y_stage_sign_for_view_right: -1   # 图像向右对应的 Y 轴方向符号，需实测确认
 
     stage_limits:
-    enabled: true
-    x_min: -800000        # pulse，X轴最小允许绝对坐标
-    x_max: 10400000      # pulse，X轴最大允许绝对坐标
-    y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-    y_max: 7500000       # pulse，Y轴最大允许绝对坐标
-    safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      enabled: true
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
+      x_max: 10400000      # pulse，X轴最大允许绝对坐标
+      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
+      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
     runtime_guard:
       enabled: true

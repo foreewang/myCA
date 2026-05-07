@@ -5,7 +5,7 @@
   "observe_scope": "single_well",
   "plate_type": "12-well",
   "objective_name": "4x",
-  "stored_at_utc": "2026-05-07T07:58:58.966932+00:00",
+  "stored_at_utc": "2026-05-07T09:34:32.080033+00:00",
   "persist_result": true,
   "result_json_path": "C:/colony_system/data/http_tests/capture_a1_http_004/result.json",
   "base_save_dir": null,
@@ -84,13 +84,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961693,
+                "current_pos": 8968565,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5300518,
+                "current_pos": 4095150,
                 "statusword": 545
               }
             },
@@ -102,19 +102,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563548,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5754917,
+                "current_pos": 5754909,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 48,
-              "y": -83
+              "x": 63,
+              "y": -91
             }
           },
           "capture_result": {
@@ -146,13 +146,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563548,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5754917,
+                "current_pos": 5754909,
                 "statusword": 545
               }
             },
@@ -164,19 +164,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5356837,
+                "current_pos": 5356855,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 87
+              "x": 63,
+              "y": 105
             }
           },
           "capture_result": {
@@ -208,13 +208,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5356837,
+                "current_pos": 5356855,
                 "statusword": 545
               }
             },
@@ -226,19 +226,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563564,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4958505,
+                "current_pos": 4958538,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 5
+              "x": 64,
+              "y": 38
             }
           },
           "capture_result": {
@@ -270,13 +270,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563564,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4958505,
+                "current_pos": 4958538,
                 "statusword": 545
               }
             },
@@ -288,19 +288,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4560298,
+                "current_pos": 4560293,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 48
+              "x": 63,
+              "y": 43
             }
           },
           "capture_result": {
@@ -332,13 +332,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4560298,
+                "current_pos": 4560293,
                 "statusword": 545
               }
             },
@@ -350,19 +350,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4162028,
+                "current_pos": 4162048,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 28
+              "x": 63,
+              "y": 48
             }
           },
           "capture_result": {
@@ -394,37 +394,37 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4162028,
+                "current_pos": 4162048,
                 "statusword": 545
               }
             },
             "move_result": {
               "x_diff": 0,
-              "y_diff": -1
+              "y_diff": 0
             },
             "after": {
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3763773,
+                "current_pos": 3763829,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 23
+              "x": 63,
+              "y": 79
             }
           },
           "capture_result": {
@@ -456,13 +456,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563563,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3763773,
+                "current_pos": 3763829,
                 "statusword": 545
               }
             },
@@ -474,19 +474,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3365496,
+                "current_pos": 3365499,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": -4
+              "x": 62,
+              "y": -1
             }
           },
           "capture_result": {
@@ -518,13 +518,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3365496,
+                "current_pos": 3365499,
                 "statusword": 545
               }
             },
@@ -536,19 +536,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2967236,
+                "current_pos": 2967241,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": -14
+              "x": 62,
+              "y": -9
             }
           },
           "capture_result": {
@@ -580,13 +580,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2967236,
+                "current_pos": 2967241,
                 "statusword": 545
               }
             },
@@ -598,19 +598,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2878785,
+                "current_pos": 2878765,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 49,
-              "y": 35
+              "x": 62,
+              "y": 15
             }
           },
           "capture_result": {
@@ -642,13 +642,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8563549,
+                "current_pos": 8563562,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2878785,
+                "current_pos": 2878765,
                 "statusword": 545
               }
             },
@@ -660,19 +660,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961682,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2934946,
+                "current_pos": 2934960,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -68,
-              "y": -46
+              "x": -47,
+              "y": -32
             }
           },
           "capture_result": {
@@ -704,13 +704,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961682,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2934946,
+                "current_pos": 2934960,
                 "statusword": 545
               }
             },
@@ -722,19 +722,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3309171,
+                "current_pos": 3309129,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -67,
-              "y": -87
+              "x": -47,
+              "y": -129
             }
           },
           "capture_result": {
@@ -766,13 +766,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3309171,
+                "current_pos": 3309129,
                 "statusword": 545
               }
             },
@@ -784,19 +784,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961704,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3707471,
+                "current_pos": 3707431,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -67,
-              "y": -37
+              "x": -46,
+              "y": -77
             }
           },
           "capture_result": {
@@ -828,13 +828,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961704,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3707471,
+                "current_pos": 3707431,
                 "statusword": 545
               }
             },
@@ -846,19 +846,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4105709,
+                "current_pos": 4105707,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -67,
-              "y": -49
+              "x": -47,
+              "y": -51
             }
           },
           "capture_result": {
@@ -890,13 +890,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961683,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4105709,
+                "current_pos": 4105707,
                 "statusword": 545
               }
             },
@@ -908,19 +908,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4503966,
+                "current_pos": 4503924,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -65,
-              "y": -42
+              "x": -47,
+              "y": -84
             }
           },
           "capture_result": {
@@ -952,13 +952,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4503966,
+                "current_pos": 4503924,
                 "statusword": 545
               }
             },
@@ -970,19 +970,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961684,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4902231,
+                "current_pos": 4902190,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -66,
-              "y": -27
+              "x": -47,
+              "y": -68
             }
           },
           "capture_result": {
@@ -1014,13 +1014,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961684,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4902231,
+                "current_pos": 4902190,
                 "statusword": 545
               }
             },
@@ -1032,19 +1032,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961704,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5300492,
+                "current_pos": 5300498,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -65,
-              "y": -16
+              "x": -46,
+              "y": -10
             }
           },
           "capture_result": {
@@ -1076,13 +1076,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961704,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5300492,
+                "current_pos": 5300498,
                 "statusword": 545
               }
             },
@@ -1094,19 +1094,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5698763,
+                "current_pos": 5698734,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -65,
-              "y": 5
+              "x": -47,
+              "y": -24
             }
           },
           "capture_result": {
@@ -1138,13 +1138,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8961685,
+                "current_pos": 8961703,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5698763,
+                "current_pos": 5698734,
                 "statusword": 545
               }
             },
@@ -1156,19 +1156,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165385,
+                "current_pos": 8165358,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5698764,
+                "current_pos": 5698735,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 135,
-              "y": 6
+              "x": 108,
+              "y": -23
             }
           },
           "capture_result": {
@@ -1200,13 +1200,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165385,
+                "current_pos": 8165358,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5698764,
+                "current_pos": 5698735,
                 "statusword": 545
               }
             },
@@ -1218,19 +1218,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165382,
+                "current_pos": 8165356,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5300524,
+                "current_pos": 5300583,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 132,
-              "y": 16
+              "x": 106,
+              "y": 75
             }
           },
           "capture_result": {
@@ -1262,13 +1262,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165382,
+                "current_pos": 8165356,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5300524,
+                "current_pos": 5300583,
                 "statusword": 545
               }
             },
@@ -1280,19 +1280,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165356,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4902230,
+                "current_pos": 4902267,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 129,
-              "y": -28
+              "x": 106,
+              "y": 9
             }
           },
           "capture_result": {
@@ -1324,13 +1324,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165356,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4902230,
+                "current_pos": 4902267,
                 "statusword": 545
               }
             },
@@ -1342,19 +1342,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4504043,
+                "current_pos": 4504034,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 129,
-              "y": 35
+              "x": 105,
+              "y": 26
             }
           },
           "capture_result": {
@@ -1386,13 +1386,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4504043,
+                "current_pos": 4504034,
                 "statusword": 545
               }
             },
@@ -1404,19 +1404,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4105786,
+                "current_pos": 4105795,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 129,
-              "y": 28
+              "x": 105,
+              "y": 37
             }
           },
           "capture_result": {
@@ -1448,13 +1448,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165379,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4105786,
+                "current_pos": 4105795,
                 "statusword": 545
               }
             },
@@ -1466,19 +1466,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3707496,
+                "current_pos": 3707526,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 128,
-              "y": -12
+              "x": 105,
+              "y": 18
             }
           },
           "capture_result": {
@@ -1510,13 +1510,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3707496,
+                "current_pos": 3707526,
                 "statusword": 545
               }
             },
@@ -1528,19 +1528,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3309336,
+                "current_pos": 3309424,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 128,
-              "y": 78
+              "x": 105,
+              "y": 166
             }
           },
           "capture_result": {
@@ -1572,13 +1572,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3309336,
+                "current_pos": 3309424,
                 "statusword": 545
               }
             },
@@ -1590,19 +1590,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2935010,
+                "current_pos": 2935020,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 128,
-              "y": 18
+              "x": 105,
+              "y": 28
             }
           },
           "capture_result": {
@@ -1634,13 +1634,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 8165378,
+                "current_pos": 8165355,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 2935010,
+                "current_pos": 2935020,
                 "statusword": 545
               }
             },
@@ -1652,19 +1652,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359951,
+                "current_pos": 9359966,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3119423,
+                "current_pos": 3119442,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -49,
-              "y": -42
+              "x": -34,
+              "y": -23
             }
           },
           "capture_result": {
@@ -1696,13 +1696,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359951,
+                "current_pos": 9359966,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3119423,
+                "current_pos": 3119442,
                 "statusword": 545
               }
             },
@@ -1714,19 +1714,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3124740,
+                "current_pos": 3124753,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -47,
-              "y": -45
+              "x": -33,
+              "y": -32
             }
           },
           "capture_result": {
@@ -1758,13 +1758,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3124740,
+                "current_pos": 3124753,
                 "statusword": 545
               }
             },
@@ -1776,19 +1776,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3523044,
+                "current_pos": 3523017,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -47,
-              "y": 9
+              "x": -33,
+              "y": -18
             }
           },
           "capture_result": {
@@ -1820,13 +1820,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3523044,
+                "current_pos": 3523017,
                 "statusword": 545
               }
             },
@@ -1838,19 +1838,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3921284,
+                "current_pos": 3921235,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -47,
-              "y": -1
+              "x": -33,
+              "y": -50
             }
           },
           "capture_result": {
@@ -1882,37 +1882,37 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3921284,
+                "current_pos": 3921235,
                 "statusword": 545
               }
             },
             "move_result": {
               "x_diff": 0,
-              "y_diff": 0
+              "y_diff": 3
             },
             "after": {
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4319522,
+                "current_pos": 4319517,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -46,
-              "y": -13
+              "x": -33,
+              "y": -18
             }
           },
           "capture_result": {
@@ -1944,13 +1944,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4319522,
+                "current_pos": 4319516,
                 "statusword": 545
               }
             },
@@ -1962,19 +1962,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4717802,
+                "current_pos": 4717796,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -47,
-              "y": 17
+              "x": -33,
+              "y": 11
             }
           },
           "capture_result": {
@@ -2006,13 +2006,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359953,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4717802,
+                "current_pos": 4717796,
                 "statusword": 545
               }
             },
@@ -2024,19 +2024,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5116021,
+                "current_pos": 5116014,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -46,
-              "y": -14
+              "x": -33,
+              "y": -21
             }
           },
           "capture_result": {
@@ -2068,13 +2068,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5116021,
+                "current_pos": 5116014,
                 "statusword": 545
               }
             },
@@ -2086,19 +2086,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5514198,
+                "current_pos": 5514254,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -46,
-              "y": -87
+              "x": -33,
+              "y": -31
             }
           },
           "capture_result": {
@@ -2130,13 +2130,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9359954,
+                "current_pos": 9359967,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5514198,
+                "current_pos": 5514254,
                 "statusword": 545
               }
             },
@@ -2148,19 +2148,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767086,
+                "current_pos": 7767148,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5514205,
+                "current_pos": 5514244,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 86,
-              "y": -80
+              "x": 148,
+              "y": -41
             }
           },
           "capture_result": {
@@ -2192,13 +2192,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767086,
+                "current_pos": 7767148,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5514205,
+                "current_pos": 5514244,
                 "statusword": 545
               }
             },
@@ -2210,19 +2210,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767082,
+                "current_pos": 7767144,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5116040,
+                "current_pos": 5116035,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 82,
-              "y": 5
+              "x": 144,
+              "y": 0
             }
           },
           "capture_result": {
@@ -2254,13 +2254,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767082,
+                "current_pos": 7767144,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5116040,
+                "current_pos": 5116035,
                 "statusword": 545
               }
             },
@@ -2272,19 +2272,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767080,
+                "current_pos": 7767142,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4717764,
+                "current_pos": 4717791,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 80,
-              "y": -21
+              "x": 142,
+              "y": 6
             }
           },
           "capture_result": {
@@ -2316,13 +2316,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767080,
+                "current_pos": 7767142,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4717764,
+                "current_pos": 4717791,
                 "statusword": 545
               }
             },
@@ -2334,19 +2334,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767079,
+                "current_pos": 7767142,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4319525,
+                "current_pos": 4319521,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 79,
-              "y": -10
+              "x": 142,
+              "y": -14
             }
           },
           "capture_result": {
@@ -2378,13 +2378,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767079,
+                "current_pos": 7767142,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4319525,
+                "current_pos": 4319521,
                 "statusword": 545
               }
             },
@@ -2396,19 +2396,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767079,
+                "current_pos": 7767141,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3921242,
+                "current_pos": 3921279,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 79,
-              "y": -43
+              "x": 141,
+              "y": -6
             }
           },
           "capture_result": {
@@ -2440,13 +2440,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767079,
+                "current_pos": 7767141,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3921242,
+                "current_pos": 3921279,
                 "statusword": 545
               }
             },
@@ -2458,19 +2458,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767078,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3523048,
+                "current_pos": 3523096,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 78,
-              "y": 13
+              "x": 140,
+              "y": 61
             }
           },
           "capture_result": {
@@ -2502,13 +2502,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767078,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3523048,
+                "current_pos": 3523096,
                 "statusword": 545
               }
             },
@@ -2520,19 +2520,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767078,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3124839,
+                "current_pos": 3124800,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 78,
-              "y": 54
+              "x": 140,
+              "y": 15
             }
           },
           "capture_result": {
@@ -2564,13 +2564,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767078,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3124839,
+                "current_pos": 3124800,
                 "statusword": 545
               }
             },
@@ -2582,19 +2582,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767077,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3119493,
+                "current_pos": 3119504,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 77,
-              "y": 28
+              "x": 140,
+              "y": 39
             }
           },
           "capture_result": {
@@ -2626,13 +2626,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7767077,
+                "current_pos": 7767140,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3119493,
+                "current_pos": 3119504,
                 "statusword": 545
               }
             },
@@ -2644,19 +2644,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3516335,
+                "current_pos": 3516373,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -62,
-              "y": -55
+              "x": -45,
+              "y": -17
             }
           },
           "capture_result": {
@@ -2688,37 +2688,37 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3516335,
+                "current_pos": 3516373,
                 "statusword": 545
               }
             },
             "move_result": {
               "x_diff": 0,
-              "y_diff": 4
+              "y_diff": 3
             },
             "after": {
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3524162,
+                "current_pos": 3524210,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -61,
-              "y": -198
+              "x": -44,
+              "y": -150
             }
           },
           "capture_result": {
@@ -2750,13 +2750,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3524157,
+                "current_pos": 3524206,
                 "statusword": 545
               }
             },
@@ -2768,19 +2768,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3922600,
+                "current_pos": 3922578,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -62,
-              "y": -10
+              "x": -45,
+              "y": -32
             }
           },
           "capture_result": {
@@ -2812,13 +2812,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3922600,
+                "current_pos": 3922578,
                 "statusword": 545
               }
             },
@@ -2830,19 +2830,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4320743,
+                "current_pos": 4320776,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -62,
-              "y": -117
+              "x": -44,
+              "y": -84
             }
           },
           "capture_result": {
@@ -2874,13 +2874,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758188,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4320742,
+                "current_pos": 4320775,
                 "statusword": 545
               }
             },
@@ -2892,19 +2892,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4718932,
+                "current_pos": 4719039,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -61,
-              "y": -178
+              "x": -45,
+              "y": -71
             }
           },
           "capture_result": {
@@ -2936,13 +2936,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758205,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4718932,
+                "current_pos": 4719039,
                 "statusword": 545
               }
             },
@@ -2954,19 +2954,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5117297,
+                "current_pos": 5117338,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": -61,
-              "y": -63
+              "x": -44,
+              "y": -22
             }
           },
           "capture_result": {
@@ -2998,13 +2998,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 9758189,
+                "current_pos": 9758206,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5117297,
+                "current_pos": 5117338,
                 "statusword": 545
               }
             },
@@ -3016,19 +3016,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368830,
+                "current_pos": 7368860,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5117297,
+                "current_pos": 5117338,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 80,
-              "y": -63
+              "x": 110,
+              "y": -22
             }
           },
           "capture_result": {
@@ -3060,13 +3060,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368830,
+                "current_pos": 7368860,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 5117297,
+                "current_pos": 5117338,
                 "statusword": 545
               }
             },
@@ -3078,19 +3078,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368830,
+                "current_pos": 7368857,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4719135,
+                "current_pos": 4719118,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 80,
-              "y": 25
+              "x": 107,
+              "y": 8
             }
           },
           "capture_result": {
@@ -3122,13 +3122,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368830,
+                "current_pos": 7368857,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4719135,
+                "current_pos": 4719118,
                 "statusword": 545
               }
             },
@@ -3140,19 +3140,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368828,
+                "current_pos": 7368856,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4320888,
+                "current_pos": 4320872,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 78,
-              "y": 28
+              "x": 106,
+              "y": 12
             }
           },
           "capture_result": {
@@ -3184,13 +3184,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368828,
+                "current_pos": 7368856,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 4320888,
+                "current_pos": 4320872,
                 "statusword": 545
               }
             },
@@ -3202,19 +3202,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368827,
+                "current_pos": 7368856,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3922630,
+                "current_pos": 3922615,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 77,
-              "y": 20
+              "x": 106,
+              "y": 5
             }
           },
           "capture_result": {
@@ -3246,13 +3246,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368827,
+                "current_pos": 7368856,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3922630,
+                "current_pos": 3922615,
                 "statusword": 545
               }
             },
@@ -3264,19 +3264,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368826,
+                "current_pos": 7368855,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3524440,
+                "current_pos": 3524369,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 76,
-              "y": 80
+              "x": 105,
+              "y": 9
             }
           },
           "capture_result": {
@@ -3308,13 +3308,13 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368826,
+                "current_pos": 7368855,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3524440,
+                "current_pos": 3524369,
                 "statusword": 545
               }
             },
@@ -3326,19 +3326,19 @@
               "x": {
                 "axis": "x",
                 "slave": 1,
-                "current_pos": 7368826,
+                "current_pos": 7368855,
                 "statusword": 545
               },
               "y": {
                 "axis": "y",
                 "slave": 2,
-                "current_pos": 3516412,
+                "current_pos": 3516402,
                 "statusword": 545
               }
             },
             "err_to_target": {
-              "x": 76,
-              "y": 22
+              "x": 105,
+              "y": 12
             }
           },
           "capture_result": {
