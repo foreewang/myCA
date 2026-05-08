@@ -131,19 +131,24 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "result_output_json": output_cfg.get("result_json"),
     }
 
+
 def run_single_well_capture(ctx: Dict[str, Any], params: Dict[str, Any], cam=None) -> Dict[str, Any]:
     from workflow.scan_planner import plan_single_well_scan
     from workflow.scan_executor import execute_scan_capture
+
     plan = plan_single_well_scan(ctx, params)
     return execute_scan_capture(ctx, params, plan, cam=cam)
 
+
 def run_single_well_detect(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.detect_executor import execute_detect_on_scan_result
+
     return execute_detect_on_scan_result(ctx, params, scan_result)
 
 
 def run_single_well_compensate(ctx: Dict[str, Any], params: Dict[str, Any], detect_result: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.compensate_executor import execute_compensate_on_detect_result
+
     return execute_compensate_on_detect_result(ctx, params, detect_result)
 
 
@@ -288,6 +293,7 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
 
 def run_full_plate_pipeline(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     from workflow.plate_geometry import all_well_names
+
     wells = all_well_names(ctx["plate"])
     result = run_well_list_pipeline(ctx, params, wells)
     result["observe_scope"] = "full_plate"
@@ -330,6 +336,7 @@ def execute_task_request(
         raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate")
 
     from workflow.config_loader import load_runtime_context
+    from workflow.objective_executor import ensure_objective_for_task, attach_objective_result
 
     runtime_task_path, tmp_task_path = task_cfg_to_runtime_yaml(raw_task_cfg)
 
@@ -352,12 +359,23 @@ def execute_task_request(
             except Exception:
                 pass
 
+    objectives_root_cfg = load_structured_file(objectives_path)
+    ctx["objectives_cfg"] = objectives_root_cfg
+
+    objective_result = ensure_objective_for_task(
+        task_cfg=task,
+        objectives_root_cfg=objectives_root_cfg,
+        extra_context={"task_id": task.get("task_id")},
+    )
+
     params = build_pipeline_params(ctx)
 
     if task_type == "compensate":
         result = run_compensate_task(ctx, params)
     else:
         result = run_pipeline_task(ctx, params)
+
+    result = attach_objective_result(result, objective_result)
 
     output_path = dump_json or params.get("result_output_json") or params.get("compensate_output_json")
     if persist_result:
