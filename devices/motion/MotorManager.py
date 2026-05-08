@@ -181,7 +181,8 @@ class MotorManager:
 
 
 
-
+# 自控对接点位
+point_home = (0,7500000)
 
 # x y 电机点位参数
 # 12 孔托盘 00 点 xy坐标(rpm)
@@ -239,6 +240,10 @@ if __name__ == "__main__":
         # focus.pp_absolute_move(x4_focal,100000,100000,100000)
         # 调整焦距为 10 倍镜下指定焦距
         # focus.pp_absolute_move(x10_focal,100000,100000,100000)
+
+        # 移动到位移台和自控对接home点位
+        x.pp_absolute_move(target_pos=point_home[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        y.pp_absolute_move(target_pos=point_home[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
 
         # 移动到12 孔托盘 00 点位
         # x.pp_absolute_move(target_pos=point_12[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
