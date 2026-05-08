@@ -1,22 +1,57 @@
 objectives:
   "4x":
-    magnification: 4          # 物镜放大倍数。这里表示 4 倍物镜
-    focus_position: null      # 该物镜对应的调焦位置。null 表示当前尚未标定，后续可填写具体焦点位置
+    magnification: 4
     fov_mm:
-      width: 3.0              # 该物镜下视野宽度，单位：mm
-      height: 3.0             # 该物镜下视野高度，单位：mm
-    recommended_resolution:
-      width: 5120             # 推荐采集分辨率宽度，单位：像素
-      height: 5120            # 推荐采集分辨率高度，单位：像素
-    description: "4x物镜默认观察配置"   # 对该物镜配置的文字说明
+      width: 3.0
+      height: 3.0
+
+    switch:
+      enabled: true
+      mode: motor_manager
+      objective_target_pos: 166347
+      focus_target_pos: -2019367
+
+      # 物镜/调焦电机运动参数
+      objective_profile_vel: 100000
+      objective_profile_acc: 100000
+      objective_profile_dec: 100000
+
+      focus_profile_vel: 100000
+      focus_profile_acc: 100000
+      focus_profile_dec: 100000
 
   "10x":
-    magnification: 10         # 物镜放大倍数。这里表示 10 倍物镜
-    focus_position: null      # 该物镜对应的调焦位置。null 表示当前尚未标定
+    magnification: 10
     fov_mm:
-      width: null             # 该物镜下视野宽度，单位：mm。null 表示暂未测定
-      height: null            # 该物镜下视野高度，单位：mm。null 表示暂未测定
-    recommended_resolution:
-      width: 5120             # 推荐采集分辨率宽度，单位：像素
-      height: 5120            # 推荐采集分辨率高度，单位：像素
-    description: "10x物镜默认观察配置"  # 对该物镜配置的文字说明
+      width: 1.2
+      height: 1.2
+
+    switch:
+      enabled: true
+      mode: motor_manager
+      objective_target_pos: -165903
+      focus_target_pos: -2053794
+
+      objective_profile_vel: 100000
+      objective_profile_acc: 100000
+      objective_profile_dec: 100000
+
+      focus_profile_vel: 100000
+      focus_profile_acc: 100000
+      focus_profile_dec: 100000
+
+state:
+  enabled: true
+  state_file: "C:/colony_system/data/objective_state.json"
+  assume_initial: "4x"
+
+hardware:
+  modbus:
+    port: "COM3"
+    baudrate: 115200
+
+  objective_axis:
+    slave: 4
+
+  focus_axis:
+    slave: 3
