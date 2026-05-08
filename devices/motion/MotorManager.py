@@ -242,8 +242,8 @@ if __name__ == "__main__":
         # focus.pp_absolute_move(x10_focal,100000,100000,100000)
 
         # 移动到位移台和自控对接home点位
-        x.pp_absolute_move(target_pos=point_home[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
-        y.pp_absolute_move(target_pos=point_home[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # x.pp_absolute_move(target_pos=point_home[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # y.pp_absolute_move(target_pos=point_home[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
 
         # 移动到12 孔托盘 00 点位
         # x.pp_absolute_move(target_pos=point_12[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
