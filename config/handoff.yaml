@@ -1,0 +1,55 @@
+handoff:
+  hardware:
+    modbus:
+      port: "COM3"
+      baudrate: 115200
+
+    x_axis:
+      slave: 1
+
+    y_axis:
+      slave: 2
+
+  points:
+    robot_exchange:
+      x: 0
+      y: 7500000
+      meaning: "自控机械臂与位移台培养板对接点"
+
+      profile_vel: 500000
+      profile_acc: 100000
+      profile_dec: 100000
+      timeout_s: 120.0
+      settle_s: 0.5
+
+  plate_overrides:
+    "6-well":
+      robot_exchange:
+        x: 0
+        y: 7500000
+
+    "12-well":
+      robot_exchange:
+        x: 0
+        y: 7500000
+
+    "24-well":
+      robot_exchange:
+        x: 0
+        y: 7500000
+
+    "48-well":
+      robot_exchange:
+        x: 0
+        y: 7500000
+
+  actions:
+    load_in:
+      point: "robot_exchange"
+      ready_state: "ready_for_robot_place"
+      message: "位移台已到放板对接点，可执行机械臂放板"
+
+    unload_out:
+      point: "robot_exchange"
+      ready_state: "ready_for_robot_pick"
+      message: "位移台已到取板对接点，可执行机械臂取板"
