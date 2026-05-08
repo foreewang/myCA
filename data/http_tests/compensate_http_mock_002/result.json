@@ -57,13 +57,13 @@
       "x": {
         "axis": "x",
         "slave": 1,
-        "current_pos": 7368857,
+        "current_pos": 554334,
         "statusword": 545
       },
       "y": {
         "axis": "y",
         "slave": 2,
-        "current_pos": 3516444,
+        "current_pos": -6705327,
         "statusword": 545
       }
     },
@@ -75,19 +75,19 @@
       "x": {
         "axis": "x",
         "slave": 1,
-        "current_pos": 8968565,
+        "current_pos": 8968547,
         "statusword": 545
       },
       "y": {
         "axis": "y",
         "slave": 2,
-        "current_pos": 4095151,
+        "current_pos": 4095160,
         "statusword": 545
       }
     },
     "err_to_target": {
-      "x": -20,
-      "y": -142
+      "x": -38,
+      "y": -133
     }
   }
 }
