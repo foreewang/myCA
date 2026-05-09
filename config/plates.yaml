@@ -8,8 +8,8 @@ plates:
       y: 6550000               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: null      # 单个培养孔直径，单位：mm
-    well_gap_mm:   null          # 相邻培养孔边缘之间的间距，单位：mm
+    well_diameter_mm: 310      # 单个培养孔直径，单位：mm
+    well_gap_mm:   40          # 相邻培养孔边缘之间的间距，单位：mm
     pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
 
     # 与你实测换孔逻辑一致：
