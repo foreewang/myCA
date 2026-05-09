@@ -71,6 +71,8 @@ def _default_stages(task: Dict[str, Any]) -> List[str]:
         return ["capture"]
     if task_type == "compensate":
         return []
+    if task_type == "handoff":
+        return []
 
     raise ValueError(f"无法推断 stages，请在 task 中显式提供 stages。task_type={task_type!r}")
 
@@ -318,12 +320,23 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
+def run_handoff_task(raw_task_cfg: Dict[str, Any], handoff_path: str | None = None) -> Dict[str, Any]:
+    from workflow.handoff_executor import execute_handoff_task
+
+    default_config_dir = PROJECT_ROOT / "config"
+    handoff_path = handoff_path or str(default_config_dir / "handoff.yaml")
+    handoff_root_cfg = load_structured_file(handoff_path)
+    task = raw_task_cfg["task"]
+    return execute_handoff_task(task, handoff_root_cfg)
+
+
 def execute_task_request(
     raw_task_cfg: Dict[str, Any],
     *,
     camera_path: str | None = None,
     objectives_path: str | None = None,
     plates_path: str | None = None,
+    handoff_path: str | None = None,
     dump_json: str | None = None,
     persist_result: bool = True,
 ) -> Dict[str, Any]:
@@ -332,8 +345,15 @@ def execute_task_request(
 
     task = raw_task_cfg["task"]
     task_type = str(task.get("task_type") or "").strip().lower()
-    if task_type not in {"capture", "pipeline", "compensate"}:
-        raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate")
+    if task_type not in {"capture", "pipeline", "compensate", "handoff"}:
+        raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate / handoff")
+
+    if task_type == "handoff":
+        result = run_handoff_task(raw_task_cfg, handoff_path=handoff_path)
+        output_path = dump_json or ((task.get("output", {}) or {}).get("result_json"))
+        if persist_result:
+            write_result(result, output_path)
+        return result
 
     from workflow.config_loader import load_runtime_context
     from workflow.objective_executor import ensure_objective_for_task, attach_objective_result
@@ -385,11 +405,12 @@ def execute_task_request(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run capture/detect/compensate pipeline task")
+    parser = argparse.ArgumentParser(description="Run capture/detect/compensate/handoff workflow task")
     parser.add_argument("--task", required=True, help="task json/yaml path")
     parser.add_argument("--camera", default=None)
     parser.add_argument("--objectives", default=None)
     parser.add_argument("--plates", default=None)
+    parser.add_argument("--handoff", default=None)
     parser.add_argument("--dump-json", default=None, help="output result json path")
     args = parser.parse_args()
 
@@ -399,6 +420,7 @@ def main() -> None:
         camera_path=args.camera,
         objectives_path=args.objectives,
         plates_path=args.plates,
+        handoff_path=args.handoff,
         dump_json=args.dump_json,
         persist_result=True,
     )
