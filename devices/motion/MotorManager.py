@@ -11,8 +11,11 @@ from typing import Optional
 import time
 
 # 假设已有 modbus 模块中的 ModbusRTUClient 类
-from modbus import ModbusRTUClient
-
+try:
+    from .modbus import ModbusRTUClient
+except ImportError:
+    from modbus import ModbusRTUClient
+    
 logger = logging.getLogger(__name__)
 
 
@@ -184,7 +187,8 @@ class MotorManager:
 # 自控对接点位
 point_home = (0,7500000)
 
-# # x y 电机点位参数
+# x y 电机点位参数 
+# NiM 1号电机-x坐标（A-C），2号电机-y坐标（1-4）
 # 6 孔托盘 00 点 xy坐标(rpm)
 point_6=(7750000,6550000)
 # # 6 孔托盘 直径 (0.1mm)

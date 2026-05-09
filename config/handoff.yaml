@@ -14,7 +14,7 @@ handoff:
     robot_exchange:
       x: 0
       y: 7500000
-      meaning: "自控机械臂与位移台培养板对接点"
+      meaning: "exchange point for robot"
 
       profile_vel: 500000
       profile_acc: 100000
@@ -47,9 +47,9 @@ handoff:
     load_in:
       point: "robot_exchange"
       ready_state: "ready_for_robot_place"
-      message: "位移台已到放板对接点，可执行机械臂放板"
+      message: "ready"
 
     unload_out:
       point: "robot_exchange"
       ready_state: "ready_for_robot_pick"
-      message: "位移台已到取板对接点，可执行机械臂取板"
+      message: "ready"
