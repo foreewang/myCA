@@ -4,8 +4,8 @@ plates:
     cols: 3                     # 培养板列数。6孔板通常为 3 列（1~3）
 
     a1_start:
-      x: null                # A1 孔左侧观测起始点的 X 轴脉冲坐标
-      y:  null               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
+      x: 7750000                # A1 孔左侧观测起始点的 X 轴脉冲坐标
+      y: 6550000               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
     well_diameter_mm: null      # 单个培养孔直径，单位：mm
@@ -92,12 +92,12 @@ plates:
     cols: 6                     # 培养板列数。24孔板通常为 6 列（1~6）
 
     a1_start:
-      x: null                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
-      y: null                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
+      x: 8865800                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
+      y: 6185500                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: null      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: null           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    well_diameter_mm: 137      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: 35           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
@@ -132,12 +132,12 @@ plates:
     cols: 8                     # 培养板列数。48孔板通常为 8 列（1~8）
 
     a1_start:
-      x: null                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
-      y: null                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
+      x: 9412400                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
+      y: 5841900                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: null      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: null           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    well_diameter_mm: 93      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: 24           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向

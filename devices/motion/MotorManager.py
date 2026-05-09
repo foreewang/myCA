@@ -184,6 +184,14 @@ class MotorManager:
 # 自控对接点位
 point_home = (0,7500000)
 
+# # x y 电机点位参数
+# 6 孔托盘 00 点 xy坐标(rpm)
+point_6=(7750000,6550000)
+# # 6 孔托盘 直径 (0.1mm)
+point_6_d = 310
+# # 6 孔托盘 孔位间隙 (0.1mm)
+point_6_gap = 40
+
 # x y 电机点位参数
 # 12 孔托盘 00 点 xy坐标(rpm)
 point_12=(8563500,5755000)
@@ -244,6 +252,16 @@ if __name__ == "__main__":
         # 移动到位移台和自控对接home点位
         # x.pp_absolute_move(target_pos=point_home[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
         # y.pp_absolute_move(target_pos=point_home[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        
+        # 移动到6 孔托盘 00 点位
+        # x.pp_absolute_move(target_pos=point_6[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # y.pp_absolute_move(target_pos=point_6[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # 移动到6 孔托盘 01 点位
+        # x.pp_absolute_move(target_pos=point_6[0] - (point_6_d *rpm_mm + point_6_gap*rpm_mm)*0, profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # y.pp_absolute_move(target_pos=point_6[1] - (point_6_d *rpm_mm + point_6_gap*rpm_mm)*1, profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # 移动到6 孔托盘 10 点位
+        # x.pp_absolute_move(target_pos=point_6[0]- (point_6_d *rpm_mm + point_6_gap*rpm_mm) * 1, profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # y.pp_absolute_move(target_pos=point_6[1] , profile_vel=500000, profile_acc=100000, profile_dec=100000)
 
         # 移动到12 孔托盘 00 点位
         # x.pp_absolute_move(target_pos=point_12[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
@@ -289,7 +307,7 @@ if __name__ == "__main__":
         # x 轴逆向移动 3 毫米8563500,5755000
         # x.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
         # y轴正向移动 3毫米
-        # y.pp_relative_move( 30 * rpm_mm, 50000,50000,50000)
+        # y.pp_relative_move( 30 * rpm_mm , 50000,50000,50000)
         # y轴逆向移动 3毫米
         # y.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
 
