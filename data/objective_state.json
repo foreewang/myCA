@@ -1,0 +1,23 @@
+{
+  "current_objective": "4x",
+  "previous_objective": "10x",
+  "last_result": {
+    "requested_objective": "4x",
+    "previous_objective": "10x",
+    "current_objective": "4x",
+    "switched": true,
+    "mode": "motor_manager",
+    "state_file": "C:\\colony_system\\data\\objective_state.json",
+    "objective_axis_slave": 4,
+    "focus_axis_slave": 3,
+    "objective_move_result": {
+      "target": 166347,
+      "err_to_target_pulse": -4
+    },
+    "focus_move_result": {
+      "target": -2019367,
+      "err_to_target_pulse": 0
+    },
+    "message": "物镜与焦距切换完成"
+  }
+}
