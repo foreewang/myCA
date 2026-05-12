@@ -1,8 +1,8 @@
 {
-  "task_id": "handoff_unload_out_obj_001",
+  "task_id": "handoff_load_in_001",
   "status": "success",
   "task_type": "handoff",
-  "action": "unload_out",
+  "action": "load_in",
   "plate_type": "6-well",
   "handoff_point": {
     "name": "robot_exchange",
@@ -10,7 +10,7 @@
     "y": 7500000,
     "meaning": "exchange point for robot"
   },
-  "ready_state": "ready_for_robot_pick",
+  "ready_state": "ready_for_robot_place",
   "message": "ready",
   "motion": {
     "port": "COM3",

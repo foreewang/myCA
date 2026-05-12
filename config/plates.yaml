@@ -8,8 +8,8 @@ plates:
       y: 6550000               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: 310      # 单个培养孔直径，单位：mm
-    well_gap_mm:   40          # 相邻培养孔边缘之间的间距，单位：mm
+    well_diameter_mm: 31      # 单个培养孔直径，单位：mm
+    well_gap_mm:   4          # 相邻培养孔边缘之间的间距，单位：mm
     pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
 
     # 与你实测换孔逻辑一致：
@@ -24,10 +24,10 @@ plates:
 
     stage_limits:
       enabled: true
-      x_min: -300000        # pulse，X轴最小允许绝对坐标
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
       x_max: 10400000      # pulse，X轴最大允许绝对坐标
       y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
       safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
   runtime_guard:
@@ -96,8 +96,8 @@ plates:
       y: 6185500                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: 137      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: 35           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    well_diameter_mm: 13.7      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: 3.5           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
@@ -111,7 +111,7 @@ plates:
       x_min: -800000        # pulse，X轴最小允许绝对坐标
       x_max: 10400000      # pulse，X轴最大允许绝对坐标
       y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
       safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
   runtime_guard:
@@ -136,8 +136,8 @@ plates:
       y: 5841900                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
       meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
 
-    well_diameter_mm: 93      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: 24           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
+    well_diameter_mm: 9.3      # 单个培养孔直径，单位：mm。null 表示尚未测定
+    well_gap_mm: 2.4           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
     pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
 
     # 使用前请按实测值补全，避免沿用错误默认方向
@@ -148,10 +148,10 @@ plates:
 
     stage_limits:
       enabled: true
-      x_min: -300000        # pulse，X轴最小允许绝对坐标
+      x_min: -800000        # pulse，X轴最小允许绝对坐标
       x_max: 10400000      # pulse，X轴最大允许绝对坐标
       y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7500000       # pulse，Y轴最大允许绝对坐标
+      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
       safety_margin: 147500  # pulse，约等于 1 mm 安全边界
 
     runtime_guard:
