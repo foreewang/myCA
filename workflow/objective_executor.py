@@ -110,7 +110,7 @@ def ensure_objective_for_task(
             "current_objective": requested,
             "switched": False,
             "state_file": str(state_file) if state_enabled else None,
-            "message": "当前物镜已是目标倍率，无需切换",
+            "message": "Current objective at target magnification, no change needed",
         }
 
     modbus_cfg = hw_cfg.get("modbus") or {}
@@ -163,7 +163,7 @@ def ensure_objective_for_task(
         "focus_axis_slave": focus_slave,
         "objective_move_result": objective_move,
         "focus_move_result": focus_move,
-        "message": "物镜与焦距切换完成",
+        "message": "Objective and focus switching completed",
     }
 
     if state_enabled:

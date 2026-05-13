@@ -1,0 +1,1794 @@
+{
+  "task_id": "24-well_pipeline_b2_detect_http_001_B2",
+  "status": "success",
+  "task_type": "single_well_scan_and_detect",
+  "plate_type": "24-well",
+  "well_name": "B2",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "B2孔左侧观测起始点",
+    "a1_start": {
+      "x": 8865800,
+      "y": 6185500
+    },
+    "well_start": {
+      "x": 6328800,
+      "y": 3648500
+    },
+    "well_diameter_mm": 13.7,
+    "well_gap_mm": 3.5,
+    "pitch_mm": 17.2,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.0,
+      "height": 3.0
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.7,
+      "height": 2.7
+    },
+    "point_count": 29
+  },
+  "scan_result_json": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\scan_result.json",
+  "detect_overlay_dir": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays",
+  "image_count": 29,
+  "total_clone_count": 46,
+  "images": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_001_row00_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_001_row00_col00_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 3648500,
+      "stage_x_actual": 6328792,
+      "stage_y_actual": 3648507,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4752,
+            3054
+          ],
+          "offset_from_image_center_px": [
+            2192,
+            494
+          ],
+          "bbox": [
+            4506,
+            2731,
+            521,
+            670
+          ],
+          "area_px": 239920.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_001_row00_col00.bmp",
+          "stage_x_actual": 6328792,
+          "stage_y_actual": 3648507,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_002_row00_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_002_row00_col01_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 3250250,
+      "stage_x_actual": 6328790,
+      "stage_y_actual": 3250244,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_003_row00_col02_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 2852000,
+      "stage_x_actual": 6328789,
+      "stage_y_actual": 2852064,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 5,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1015,
+            3950
+          ],
+          "offset_from_image_center_px": [
+            -1545,
+            1390
+          ],
+          "bbox": [
+            57,
+            3094,
+            1895,
+            1899
+          ],
+          "area_px": 2434208.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "stage_x_actual": 6328789,
+          "stage_y_actual": 2852064,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2001,
+            1138
+          ],
+          "offset_from_image_center_px": [
+            -559,
+            -1422
+          ],
+          "bbox": [
+            1271,
+            390,
+            1461,
+            1497
+          ],
+          "area_px": 1658366.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "stage_x_actual": 6328789,
+          "stage_y_actual": 2852064,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C05",
+          "center_px": [
+            2728,
+            1817
+          ],
+          "offset_from_image_center_px": [
+            168,
+            -743
+          ],
+          "bbox": [
+            2036,
+            1107,
+            1392,
+            1421
+          ],
+          "area_px": 1508395.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "stage_x_actual": 6328789,
+          "stage_y_actual": 2852064,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            3832,
+            3056
+          ],
+          "offset_from_image_center_px": [
+            1272,
+            496
+          ],
+          "bbox": [
+            3181,
+            2418,
+            1296,
+            1258
+          ],
+          "area_px": 1232099.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "stage_x_actual": 6328789,
+          "stage_y_actual": 2852064,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C04",
+          "center_px": [
+            2532,
+            3282
+          ],
+          "offset_from_image_center_px": [
+            -28,
+            722
+          ],
+          "bbox": [
+            2087,
+            2851,
+            866,
+            866
+          ],
+          "area_px": 537050.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "stage_x_actual": 6328789,
+          "stage_y_actual": 2852064,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_004_row00_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_004_row00_col03_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 2453750,
+      "stage_x_actual": 6328788,
+      "stage_y_actual": 2453748,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3611,
+            3902
+          ],
+          "offset_from_image_center_px": [
+            1051,
+            1342
+          ],
+          "bbox": [
+            2441,
+            2757,
+            2317,
+            2287
+          ],
+          "area_px": 3802524.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_004_row00_col03.bmp",
+          "stage_x_actual": 6328788,
+          "stage_y_actual": 2453748,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_005_row00_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_005_row00_col04_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 2055500,
+      "stage_x_actual": 6328788,
+      "stage_y_actual": 2055577,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_006_row00_col05_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 1657250,
+      "stage_x_actual": 6328788,
+      "stage_y_actual": 1657286,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1076,
+            3527
+          ],
+          "offset_from_image_center_px": [
+            -1484,
+            967
+          ],
+          "bbox": [
+            47,
+            2528,
+            2044,
+            2001
+          ],
+          "area_px": 2892799.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+          "stage_x_actual": 6328788,
+          "stage_y_actual": 1657286,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3767,
+            2860
+          ],
+          "offset_from_image_center_px": [
+            1207,
+            300
+          ],
+          "bbox": [
+            2896,
+            1814,
+            1708,
+            2125
+          ],
+          "area_px": 2153738.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+          "stage_x_actual": 6328788,
+          "stage_y_actual": 1657286,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            1844,
+            961
+          ],
+          "offset_from_image_center_px": [
+            -716,
+            -1599
+          ],
+          "bbox": [
+            960,
+            0,
+            1773,
+            1822
+          ],
+          "area_px": 2025329.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+          "stage_x_actual": 6328788,
+          "stage_y_actual": 1657286,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "row_index": 0,
+      "col_index": 6,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_007_row00_col06.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_007_row00_col06_detect_overlay.png",
+      "stage_x_target": 6328800,
+      "stage_y_target": 1627750,
+      "stage_x_actual": 6328787,
+      "stage_y_actual": 1627882,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1657,
+            2366
+          ],
+          "offset_from_image_center_px": [
+            -903,
+            -194
+          ],
+          "bbox": [
+            227,
+            956,
+            3011,
+            2914
+          ],
+          "area_px": 5703103.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_007_row00_col06.bmp",
+          "stage_x_actual": 6328787,
+          "stage_y_actual": 1627882,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4251,
+            3138
+          ],
+          "offset_from_image_center_px": [
+            1691,
+            578
+          ],
+          "bbox": [
+            3746,
+            2351,
+            1037,
+            1596
+          ],
+          "area_px": 1147851.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_007_row00_col06.bmp",
+          "stage_x_actual": 6328787,
+          "stage_y_actual": 1627882,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "row_index": 1,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_008_row01_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_008_row01_col00_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 1709548,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 1709461,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2257,
+            2577
+          ],
+          "offset_from_image_center_px": [
+            -303,
+            17
+          ],
+          "bbox": [
+            1415,
+            1810,
+            1540,
+            1582
+          ],
+          "area_px": 1295965.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_008_row01_col00.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 1709461,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4158,
+            2614
+          ],
+          "offset_from_image_center_px": [
+            1598,
+            54
+          ],
+          "bbox": [
+            3416,
+            1788,
+            1277,
+            1617
+          ],
+          "area_px": 1233658.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_008_row01_col00.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 1709461,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "row_index": 1,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_009_row01_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_009_row01_col01_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 1973702,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 1973695,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1044,
+            2669
+          ],
+          "offset_from_image_center_px": [
+            -1516,
+            109
+          ],
+          "bbox": [
+            174,
+            1891,
+            1604,
+            1506
+          ],
+          "area_px": 1639031.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_009_row01_col01.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 1973695,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            236,
+            2629
+          ],
+          "offset_from_image_center_px": [
+            -2324,
+            69
+          ],
+          "bbox": [
+            0,
+            2424,
+            462,
+            414
+          ],
+          "area_px": 138509.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_009_row01_col01.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 1973695,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_010_row01_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_010_row01_col02_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 2371952,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 2371914,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4346,
+            2947
+          ],
+          "offset_from_image_center_px": [
+            1786,
+            387
+          ],
+          "bbox": [
+            3734,
+            2223,
+            1293,
+            1408
+          ],
+          "area_px": 1066523.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_010_row01_col02.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 2371914,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_011_row01_col03_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 2770202,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 2770213,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1411,
+            2625
+          ],
+          "offset_from_image_center_px": [
+            -1149,
+            65
+          ],
+          "bbox": [
+            26,
+            1315,
+            2778,
+            2581
+          ],
+          "area_px": 5200301.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col03.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 2770213,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4332,
+            2920
+          ],
+          "offset_from_image_center_px": [
+            1772,
+            360
+          ],
+          "bbox": [
+            3805,
+            2356,
+            1058,
+            1113
+          ],
+          "area_px": 852961.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col03.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 2770213,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            3861,
+            949
+          ],
+          "offset_from_image_center_px": [
+            1301,
+            -1611
+          ],
+          "bbox": [
+            3373,
+            471,
+            981,
+            938
+          ],
+          "area_px": 700165.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col03.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 2770213,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_012_row01_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_012_row01_col04_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 3168452,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 3168505,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1509,
+            1586
+          ],
+          "offset_from_image_center_px": [
+            -1051,
+            -974
+          ],
+          "bbox": [
+            52,
+            150,
+            2880,
+            2706
+          ],
+          "area_px": 5360730.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_012_row01_col04.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 3168505,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            738,
+            3594
+          ],
+          "offset_from_image_center_px": [
+            -1822,
+            1034
+          ],
+          "bbox": [
+            24,
+            2904,
+            1411,
+            1394
+          ],
+          "area_px": 1528199.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_012_row01_col04.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 3168505,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "row_index": 1,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_013_row01_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_013_row01_col05_detect_overlay.png",
+      "stage_x_target": 6727050,
+      "stage_y_target": 3566702,
+      "stage_x_actual": 6726970,
+      "stage_y_actual": 3566630,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4144,
+            4224
+          ],
+          "offset_from_image_center_px": [
+            1584,
+            1664
+          ],
+          "bbox": [
+            3236,
+            3266,
+            1794,
+            1854
+          ],
+          "area_px": 2078282.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_013_row01_col05.bmp",
+          "stage_x_actual": 6726970,
+          "stage_y_actual": 3566630,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "row_index": 2,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_014_row02_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_014_row02_col00_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 3566702,
+      "stage_x_actual": 5930648,
+      "stage_y_actual": 3566633,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4782,
+            2250
+          ],
+          "offset_from_image_center_px": [
+            2222,
+            -310
+          ],
+          "bbox": [
+            4531,
+            1946,
+            513,
+            627
+          ],
+          "area_px": 263648.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_014_row02_col00.bmp",
+          "stage_x_actual": 5930648,
+          "stage_y_actual": 3566633,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "row_index": 2,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_015_row02_col01_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 3168452,
+      "stage_x_actual": 5930661,
+      "stage_y_actual": 3168485,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1940,
+            1138
+          ],
+          "offset_from_image_center_px": [
+            -620,
+            -1422
+          ],
+          "bbox": [
+            1245,
+            417,
+            1405,
+            1443
+          ],
+          "area_px": 1544463.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col01.bmp",
+          "stage_x_actual": 5930661,
+          "stage_y_actual": 3168485,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            744,
+            3782
+          ],
+          "offset_from_image_center_px": [
+            -1816,
+            1222
+          ],
+          "bbox": [
+            0,
+            3115,
+            1515,
+            1451
+          ],
+          "area_px": 1429602.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col01.bmp",
+          "stage_x_actual": 5930661,
+          "stage_y_actual": 3168485,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4625,
+            538
+          ],
+          "offset_from_image_center_px": [
+            2065,
+            -2022
+          ],
+          "bbox": [
+            4145,
+            68,
+            958,
+            947
+          ],
+          "area_px": 687939.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col01.bmp",
+          "stage_x_actual": 5930661,
+          "stage_y_actual": 3168485,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "row_index": 2,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_016_row02_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_016_row02_col02_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 2770202,
+      "stage_x_actual": 5930665,
+      "stage_y_actual": 2770187,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3754,
+            3270
+          ],
+          "offset_from_image_center_px": [
+            1194,
+            710
+          ],
+          "bbox": [
+            3201,
+            2705,
+            1121,
+            1129
+          ],
+          "area_px": 986558.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_016_row02_col02.bmp",
+          "stage_x_actual": 5930665,
+          "stage_y_actual": 2770187,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "row_index": 2,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_017_row02_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_017_row02_col03_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 2371952,
+      "stage_x_actual": 5930667,
+      "stage_y_actual": 2371925,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2066,
+            2359
+          ],
+          "offset_from_image_center_px": [
+            -494,
+            -201
+          ],
+          "bbox": [
+            1667,
+            1941,
+            847,
+            832
+          ],
+          "area_px": 488300.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_017_row02_col03.bmp",
+          "stage_x_actual": 5930667,
+          "stage_y_actual": 2371925,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_018_row02_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_018_row02_col04_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 1973702,
+      "stage_x_actual": 5930669,
+      "stage_y_actual": 1973832,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1558,
+            2031
+          ],
+          "offset_from_image_center_px": [
+            -1002,
+            -529
+          ],
+          "bbox": [
+            64,
+            525,
+            3026,
+            2983
+          ],
+          "area_px": 5233240.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_018_row02_col04.bmp",
+          "stage_x_actual": 5930669,
+          "stage_y_actual": 1973832,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "row_index": 2,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_019_row02_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_019_row02_col05_detect_overlay.png",
+      "stage_x_target": 5930550,
+      "stage_y_target": 1709548,
+      "stage_x_actual": 5930670,
+      "stage_y_actual": 1709655,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2389,
+            2528
+          ],
+          "offset_from_image_center_px": [
+            -171,
+            -32
+          ],
+          "bbox": [
+            103,
+            141,
+            4578,
+            4480
+          ],
+          "area_px": 11811725.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_019_row02_col05.bmp",
+          "stage_x_actual": 5930670,
+          "stage_y_actual": 1709655,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3653,
+            3481
+          ],
+          "offset_from_image_center_px": [
+            1093,
+            921
+          ],
+          "bbox": [
+            2568,
+            2309,
+            2477,
+            2469
+          ],
+          "area_px": 2639253.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_019_row02_col05.bmp",
+          "stage_x_actual": 5930670,
+          "stage_y_actual": 1709655,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "row_index": 3,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_020_row03_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_020_row03_col00_detect_overlay.png",
+      "stage_x_target": 7125300,
+      "stage_y_target": 2016478,
+      "stage_x_actual": 7125254,
+      "stage_y_actual": 2016341,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1295,
+            2584
+          ],
+          "offset_from_image_center_px": [
+            -1265,
+            24
+          ],
+          "bbox": [
+            107,
+            1323,
+            2408,
+            2475
+          ],
+          "area_px": 3708846.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_020_row03_col00.bmp",
+          "stage_x_actual": 7125254,
+          "stage_y_actual": 2016341,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3345,
+            2478
+          ],
+          "offset_from_image_center_px": [
+            785,
+            -82
+          ],
+          "bbox": [
+            2071,
+            986,
+            2486,
+            2680
+          ],
+          "area_px": 3568453.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_020_row03_col00.bmp",
+          "stage_x_actual": 7125254,
+          "stage_y_actual": 2016341,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "row_index": 3,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_021_row03_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_021_row03_col01_detect_overlay.png",
+      "stage_x_target": 7125300,
+      "stage_y_target": 2065022,
+      "stage_x_actual": 7125250,
+      "stage_y_actual": 2065028,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2739,
+            2779
+          ],
+          "offset_from_image_center_px": [
+            179,
+            219
+          ],
+          "bbox": [
+            1106,
+            700,
+            3404,
+            3802
+          ],
+          "area_px": 7556939.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_021_row03_col01.bmp",
+          "stage_x_actual": 7125250,
+          "stage_y_actual": 2065028,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1125,
+            2765
+          ],
+          "offset_from_image_center_px": [
+            -1435,
+            205
+          ],
+          "bbox": [
+            47,
+            1767,
+            2104,
+            1988
+          ],
+          "area_px": 2511136.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_021_row03_col01.bmp",
+          "stage_x_actual": 7125250,
+          "stage_y_actual": 2065028,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "row_index": 3,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_022_row03_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_022_row03_col02_detect_overlay.png",
+      "stage_x_target": 7125300,
+      "stage_y_target": 2463272,
+      "stage_x_actual": 7125250,
+      "stage_y_actual": 2463276,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1268,
+            4278
+          ],
+          "offset_from_image_center_px": [
+            -1292,
+            1718
+          ],
+          "bbox": [
+            461,
+            3427,
+            1621,
+            1644
+          ],
+          "area_px": 1390566.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_022_row03_col02.bmp",
+          "stage_x_actual": 7125250,
+          "stage_y_actual": 2463276,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "row_index": 3,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_023_row03_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_023_row03_col03_detect_overlay.png",
+      "stage_x_target": 7125300,
+      "stage_y_target": 2861522,
+      "stage_x_actual": 7125250,
+      "stage_y_actual": 2861433,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 0,
+      "clones": []
+    },
+    {
+      "index": 24,
+      "row_index": 3,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_024_row03_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_024_row03_col04_detect_overlay.png",
+      "stage_x_target": 7125300,
+      "stage_y_target": 3259772,
+      "stage_x_actual": 7125250,
+      "stage_y_actual": 3259720,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2811,
+            4261
+          ],
+          "offset_from_image_center_px": [
+            251,
+            1701
+          ],
+          "bbox": [
+            1886,
+            3520,
+            1711,
+            1562
+          ],
+          "area_px": 1574913.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_024_row03_col04.bmp",
+          "stage_x_actual": 7125250,
+          "stage_y_actual": 3259720,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3881,
+            4811
+          ],
+          "offset_from_image_center_px": [
+            1321,
+            2251
+          ],
+          "bbox": [
+            3606,
+            4531,
+            546,
+            589
+          ],
+          "area_px": 237812.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_024_row03_col04.bmp",
+          "stage_x_actual": 7125250,
+          "stage_y_actual": 3259720,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "row_index": 4,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_025_row04_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_025_row04_col00_detect_overlay.png",
+      "stage_x_target": 5532300,
+      "stage_y_target": 3259772,
+      "stage_x_actual": 5532411,
+      "stage_y_actual": 3259721,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3651,
+            1400
+          ],
+          "offset_from_image_center_px": [
+            1091,
+            -1160
+          ],
+          "bbox": [
+            2258,
+            22,
+            2769,
+            2794
+          ],
+          "area_px": 4461644.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_025_row04_col00.bmp",
+          "stage_x_actual": 5532411,
+          "stage_y_actual": 3259721,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "row_index": 4,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_026_row04_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_026_row04_col01_detect_overlay.png",
+      "stage_x_target": 5532300,
+      "stage_y_target": 2861522,
+      "stage_x_actual": 5532415,
+      "stage_y_actual": 2861536,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3206,
+            531
+          ],
+          "offset_from_image_center_px": [
+            646,
+            -2029
+          ],
+          "bbox": [
+            2654,
+            0,
+            1003,
+            990
+          ],
+          "area_px": 710366.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_026_row04_col01.bmp",
+          "stage_x_actual": 5532415,
+          "stage_y_actual": 2861536,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "row_index": 4,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_027_row04_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_027_row04_col02_detect_overlay.png",
+      "stage_x_target": 5532300,
+      "stage_y_target": 2463272,
+      "stage_x_actual": 5532416,
+      "stage_y_actual": 2463311,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2469,
+            475
+          ],
+          "offset_from_image_center_px": [
+            -91,
+            -2085
+          ],
+          "bbox": [
+            2053,
+            124,
+            870,
+            748
+          ],
+          "area_px": 479262.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_027_row04_col02.bmp",
+          "stage_x_actual": 5532416,
+          "stage_y_actual": 2463311,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "row_index": 4,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_028_row04_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_028_row04_col03_detect_overlay.png",
+      "stage_x_target": 5532300,
+      "stage_y_target": 2065022,
+      "stage_x_actual": 5532417,
+      "stage_y_actual": 2065009,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2604,
+            3320
+          ],
+          "offset_from_image_center_px": [
+            44,
+            760
+          ],
+          "bbox": [
+            943,
+            1975,
+            3273,
+            2945
+          ],
+          "area_px": 5379095.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_028_row04_col03.bmp",
+          "stage_x_actual": 5532417,
+          "stage_y_actual": 2065009,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2163,
+            802
+          ],
+          "offset_from_image_center_px": [
+            -397,
+            -1758
+          ],
+          "bbox": [
+            1438,
+            30,
+            1562,
+            1571
+          ],
+          "area_px": 1624037.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_028_row04_col03.bmp",
+          "stage_x_actual": 5532417,
+          "stage_y_actual": 2065009,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "row_index": 4,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_029_row04_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\detect_overlays\\B2_029_row04_col04_detect_overlay.png",
+      "stage_x_target": 5532300,
+      "stage_y_target": 2016478,
+      "stage_x_actual": 5532418,
+      "stage_y_actual": 2016525,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3010,
+            3534
+          ],
+          "offset_from_image_center_px": [
+            450,
+            974
+          ],
+          "bbox": [
+            1507,
+            2176,
+            2888,
+            2876
+          ],
+          "area_px": 4690901.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_029_row04_col04.bmp",
+          "stage_x_actual": 5532418,
+          "stage_y_actual": 2016525,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2240,
+            1086
+          ],
+          "offset_from_image_center_px": [
+            -320,
+            -1474
+          ],
+          "bbox": [
+            1093,
+            73,
+            2449,
+            2070
+          ],
+          "area_px": 3292986.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b2_detect_http_001\\B2\\images\\B2_029_row04_col04.bmp",
+          "stage_x_actual": 5532418,
+          "stage_y_actual": 2016525,
+          "has_polygon": false
+        }
+      ]
+    }
+  ]
+}

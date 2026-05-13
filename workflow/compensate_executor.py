@@ -94,8 +94,8 @@ def execute_compensate_on_detect_result(ctx: Dict[str, Any], params: Dict[str, A
     if base_x is None or base_y is None:
         raise ValueError("无法确定补偿基准坐标：stage_x/stage_y 缺失")
 
-    target_x = int(round(float(base_x) + x_sign * offset_down_mm * ppm))
-    target_y = int(round(float(base_y) + y_sign * offset_right_mm * ppm))
+    target_x = int(round(float(base_x) - x_sign * offset_down_mm * ppm))
+    target_y = int(round(float(base_y) - y_sign * offset_right_mm * ppm))
 
     motion = params["motion"]
     move_result = move_to_absolute(
