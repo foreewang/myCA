@@ -1,0 +1,161 @@
+{
+  "task_id": "manual_detect_for_compensate_eval",
+  "status": "success",
+  "task_type": "detect",
+  "plate_type": "48-well",
+  "well_name": "D4",
+  "objective_name": "4x",
+  "fov_mm": {
+    "width": 3.0,
+    "height": 3.0
+  },
+  "resolution": {
+    "width": 5120,
+    "height": 5120
+  },
+  "mm_per_pixel": {
+    "x": 0.0005859375,
+    "y": 0.0005859375
+  },
+  "images": [
+    {
+      "image_index": 2,
+      "index": 2,
+      "image_id": "D4_002_row00_col01",
+      "image_name": "D4_002_row00_col01.bmp",
+      "image_path": "C:\\colony_system\\data\\compensate_eval\\d4_pre\\D4_002_row00_col01.bmp",
+      "width": 5120,
+      "height": 5120,
+      "fov_mm": {
+        "width": 3.0,
+        "height": 3.0
+      },
+      "image_center_pixel": [
+        2559.5,
+        2559.5
+      ],
+      "mm_per_pixel": {
+        "x": 0.0005859375,
+        "y": 0.0005859375
+      },
+      "stage_x_target": 4235150,
+      "stage_y_target": 266400,
+      "stage_x_actual": 4235034,
+      "stage_y_actual": 266425,
+      "row_index": 0,
+      "col_index": 1,
+      "view_down_mm": 0.0,
+      "view_right_mm": 2.7,
+      "clones": [
+        {
+          "clone_id": "C_MANUAL_001",
+          "target_id": "C_MANUAL_001",
+          "rank": 1,
+          "center_pixel": [
+            747.0,
+            2230.0
+          ],
+          "center_pixel_xy": {
+            "x": 747.0,
+            "y": 2230.0
+          },
+          "offset_from_image_center_px": [
+            -1812.5,
+            -329.5
+          ],
+          "offset_from_image_center_px_xy": {
+            "x": -1812.5,
+            "y": -329.5
+          },
+          "offset_from_image_center_mm": [
+            -1.06201171875,
+            -0.19306640625
+          ],
+          "offset_from_image_center_mm_xy": {
+            "x": -1.06201171875,
+            "y": -0.19306640625
+          },
+          "area_px": 1.0,
+          "area": 1.0,
+          "score": 1.0,
+          "source": "manual_annotation"
+        }
+      ],
+      "candidates": [
+        {
+          "clone_id": "C_MANUAL_001",
+          "target_id": "C_MANUAL_001",
+          "rank": 1,
+          "center_pixel": [
+            747.0,
+            2230.0
+          ],
+          "center_pixel_xy": {
+            "x": 747.0,
+            "y": 2230.0
+          },
+          "offset_from_image_center_px": [
+            -1812.5,
+            -329.5
+          ],
+          "offset_from_image_center_px_xy": {
+            "x": -1812.5,
+            "y": -329.5
+          },
+          "offset_from_image_center_mm": [
+            -1.06201171875,
+            -0.19306640625
+          ],
+          "offset_from_image_center_mm_xy": {
+            "x": -1.06201171875,
+            "y": -0.19306640625
+          },
+          "area_px": 1.0,
+          "area": 1.0,
+          "score": 1.0,
+          "source": "manual_annotation"
+        }
+      ],
+      "components": [
+        {
+          "clone_id": "C_MANUAL_001",
+          "target_id": "C_MANUAL_001",
+          "rank": 1,
+          "center_pixel": [
+            747.0,
+            2230.0
+          ],
+          "center_pixel_xy": {
+            "x": 747.0,
+            "y": 2230.0
+          },
+          "offset_from_image_center_px": [
+            -1812.5,
+            -329.5
+          ],
+          "offset_from_image_center_px_xy": {
+            "x": -1812.5,
+            "y": -329.5
+          },
+          "offset_from_image_center_mm": [
+            -1.06201171875,
+            -0.19306640625
+          ],
+          "offset_from_image_center_mm_xy": {
+            "x": -1.06201171875,
+            "y": -0.19306640625
+          },
+          "area_px": 1.0,
+          "area": 1.0,
+          "score": 1.0,
+          "source": "manual_annotation"
+        }
+      ]
+    }
+  ],
+  "source": {
+    "type": "manual_annotation_from_task_result",
+    "result_json": "C:\\colony_system\\data\\compensate_eval\\d4_pre\\result.json",
+    "matched_capture_index": 2
+  }
+}

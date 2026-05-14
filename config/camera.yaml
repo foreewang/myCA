@@ -14,7 +14,7 @@ camera:
         width: 2560        # 半分辨率预设宽度
         height: 2560       # 半分辨率预设高度
 
-  exposure_us: 30000       # 曝光时间，单位：微秒（us）。30000 即 30 ms
+  exposure_us: 1500       # 曝光时间，单位：微秒（us）。1500 即 1.5 ms
   gain: 0.0                # 增益值。0.0 表示不额外增益，通常噪声更低
 
   trigger_mode: software   # 触发模式。software 表示软件触发拍照，而不是连续采集或硬件触发
