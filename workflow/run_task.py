@@ -452,6 +452,7 @@ def execute_task_request(
 
     from workflow.config_loader import load_runtime_context
     from workflow.objective_executor import ensure_objective_for_task, attach_objective_result
+    from workflow.autofocus_executor import execute_autofocus_for_task
 
     runtime_task_path, tmp_task_path = task_cfg_to_runtime_yaml(raw_task_cfg)
 
@@ -485,12 +486,42 @@ def execute_task_request(
 
     params = build_pipeline_params(ctx)
 
+    autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
+    autofocus_should_run, autofocus_reason = should_run_autofocus(
+        task_type=task_type,
+        task_cfg=task,
+        objective_result=objective_result,
+        autofocus_cfg=autofocus_cfg,
+    )
+    autofocus_decision = {
+        "enabled": _as_bool(autofocus_cfg.get("enabled"), default=True),
+        "should_run": bool(autofocus_should_run),
+        "reason": autofocus_reason,
+        "config_path": str(autofocus_cfg.get("config_path") or ""),
+        "trigger": autofocus_cfg.get("trigger", {}) or {},
+        "objective_switched": bool(objective_result.get("switched", False)),
+    }
+
+    autofocus_result = None
+    if autofocus_should_run:
+        autofocus_result = execute_autofocus_for_task(
+            ctx=ctx,
+            task_cfg=task,
+            objective_result=objective_result,
+            autofocus_cfg=autofocus_cfg,
+        )
+        if isinstance(autofocus_result, dict):
+            autofocus_result.setdefault("trigger_reason", autofocus_reason)
+
     if task_type == "compensate":
         result = run_compensate_task(ctx, params)
     else:
         result = run_pipeline_task(ctx, params)
 
     result = attach_objective_result(result, objective_result)
+    result["autofocus_decision"] = autofocus_decision
+    if autofocus_result is not None:
+        result["autofocus_result"] = autofocus_result
 
     output_path = dump_json or params.get("result_output_json") or params.get("compensate_output_json")
     if persist_result:
