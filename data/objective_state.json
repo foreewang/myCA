@@ -12,7 +12,7 @@
     "focus_axis_slave": 3,
     "objective_move_result": {
       "target": 166347,
-      "err_to_target_pulse": -4
+      "err_to_target_pulse": -5
     },
     "focus_move_result": {
       "target": -2019367,
