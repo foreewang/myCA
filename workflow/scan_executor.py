@@ -287,6 +287,15 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "plate_type": params["plate_type"],
             "well_name": params["well_name"],
             "objective_name": params["objective_name"],
+
+            "camera_settings": {
+                "exposure_us": params.get("exposure_us"),
+                "gain": params.get("gain"),
+                "device_index": params.get("device_index"),
+                "serial_number": params.get("serial_number"),
+                "mvs_python_dir": params.get("mvs_python_dir"),
+            },
+
             "reference": plan["reference"],
             "scan_config": plan["scan_config"],
             "stage_limit_precheck": plan.get("stage_limit_precheck"),
@@ -306,6 +315,15 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "plate_type": params["plate_type"],
             "well_name": params["well_name"],
             "objective_name": params["objective_name"],
+
+            "camera_settings": {
+                "exposure_us": params.get("exposure_us"),
+                "gain": params.get("gain"),
+                "device_index": params.get("device_index"),
+                "serial_number": params.get("serial_number"),
+                "mvs_python_dir": params.get("mvs_python_dir"),
+            },
+            
             "reference": plan["reference"],
             "scan_config": plan["scan_config"],
             "stage_limit_precheck": plan.get("stage_limit_precheck"),
