@@ -2,7 +2,7 @@
 # run_task 会读取这个文件，并把它作为 config_path 传给 third_party.XWJJJ260511.run_autofocus。
 # 后端不需要传 autofocus 字段。
 
-enabled: false
+enabled: true
 
 trigger:
   # 物镜发生切换后自动执行 autofocus
