@@ -130,67 +130,93 @@ def _write_result(path: str | None, result: Dict[str, Any]) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
+
+def _should_run_autofocus_at_this_point(
+    params: Dict[str, Any],
+    point: Dict[str, Any],
+) -> tuple[bool, str]:
+    """判断是否应在当前扫描点执行 autofocus。
+
+    当前工程策略：默认在每个孔第一个扫描点完成移动并稳定后、第一张拍照前执行一次。
+    可通过 config/autofocus.yaml 的 trigger.scope 调整：
+    - once_per_well: 每个孔第一个扫描点执行一次，默认值；
+    - once_per_task: 整个任务只在第一个孔第一个扫描点执行一次；
+    - disabled: 不在扫描点执行。
+    """
+    decision = params.get("autofocus_decision") or {}
+    if not bool(decision.get("should_run", False)):
+        return False, "autofocus_decision_false"
+
+    try:
+        point_index = int(point.get("index", 0))
+    except Exception:
+        point_index = 0
+
+    if point_index != 1:
+        return False, "not_first_scan_point"
+
+    autofocus_cfg = params.get("autofocus_cfg") or {}
+    trigger_cfg = autofocus_cfg.get("trigger") or {}
+    scope = str(trigger_cfg.get("scope") or "once_per_well").strip().lower()
+
+    if scope in {"disabled", "disable", "none", "off", "false"}:
+        return False, "autofocus_scope_disabled"
+
+    if scope == "once_per_task":
+        runtime_state = params.setdefault("_autofocus_runtime_state", {})
+        if runtime_state.get("task_done", False):
+            return False, "autofocus_once_per_task_already_done"
+        runtime_state["task_done"] = True
+        return True, "once_per_task"
+
+    # 默认每个孔第一个扫描点执行一次。
+    return True, scope or "once_per_well"
+
+
+def _execute_autofocus_before_capture(
+    ctx: Dict[str, Any],
+    params: Dict[str, Any],
+    point: Dict[str, Any],
+    scope_reason: str,
+) -> Dict[str, Any]:
+    from workflow.autofocus_executor import execute_autofocus_for_task
+
+    autofocus_result = execute_autofocus_for_task(
+        ctx=ctx,
+        task_cfg=ctx["task"],
+        objective_result=params.get("objective_result", {}) or {},
+        autofocus_cfg=params.get("autofocus_cfg", {}) or {},
+    )
+    autofocus_result["run_at"] = "before_first_capture_after_stage_move"
+    autofocus_result["scope_reason"] = scope_reason
+    autofocus_result["well_name"] = params.get("well_name")
+    autofocus_result["scan_point_index"] = int(point.get("index", 0))
+    autofocus_result["stage_x_target"] = int(point.get("stage_x_target", 0))
+    autofocus_result["stage_y_target"] = int(point.get("stage_y_target", 0))
+    autofocus_result.setdefault(
+        "trigger_reason",
+        (params.get("autofocus_decision") or {}).get("reason"),
+    )
+    return autofocus_result
+
 def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[str,Any], cam = None) -> Dict[str,Any]:
     """
-    按扫描计划执行“位移台移动 + 相机拍照”的采集流程。
+    按扫描计划执行“位移台移动 + 可选 autofocus + 相机拍照”的采集流程。
 
-    参数
-    ----
-    ctx : Dict
-        运行时上下文。当前函数内部未直接使用，但保留该参数有利于与
-        上层 workflow 接口保持一致，也便于后续扩展更多上下文依赖。
-    params : Dict
-        当前采集任务参数，包含设备索引、曝光、保存目录、运动参数等。
-    plan : Dict
-        扫描规划结果，至少应包含：
-        - points: 扫描点列表
-        - reference: 本次扫描参考信息
-        - scan_config: 本次扫描配置摘要
-
-    返回
-    ----
-    Dict
-        本次扫描采集的完整结果字典，包括：
-        - 任务基本信息
-        - 图像数量
-        - 每个扫描点的运动结果与拍照结果
-        - 可选写盘后的 scan_result.json
-
-    处理流程
-    --------
-    1. 打开相机，并按任务参数设置曝光/增益；
-    2. 遍历扫描点列表：
-       - 先移动位移台到目标位置；
-       - 再触发相机采集并保存图像；
-       - 汇总当前点的运动结果与拍照结果；
-    3. 无论过程是否异常，最终都关闭相机；
-    4. 汇总任务结果，并按需写入 JSON 文件。
-
-    说明
-    ----
-    该函数是“扫描执行层”的核心入口。
-    它不负责生成扫描点，只负责严格按照 plan 执行。
-    换句话说：
-    - plan 决定“去哪里拍”
-    - execute_scan_capture 决定“怎么逐点执行并记录结果”
+    autofocus 的工程时机：
+    - run_task 只负责物镜切换和生成 autofocus_decision；
+    - 本函数在第一个扫描点完成 XY 移动并等待稳定后、第一张拍照前执行 autofocus；
+    - 这样 autofocus 看到的是目标孔实际观察视野，而不是上一次任务末尾位置。
     """
     motion = params["motion"]
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
-    
+    before_first_capture_autofocus_result = None
+
     owned_cam = False
     local_cam = cam
-    try:
-        if local_cam is None:
-            local_cam = open_camera(
-                mvs_python_dir=params.get("mvs_python_dir"),
-                device_index=int(params["device_index"]),
-                serial_number=params.get("serial_number"),
-                exposure_us=params.get("exposure_us"),
-                gain=params.get("gain"),
-            )
-            owned_cam = True
 
+    try:
         for point in plan["points"]:
             motion_result = move_to_absolute(
                 port=motion.get("port", "COM3"),
@@ -207,6 +233,36 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
 
             _check_motion_guard(ctx["plate"], point, motion_result)
 
+            point_autofocus_result = None
+            should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
+            if should_autofocus:
+                # autofocus 会自行打开/关闭第三方配置中的相机。
+                # 因此本函数采用懒加载策略：先 autofocus，再打开正式采集相机，避免 MVS 设备句柄冲突。
+                if local_cam is not None and not owned_cam:
+                    raise RuntimeError(
+                        "当前扫描点需要 autofocus，但外部已传入打开的相机对象。"
+                        "为避免 MVS 相机句柄冲突，请在需要 autofocus 时不要提前打开 shared_cam。"
+                    )
+
+                point_autofocus_result = _execute_autofocus_before_capture(
+                    ctx=ctx,
+                    params=params,
+                    point=point,
+                    scope_reason=autofocus_scope_reason,
+                )
+                if before_first_capture_autofocus_result is None:
+                    before_first_capture_autofocus_result = point_autofocus_result
+
+            if local_cam is None:
+                local_cam = open_camera(
+                    mvs_python_dir=params.get("mvs_python_dir"),
+                    device_index=int(params["device_index"]),
+                    serial_number=params.get("serial_number"),
+                    exposure_us=params.get("exposure_us"),
+                    gain=params.get("gain"),
+                )
+                owned_cam = True
+
             capture_result = capture_with_opened_camera(
                 cam=local_cam,
                 save_dir=params["save_dir"],
@@ -214,13 +270,15 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 format_kwargs=_format_kwargs(params, point),
             )
 
-            captures.append(
-                {
-                    **point,
-                    "motion_result": motion_result,
-                    "capture_result": capture_result,
-                }
-            )
+            capture_item = {
+                **point,
+                "motion_result": motion_result,
+                "capture_result": capture_result,
+            }
+            if point_autofocus_result is not None:
+                capture_item["autofocus_result"] = point_autofocus_result
+
+            captures.append(capture_item)
 
         result = {
             "task_id": params["task_id"],
@@ -232,6 +290,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "reference": plan["reference"],
             "scan_config": plan["scan_config"],
             "stage_limit_precheck": plan.get("stage_limit_precheck"),
+            "autofocus_decision": params.get("autofocus_decision"),
+            "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "image_count": len(captures),
             "captures": captures,
         }
@@ -249,6 +309,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "reference": plan["reference"],
             "scan_config": plan["scan_config"],
             "stage_limit_precheck": plan.get("stage_limit_precheck"),
+            "autofocus_decision": params.get("autofocus_decision"),
+            "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "completed_image_count": len(captures),
             "captures": captures,
             "error": str(exc),
@@ -257,36 +319,5 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
         raise
 
     finally:
-        if owned_cam:
+        if owned_cam and local_cam is not None:
             close_camera(local_cam)
-            
-    # finally:
-    #     # 无论中途是否异常，都要确保相机被关闭，避免设备句柄泄漏。
-    #     close_camera(cam)
-
-    # # 汇总任务级结果。该结构既可直接返回给上层，也适合序列化落盘。
-    # result = {
-    #     "task_id": params["task_id"],
-    #     "status": "success",
-    #     "task_type": params["task_type"],
-    #     "plate_type": params["plate_type"],
-    #     "well_name": params["well_name"],
-    #     "objective_name": params["objective_name"],
-    #     "reference": plan["reference"],
-    #     "scan_config": plan["scan_config"],
-    #     "image_count": len(captures),
-    #     "captures": captures,
-    # }
-
-    # # 若任务参数中指定了扫描结果 JSON 输出路径，则同步落盘。
-    # # 这样后续调度系统、识别流程或人工检查都可以直接读取该结果文件。
-    # scan_output_json = params.get("scan_output_json")
-    # if scan_output_json:
-    #     out_path = Path(scan_output_json)
-    #     out_path.parent.mkdir(parents=True, exist_ok=True)
-    #     out_path.write_text(
-    #         json.dumps(result, ensure_ascii=False, indent=2),
-    #         encoding="utf-8",
-    #     )
-
-    # return result

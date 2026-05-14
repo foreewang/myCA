@@ -114,6 +114,8 @@ def load_local_autofocus_policy(task: Dict[str, Any], default_config_dir: Path) 
     trigger_cfg.setdefault("after_objective_switch", True)
     trigger_cfg.setdefault("always_before_capture", False)
     trigger_cfg.setdefault("always_before_capture_objectives", [])
+    trigger_cfg.setdefault("run_at", "before_first_capture_after_stage_move")
+    trigger_cfg.setdefault("scope", "once_per_well")
     cfg["trigger"] = trigger_cfg
     return cfg
 
@@ -346,9 +348,15 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
 
     shared_cam = None
     need_capture = "capture" in params.get("stages", [])
+    need_autofocus = bool((params.get("autofocus_decision") or {}).get("should_run", False))
+
+    # 如果本任务需要 autofocus，暂时不提前打开共享相机。
+    # 原因：第三方 autofocus 会自己打开 MVS 相机，若 shared_cam 已占用相机，可能导致自动调焦无法取图。
+    # 后续更优方案是让 autofocus 复用项目 camera_executor 的相机对象。
+    open_shared_camera = need_capture and not need_autofocus
 
     try:
-        if need_capture:
+        if open_shared_camera:
             shared_cam = open_camera(
                 mvs_python_dir=params.get("mvs_python_dir"),
                 device_index=int(params["device_index"]),
@@ -357,8 +365,12 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
                 gain=params.get("gain"),
             )
 
+        autofocus_runtime_state: Dict[str, Any] = params.setdefault("_autofocus_runtime_state", {})
+
         for well_name in well_list:
             well_ctx, well_params = _derive_well_ctx_params(ctx, params, well_name)
+            # deepcopy 会复制运行时状态；这里显式指回同一个对象，保证 scope=once_per_task 能跨孔生效。
+            well_params["_autofocus_runtime_state"] = autofocus_runtime_state
             well_result = _run_single_well_pipeline(well_ctx, well_params, cam=shared_cam)
             wells.append(
                 {
@@ -452,7 +464,6 @@ def execute_task_request(
 
     from workflow.config_loader import load_runtime_context
     from workflow.objective_executor import ensure_objective_for_task, attach_objective_result
-    from workflow.autofocus_executor import execute_autofocus_for_task
 
     runtime_task_path, tmp_task_path = task_cfg_to_runtime_yaml(raw_task_cfg)
 
@@ -500,18 +511,15 @@ def execute_task_request(
         "config_path": str(autofocus_cfg.get("config_path") or ""),
         "trigger": autofocus_cfg.get("trigger", {}) or {},
         "objective_switched": bool(objective_result.get("switched", False)),
+        "run_at": "before_first_capture_after_stage_move",
     }
 
-    autofocus_result = None
-    if autofocus_should_run:
-        autofocus_result = execute_autofocus_for_task(
-            ctx=ctx,
-            task_cfg=task,
-            objective_result=objective_result,
-            autofocus_cfg=autofocus_cfg,
-        )
-        if isinstance(autofocus_result, dict):
-            autofocus_result.setdefault("trigger_reason", autofocus_reason)
+    # 注意：这里不再直接执行图像驱动 autofocus。
+    # run_task 只完成物镜切换、预设焦点移动和 autofocus 决策。
+    # 真正 autofocus 放到 scan_executor：移动到第一个扫描点并稳定后、第一张拍照前执行。
+    params["objective_result"] = objective_result
+    params["autofocus_cfg"] = autofocus_cfg
+    params["autofocus_decision"] = autofocus_decision
 
     if task_type == "compensate":
         result = run_compensate_task(ctx, params)
@@ -520,8 +528,6 @@ def execute_task_request(
 
     result = attach_objective_result(result, objective_result)
     result["autofocus_decision"] = autofocus_decision
-    if autofocus_result is not None:
-        result["autofocus_result"] = autofocus_result
 
     output_path = dump_json or params.get("result_output_json") or params.get("compensate_output_json")
     if persist_result:
