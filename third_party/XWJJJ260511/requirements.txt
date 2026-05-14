@@ -1,0 +1,10 @@
+# OpenCV：相机取图、图像保存、清晰度算法需要用到。
+opencv-python>=4.5.0
+# NumPy：图像数组和数学计算需要用到。
+numpy>=1.19.0
+# pymodbus：通过 Modbus RTU 控制真实电机。
+pymodbus==3.6.9
+# PyYAML：读取 config.yaml 配置文件。
+PyYAML>=6.0
+# pyserial：pymodbus 串口通信依赖它。
+pyserial>=3.5

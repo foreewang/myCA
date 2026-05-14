@@ -1,0 +1,23 @@
+# 本文件建议放到 C:/colony_system/config/autofocus.yaml
+# run_task 默认会读取这个本地文件，后端不需要传 autofocus 字段。
+
+enabled: true
+
+# 下面这些字段由 third_party.XWJJJ260511.run_autofocus 读取；
+# 请保留你当前已验证过的自动调焦硬件/算法参数。
+# 示例字段仅作占位，实际以你的 run_autofocus 实现为准。
+
+trigger:
+  after_objective_switch: true
+  always_before_capture: false
+  always_before_capture_objectives:
+    # 10x 景深更浅，后续可打开这一项，让 10x 任务每次采集前都调焦。
+    # - "10x"
+
+# 例如：
+# focus_axis: 4
+# camera_device_index: 0
+# search_range_mm: [-0.3, 0.3]
+# coarse_step_mm: 0.02
+# fine_step_mm: 0.005
+# metric: laplacian

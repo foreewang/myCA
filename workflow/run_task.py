@@ -59,6 +59,101 @@ def write_result(result: Dict[str, Any], dump_json: str | None) -> None:
         out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+
+
+def _as_bool(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"1", "true", "yes", "y", "on", "enable", "enabled"}:
+            return True
+        if text in {"0", "false", "no", "n", "off", "disable", "disabled"}:
+            return False
+    return default
+
+
+def _normalize_objective_name(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def load_local_autofocus_policy(task: Dict[str, Any], default_config_dir: Path) -> Dict[str, Any]:
+    """Load local autofocus policy.
+
+    后端不需要传 autofocus。默认读取本地 config/autofocus.yaml。
+    config/autofocus.yaml 既可以被 run_autofocus 作为算法/硬件配置读取，
+    也可以额外包含 enabled / trigger / config_path 等策略字段。
+    如果 task.autofocus 存在，则仅作为本地调试/兼容覆盖项使用。
+    """
+    default_path = default_config_dir / "autofocus.yaml"
+    cfg: Dict[str, Any] = {}
+
+    if default_path.exists():
+        local_cfg = load_structured_file(default_path)
+        if isinstance(local_cfg.get("autofocus"), dict):
+            cfg.update(local_cfg["autofocus"])
+        else:
+            for key in ("enabled", "trigger", "config_path", "force"):
+                if key in local_cfg:
+                    cfg[key] = local_cfg[key]
+
+    task_cfg = task.get("autofocus")
+    if isinstance(task_cfg, dict):
+        cfg.update(task_cfg)
+
+    cfg.setdefault("enabled", True)
+    cfg.setdefault("config_path", str(default_path))
+
+    trigger_cfg = cfg.get("trigger")
+    if not isinstance(trigger_cfg, dict):
+        trigger_cfg = {}
+    trigger_cfg.setdefault("after_objective_switch", True)
+    trigger_cfg.setdefault("always_before_capture", False)
+    trigger_cfg.setdefault("always_before_capture_objectives", [])
+    cfg["trigger"] = trigger_cfg
+    return cfg
+
+
+def should_run_autofocus(
+    *,
+    task_type: str,
+    task_cfg: Dict[str, Any],
+    objective_result: Dict[str, Any],
+    autofocus_cfg: Dict[str, Any],
+) -> Tuple[bool, str]:
+    """Decide whether autofocus should run before an observation task."""
+    if task_type not in {"capture", "pipeline"}:
+        return False, "task_type_not_observation"
+
+    if not _as_bool(autofocus_cfg.get("enabled"), default=True):
+        return False, "autofocus_disabled"
+
+    trigger_cfg = autofocus_cfg.get("trigger", {}) or {}
+
+    if _as_bool(autofocus_cfg.get("force"), default=False) or _as_bool(trigger_cfg.get("force"), default=False):
+        return True, "force"
+
+    if _as_bool(trigger_cfg.get("after_objective_switch"), default=True) and bool(objective_result.get("switched", False)):
+        return True, "objective_switched"
+
+    if _as_bool(trigger_cfg.get("always_before_capture"), default=False):
+        return True, "always_before_capture"
+
+    objective_name = _normalize_objective_name(task_cfg.get("objective"))
+    always_objectives = {
+        _normalize_objective_name(x)
+        for x in (trigger_cfg.get("always_before_capture_objectives", []) or [])
+    }
+    if objective_name and objective_name in always_objectives:
+        return True, f"objective_policy:{objective_name}"
+
+    return False, "no_trigger_matched"
+
+
 def _default_stages(task: Dict[str, Any]) -> List[str]:
     stages = task.get("stages")
     if stages:

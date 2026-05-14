@@ -1,0 +1,68 @@
+# XWJJJ260511 主配置文件
+#
+# 默认是安全联调配置：
+# - preview: false 表示会执行一次自动对焦流程
+# - camera.backend: opencv 表示走 OpenCV 摄像头
+# - motor.type: virtual 表示不控制真实电机
+#
+# 要控制真实聚焦电机，把 motor.type 改成 modbus，并确认 min_pos/max_pos 是安全范围。
+
+mode:
+  # true: 只预览相机画面和清晰度，不移动电机
+  # false: 执行一次自动对焦
+  preview: false
+
+camera:
+  # opencv: 用 cv2.VideoCapture 打开摄像头
+  # mvs: 使用海康 MVS 打开网口工业相机
+  backend: mvs
+  ip: 192.168.0.253
+  net_export_ip: 192.168.0.10
+  mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
+  opencv_index: 0
+
+motor:
+  # virtual: 虚拟电机，不碰真实硬件
+  # modbus: 真实 Modbus 聚焦电机
+  type: modbus
+
+  # Modbus 真实电机参数，仅 motor.type=modbus 时生效
+  port: COM3
+  baudrate: 115200
+  focus_slave: 3
+
+  # 自动对焦搜索范围，也是软件限位
+  # 初次真实测试请先设很小范围
+  # 外部程序只需要告诉本程序当前是几倍镜，例如 4x 或 10x。
+  # 程序会按 objective 到 objective_ranges 里选择对应的 min_pos/max_pos。
+  objective: 4x
+  objective_ranges:
+    4x:
+      min_pos: -2063120
+      max_pos: -1769500
+    10x:
+      min_pos: -2095551
+      max_pos: -2028750
+
+  # 兼容旧调用：如果没有配置 objective/objective_ranges，仍然会读取下面这组范围。
+  min_pos: -2063120
+  max_pos: -1769500
+
+  # PP 位置模式运动参数
+  profile_vel: 50000
+  profile_acc: 50000
+  profile_dec: 50000
+
+focus:
+  tol: 100
+  max_iter: 10
+  settle_ms: 300
+  center_roi: 0.6
+  downsample: 0.5
+
+output:
+  # true: 每次运行会自动创建 output/年月日_时分秒/ 文件夹
+  timestamp_folder: true
+  # 相对路径会保存到 XWJJJ260511 目录内；开启 timestamp_folder 后只取目录和文件名
+  image_path: output/sharpest.png
+  log_path: output/focus_log.csv

@@ -1,0 +1,63 @@
+# 真实 Modbus 电机测试示例。
+# 使用前请按实际设备修改串口、从站号、搜索范围和速度。
+
+mode:
+  # false 表示执行完整自动对焦；true 表示只预览相机不动电机。
+  preview: false
+
+camera:
+  # opencv 使用系统摄像头索引；mvs 使用海康网口相机。
+  backend: opencv
+  # OpenCV 摄像头编号，0 通常是默认摄像头。
+  opencv_index: 0
+
+motor:
+  # modbus 表示控制真实电机。
+  type: modbus
+  # 电机串口号。
+  port: COM3
+  # 串口波特率，必须和驱动器一致。
+  baudrate: 115200
+  # 聚焦轴 Modbus 从站号。
+  focus_slave: 3
+
+  # 外部程序只需要传当前倍镜；范围由本配置维护。
+  objective: 4x
+  objective_ranges:
+    4x:
+      min_pos: -2050000
+      max_pos: -2040000
+    10x:
+      min_pos: -2095551
+      max_pos: -2028750
+
+  # 兼容旧调用：如果没有配置 objective/objective_ranges，仍然会读取下面这组范围。
+  min_pos: -2050000
+  max_pos: -2040000
+
+  # PP 绝对位置运动速度。
+  profile_vel: 50000
+  # PP 绝对位置运动加速度。
+  profile_acc: 50000
+  # PP 绝对位置运动减速度。
+  profile_dec: 50000
+
+focus:
+  # 搜索收敛精度，越小越细但越慢。
+  tol: 100
+  # 最大搜索迭代次数。
+  max_iter: 10
+  # 电机移动后等待稳定的毫秒数。
+  settle_ms: 300
+  # 清晰度只算中心区域，0.6 表示中心 60% 边长区域。
+  center_roi: 0.6
+  # 算清晰度前缩小图像，减少噪声影响。
+  downsample: 0.5
+
+output:
+  # true 表示每次运行新建一个时间文件夹。
+  timestamp_folder: true
+  # 最清晰图片保存文件名。
+  image_path: output/real_sharpest.png
+  # 搜索过程 CSV 日志保存文件名。
+  log_path: output/real_focus_log.csv
