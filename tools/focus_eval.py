@@ -1,3 +1,5 @@
+#autofocus评测脚本，计算图像的Laplacian方差和Tenengrad指标来评估图像的清晰度。
+
 import cv2
 import numpy as np
 from pathlib import Path
