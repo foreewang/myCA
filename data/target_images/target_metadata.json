@@ -1,0 +1,95 @@
+{
+  "outputs": [
+    {
+      "camera_sim_path": "C:\\colony_system\\data\\target_images\\target_camera_sim_5120x5120.bmp",
+      "width_px": 5120,
+      "height_px": 5120,
+      "fov_mm": 3.0,
+      "px_per_mm": 1706.6666666666667,
+      "targets": [
+        {
+          "id": "T01",
+          "center_pixel_design": [
+            1740.8,
+            2969.6
+          ],
+          "diameter_mm": 0.6,
+          "diameter_px_design": 1024.0
+        }
+      ]
+    },
+    {
+      "print_sheet_path": "C:\\colony_system\\data\\target_images\\target_print_sheet_60x40mm_1200dpi.png",
+      "sheet_width_mm": 60.0,
+      "sheet_height_mm": 40.0,
+      "dpi": 1200,
+      "px_per_mm": 47.24409448818898,
+      "targets": [
+        {
+          "id": "P01",
+          "center_mm_design": [
+            8.0,
+            14.0
+          ],
+          "diameter_mm": 0.4
+        },
+        {
+          "id": "P02",
+          "center_mm_design": [
+            22.667,
+            14.0
+          ],
+          "diameter_mm": 0.6
+        },
+        {
+          "id": "P03",
+          "center_mm_design": [
+            37.333,
+            14.0
+          ],
+          "diameter_mm": 0.8
+        },
+        {
+          "id": "P04",
+          "center_mm_design": [
+            52.0,
+            14.0
+          ],
+          "diameter_mm": 1.0
+        },
+        {
+          "id": "P05",
+          "center_mm_design": [
+            13.133,
+            26.0
+          ],
+          "diameter_mm": 0.4
+        },
+        {
+          "id": "P06",
+          "center_mm_design": [
+            27.8,
+            26.0
+          ],
+          "diameter_mm": 0.6
+        },
+        {
+          "id": "P07",
+          "center_mm_design": [
+            42.467,
+            26.0
+          ],
+          "diameter_mm": 0.8
+        },
+        {
+          "id": "P08",
+          "center_mm_design": [
+            52.0,
+            26.0
+          ],
+          "diameter_mm": 1.0
+        }
+      ]
+    }
+  ]
+}
