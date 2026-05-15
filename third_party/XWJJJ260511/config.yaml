@@ -20,6 +20,19 @@ camera:
   net_export_ip: 192.168.0.10
   mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
   opencv_index: 0
+  # 曝光控制：
+  # - exposure_auto 留空表示不改相机当前设置
+  # - exposure_auto: false + exposure_time_us 表示固定手动曝光，单位是微秒
+  # - 不同倍镜亮度不一样时，可以在 objective_settings 里分别设置
+  exposure_auto:
+  exposure_time_us:
+  objective_settings:
+    4x:
+      exposure_auto: false
+      exposure_time_us: 1000
+    10x:
+      exposure_auto: false
+      exposure_time_us: 5000
 
 motor:
   # virtual: 虚拟电机，不碰真实硬件

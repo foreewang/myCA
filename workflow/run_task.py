@@ -173,6 +173,23 @@ def _default_stages(task: Dict[str, Any]) -> List[str]:
 
     raise ValueError(f"无法推断 stages，请在 task 中显式提供 stages。task_type={task_type!r}")
 
+def _camera_setting_for_objective(
+    camera_cfg: Dict[str, Any],
+    objective_name: str,
+    key: str,
+    default: Any = None,
+) -> Any:
+    objective_name = str(objective_name or "").strip()
+    objective_settings = camera_cfg.get("objective_settings", {}) or {}
+
+    per_objective = objective_settings.get(objective_name)
+    if per_objective is None:
+        per_objective = objective_settings.get(objective_name.lower())
+
+    if isinstance(per_objective, dict) and key in per_objective:
+        return per_objective[key]
+
+    return camera_cfg.get(key, default)
 
 def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
     task = ctx["task"]
@@ -212,8 +229,18 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "mvs_python_dir": camera.get("mvs_python_dir"),
         "device_index": camera.get("device_index", 0),
         "serial_number": camera.get("serial_number"),
-        "exposure_us": camera.get("exposure_us"),
-        "gain": camera.get("gain"),
+        "exposure_us": _camera_setting_for_objective(
+            camera,
+            task["objective"],
+            "exposure_us",
+            camera.get("exposure_us"),
+        ),
+        "gain": _camera_setting_for_objective(
+            camera,
+            task["objective"],
+            "gain",
+            camera.get("gain"),
+        ),
         "save_dir": capture_cfg.get("save_dir"),
         "filename_pattern": capture_cfg.get("filename_pattern"),
         "overlap": scan_cfg.get("overlap"),

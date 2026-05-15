@@ -163,6 +163,10 @@ def run_realtime_autofocus(
     camera_net_export_ip: Optional[str] = None,
     # MVS Python SDK 的 MvImport 目录。
     mvs_sdk_path: Optional[str] = None,
+    # 是否启用相机自动曝光；None 表示不改相机当前设置。
+    camera_exposure_auto: Optional[bool] = None,
+    # 手动曝光时间，单位微秒；None 表示不改相机当前设置。
+    camera_exposure_time_us: Optional[float] = None,
 ) -> AutoFocusResult:
     """执行一次实时自动对焦。
 
@@ -194,6 +198,7 @@ def run_realtime_autofocus(
     - downsample: 算清晰度前的下采样比例，用来降低噪点影响。
     - output_path: 最清晰图片保存路径；传 None 则不保存。
     - use_mvs/camera_index: 自动创建相机时使用。MVS 可按 camera_ip 打开网口相机。
+    - camera_exposure_auto/camera_exposure_time_us: 自动创建相机时的曝光配置。
     """
 
     if focus_ranges is not None:
@@ -213,6 +218,8 @@ def run_realtime_autofocus(
             opencv_index=camera_index,
             net_export_ip=camera_net_export_ip,
             mvs_sdk_path=mvs_sdk_path,
+            exposure_auto=camera_exposure_auto,
+            exposure_time_us=camera_exposure_time_us,
         )
 
     # 如果调用方没有传电机对象，就按参数创建真实电机或虚拟电机。

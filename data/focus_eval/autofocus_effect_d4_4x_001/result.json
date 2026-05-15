@@ -1,0 +1,1955 @@
+{
+  "task_id": "autofocus_effect_d4_4x_001",
+  "status": "success",
+  "task_type": "capture",
+  "stages": [
+    "capture"
+  ],
+  "observe_scope": "single_well",
+  "plate_type": "24-well",
+  "well_name": "D4",
+  "objective_name": "4x",
+  "capture_result": {
+    "task_id": "autofocus_effect_d4_4x_001",
+    "status": "success",
+    "task_type": "capture",
+    "plate_type": "24-well",
+    "well_name": "D4",
+    "objective_name": "4x",
+    "camera_settings": {
+      "exposure_us": 1000,
+      "gain": 0.0,
+      "device_index": 0,
+      "serial_number": null,
+      "mvs_python_dir": null
+    },
+    "reference": {
+      "meaning": "D4孔左侧观测起始点",
+      "a1_start": {
+        "x": 8865800,
+        "y": 6185500
+      },
+      "well_start": {
+        "x": 1254800,
+        "y": -1425500
+      },
+      "well_diameter_mm": 13.7,
+      "well_gap_mm": 3.5,
+      "pitch_mm": 17.2,
+      "pulses_per_mm": 147500.0,
+      "x_stage_sign_for_view_down": -1,
+      "y_stage_sign_for_view_right": -1
+    },
+    "scan_config": {
+      "fov_mm": {
+        "width": 3.0,
+        "height": 3.0
+      },
+      "overlap": 0.1,
+      "step_mm": {
+        "width": 2.7,
+        "height": 2.7
+      },
+      "point_count": 29
+    },
+    "stage_limit_precheck": {
+      "enabled": true,
+      "checked_point_count": 29,
+      "safe_range": {
+        "x_min_safe": -652500,
+        "x_max_safe": 10252500,
+        "y_min_safe": -8752500,
+        "y_max_safe": 7552500
+      },
+      "violations": []
+    },
+    "autofocus_decision": {
+      "enabled": true,
+      "should_run": true,
+      "reason": "objective_switched",
+      "config_path": "C:\\colony_system\\config\\autofocus.yaml",
+      "trigger": {
+        "after_objective_switch": true,
+        "always_before_capture": false,
+        "always_before_capture_objectives": [],
+        "run_at": "before_first_capture_after_stage_move",
+        "scope": "once_per_well"
+      },
+      "objective_switched": true,
+      "run_at": "before_first_capture_after_stage_move"
+    },
+    "before_first_capture_autofocus_result": {
+      "status": "success",
+      "objective_name": "4x",
+      "config_path": "C:\\colony_system\\config\\autofocus.yaml",
+      "best_pos": -1963467.2691534907,
+      "best_value": 22.08452351678473,
+      "output_path": "C:\\colony_system\\third_party\\XWJJJ260511\\output\\20260515_134458\\sharpest.png",
+      "elapsed_sec": 83.84154110000236,
+      "focus_log_count": 12,
+      "triggered_by_objective_switch": true,
+      "run_at": "before_first_capture_after_stage_move",
+      "scope_reason": "once_per_well",
+      "well_name": "D4",
+      "scan_point_index": 1,
+      "stage_x_target": 1254800,
+      "stage_y_target": -1425500,
+      "trigger_reason": "objective_switched"
+    },
+    "image_count": 29,
+    "captures": [
+      {
+        "index": 1,
+        "row_index": 0,
+        "col_index": 0,
+        "view_down_mm": 0.0,
+        "view_right_mm": 0.0,
+        "stage_x_target": 1254800,
+        "stage_y_target": -1425500,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -1425500
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1573302,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2592243,
+              "statusword": 1591
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254867,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1425597,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 67,
+            "y": -97
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_001_row00_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_001_row00_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 1,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        },
+        "autofocus_result": {
+          "status": "success",
+          "objective_name": "4x",
+          "config_path": "C:\\colony_system\\config\\autofocus.yaml",
+          "best_pos": -1963467.2691534907,
+          "best_value": 22.08452351678473,
+          "output_path": "C:\\colony_system\\third_party\\XWJJJ260511\\output\\20260515_134458\\sharpest.png",
+          "elapsed_sec": 83.84154110000236,
+          "focus_log_count": 12,
+          "triggered_by_objective_switch": true,
+          "run_at": "before_first_capture_after_stage_move",
+          "scope_reason": "once_per_well",
+          "well_name": "D4",
+          "scan_point_index": 1,
+          "stage_x_target": 1254800,
+          "stage_y_target": -1425500,
+          "trigger_reason": "objective_switched"
+        }
+      },
+      {
+        "index": 2,
+        "row_index": 0,
+        "col_index": 1,
+        "view_down_mm": 0.0,
+        "view_right_mm": 2.7,
+        "stage_x_target": 1254800,
+        "stage_y_target": -1823750,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -1823750
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254867,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1425598,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254862,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1823781,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 62,
+            "y": -31
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_002_row00_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_002_row00_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 2,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 3,
+        "row_index": 0,
+        "col_index": 2,
+        "view_down_mm": 0.0,
+        "view_right_mm": 5.4,
+        "stage_x_target": 1254800,
+        "stage_y_target": -2222000,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -2222000
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254862,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1823781,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2221969,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 61,
+            "y": 31
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_003_row00_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_003_row00_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 3,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 4,
+        "row_index": 0,
+        "col_index": 3,
+        "view_down_mm": 0.0,
+        "view_right_mm": 8.1,
+        "stage_x_target": 1254800,
+        "stage_y_target": -2620250,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -2620250
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2221969,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2620239,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 61,
+            "y": 11
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_004_row00_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_004_row00_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 4,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 5,
+        "row_index": 0,
+        "col_index": 4,
+        "view_down_mm": 0.0,
+        "view_right_mm": 10.8,
+        "stage_x_target": 1254800,
+        "stage_y_target": -3018500,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -3018500
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2620239,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254860,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3018439,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 60,
+            "y": 61
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_005_row00_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_005_row00_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 5,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 6,
+        "row_index": 0,
+        "col_index": 5,
+        "view_down_mm": 0.0,
+        "view_right_mm": 13.5,
+        "stage_x_target": 1254800,
+        "stage_y_target": -3416750,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -3416750
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254860,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3018439,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3416713,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 61,
+            "y": 37
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_006_row00_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_006_row00_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 6,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 7,
+        "row_index": 0,
+        "col_index": 6,
+        "view_down_mm": 0.0,
+        "view_right_mm": 13.7,
+        "stage_x_target": 1254800,
+        "stage_y_target": -3446250,
+        "motion_result": {
+          "target": {
+            "x": 1254800,
+            "y": -3446250
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254861,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3416713,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254860,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3446228,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 60,
+            "y": 22
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_007_row00_col06.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_007_row00_col06.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 7,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 8,
+        "row_index": 1,
+        "col_index": 0,
+        "view_down_mm": -2.7,
+        "view_right_mm": 13.145435,
+        "stage_x_target": 1653050,
+        "stage_y_target": -3364452,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -3364452
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1254860,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3446228,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652952,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3364481,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -98,
+            "y": -29
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_008_row01_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_008_row01_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 8,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 9,
+        "row_index": 1,
+        "col_index": 1,
+        "view_down_mm": -2.7,
+        "view_right_mm": 11.354565,
+        "stage_x_target": 1653050,
+        "stage_y_target": -3100298,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -3100298
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652952,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3364481,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3100335,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -97,
+            "y": -37
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_009_row01_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_009_row01_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 9,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 10,
+        "row_index": 1,
+        "col_index": 2,
+        "view_down_mm": -2.7,
+        "view_right_mm": 8.654565,
+        "stage_x_target": 1653050,
+        "stage_y_target": -2702048,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -2702048
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3100335,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2702144,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -97,
+            "y": -96
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_010_row01_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_010_row01_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 10,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 11,
+        "row_index": 1,
+        "col_index": 3,
+        "view_down_mm": -2.7,
+        "view_right_mm": 5.954565,
+        "stage_x_target": 1653050,
+        "stage_y_target": -2303798,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -2303798
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2702144,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2303849,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -97,
+            "y": -51
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_011_row01_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_011_row01_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 11,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 12,
+        "row_index": 1,
+        "col_index": 4,
+        "view_down_mm": -2.7,
+        "view_right_mm": 3.254565,
+        "stage_x_target": 1653050,
+        "stage_y_target": -1905548,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -1905548
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2303849,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1905585,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -97,
+            "y": -37
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_012_row01_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_012_row01_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 12,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 13,
+        "row_index": 1,
+        "col_index": 5,
+        "view_down_mm": -2.7,
+        "view_right_mm": 0.554565,
+        "stage_x_target": 1653050,
+        "stage_y_target": -1507298,
+        "motion_result": {
+          "target": {
+            "x": 1653050,
+            "y": -1507298
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1905585,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1507313,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -97,
+            "y": -15
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_013_row01_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_013_row01_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 13,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 14,
+        "row_index": 2,
+        "col_index": 0,
+        "view_down_mm": 2.7,
+        "view_right_mm": 0.554565,
+        "stage_x_target": 856550,
+        "stage_y_target": -1507298,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -1507298
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 1652953,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1507313,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856618,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1507311,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 68,
+            "y": -13
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_014_row02_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_014_row02_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 14,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 15,
+        "row_index": 2,
+        "col_index": 1,
+        "view_down_mm": 2.7,
+        "view_right_mm": 3.254565,
+        "stage_x_target": 856550,
+        "stage_y_target": -1905548,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -1905548
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856618,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1507311,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1905460,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 66,
+            "y": 88
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_015_row02_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_015_row02_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 15,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 16,
+        "row_index": 2,
+        "col_index": 2,
+        "view_down_mm": 2.7,
+        "view_right_mm": 5.954565,
+        "stage_x_target": 856550,
+        "stage_y_target": -2303798,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -2303798
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1905460,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2303790,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 66,
+            "y": 8
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_016_row02_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_016_row02_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 16,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 17,
+        "row_index": 2,
+        "col_index": 3,
+        "view_down_mm": 2.7,
+        "view_right_mm": 8.654565,
+        "stage_x_target": 856550,
+        "stage_y_target": -2702048,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -2702048
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2303790,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856615,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2702006,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 65,
+            "y": 42
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_017_row02_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_017_row02_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 17,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 18,
+        "row_index": 2,
+        "col_index": 4,
+        "view_down_mm": 2.7,
+        "view_right_mm": 11.354565,
+        "stage_x_target": 856550,
+        "stage_y_target": -3100298,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -3100298
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856615,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2702006,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3100269,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 66,
+            "y": 29
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_018_row02_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_018_row02_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 18,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 19,
+        "row_index": 2,
+        "col_index": 5,
+        "view_down_mm": 2.7,
+        "view_right_mm": 13.145435,
+        "stage_x_target": 856550,
+        "stage_y_target": -3364452,
+        "motion_result": {
+          "target": {
+            "x": 856550,
+            "y": -3364452
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856616,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3100269,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856615,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3364436,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 65,
+            "y": 16
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_019_row02_col05.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_019_row02_col05.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 19,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 20,
+        "row_index": 3,
+        "col_index": 0,
+        "view_down_mm": -5.4,
+        "view_right_mm": 11.064558,
+        "stage_x_target": 2051300,
+        "stage_y_target": -3057522,
+        "motion_result": {
+          "target": {
+            "x": 2051300,
+            "y": -3057522
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 856615,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3364436,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051226,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3057578,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -74,
+            "y": -56
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_020_row03_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_020_row03_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 20,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 21,
+        "row_index": 3,
+        "col_index": 1,
+        "view_down_mm": -5.4,
+        "view_right_mm": 10.735442,
+        "stage_x_target": 2051300,
+        "stage_y_target": -3008978,
+        "motion_result": {
+          "target": {
+            "x": 2051300,
+            "y": -3008978
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051226,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3057578,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3009070,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -72,
+            "y": -92
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_021_row03_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_021_row03_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 21,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 22,
+        "row_index": 3,
+        "col_index": 2,
+        "view_down_mm": -5.4,
+        "view_right_mm": 8.035442,
+        "stage_x_target": 2051300,
+        "stage_y_target": -2610728,
+        "motion_result": {
+          "target": {
+            "x": 2051300,
+            "y": -2610728
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3009070,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2610800,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -72,
+            "y": -72
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_022_row03_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_022_row03_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 22,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 23,
+        "row_index": 3,
+        "col_index": 3,
+        "view_down_mm": -5.4,
+        "view_right_mm": 5.335442,
+        "stage_x_target": 2051300,
+        "stage_y_target": -2212478,
+        "motion_result": {
+          "target": {
+            "x": 2051300,
+            "y": -2212478
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2610800,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2212573,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -72,
+            "y": -95
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_023_row03_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_023_row03_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 23,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 24,
+        "row_index": 3,
+        "col_index": 4,
+        "view_down_mm": -5.4,
+        "view_right_mm": 2.635442,
+        "stage_x_target": 2051300,
+        "stage_y_target": -1814228,
+        "motion_result": {
+          "target": {
+            "x": 2051300,
+            "y": -1814228
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2212573,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 1
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1814207,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -72,
+            "y": 21
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_024_row03_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_024_row03_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 24,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 25,
+        "row_index": 4,
+        "col_index": 0,
+        "view_down_mm": 5.4,
+        "view_right_mm": 2.635442,
+        "stage_x_target": 458300,
+        "stage_y_target": -1814228,
+        "motion_result": {
+          "target": {
+            "x": 458300,
+            "y": -1814228
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 2051228,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1814208,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458441,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1814209,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 141,
+            "y": 19
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_025_row04_col00.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_025_row04_col00.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 25,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 26,
+        "row_index": 4,
+        "col_index": 1,
+        "view_down_mm": 5.4,
+        "view_right_mm": 5.335442,
+        "stage_x_target": 458300,
+        "stage_y_target": -2212478,
+        "motion_result": {
+          "target": {
+            "x": 458300,
+            "y": -2212478
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458441,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1814209,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458439,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2212444,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 139,
+            "y": 34
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_026_row04_col01.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_026_row04_col01.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 26,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 27,
+        "row_index": 4,
+        "col_index": 2,
+        "view_down_mm": 5.4,
+        "view_right_mm": 8.035442,
+        "stage_x_target": 458300,
+        "stage_y_target": -2610728,
+        "motion_result": {
+          "target": {
+            "x": 458300,
+            "y": -2610728
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458439,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2212444,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458439,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2610708,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 139,
+            "y": 20
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_027_row04_col02.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_027_row04_col02.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 27,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 28,
+        "row_index": 4,
+        "col_index": 3,
+        "view_down_mm": 5.4,
+        "view_right_mm": 10.735442,
+        "stage_x_target": 458300,
+        "stage_y_target": -3008978,
+        "motion_result": {
+          "target": {
+            "x": 458300,
+            "y": -3008978
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458439,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -2610708,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458438,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3008952,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 138,
+            "y": 26
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_028_row04_col03.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_028_row04_col03.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 28,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      },
+      {
+        "index": 29,
+        "row_index": 4,
+        "col_index": 4,
+        "view_down_mm": 5.4,
+        "view_right_mm": 11.064558,
+        "stage_x_target": 458300,
+        "stage_y_target": -3057522,
+        "motion_result": {
+          "target": {
+            "x": 458300,
+            "y": -3057522
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458438,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3008952,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 458438,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -3057482,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": 138,
+            "y": 40
+          }
+        },
+        "capture_result": {
+          "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_029_row04_col04.bmp",
+          "frame": {
+            "saved_path": "C:\\colony_system\\data\\focus_eval\\autofocus_effect_d4_4x_001\\D4_029_row04_col04.bmp",
+            "width": 5120,
+            "height": 5120,
+            "frame_num": 29,
+            "pixel_type": 17301515,
+            "frame_len": 26214400
+          }
+        }
+      }
+    ]
+  },
+  "detect_result": null,
+  "compensate_result": null,
+  "objective_result": {
+    "requested_objective": "4x",
+    "previous_objective": "10x",
+    "current_objective": "4x",
+    "switched": true,
+    "mode": "motor_manager",
+    "state_file": "C:\\colony_system\\data\\objective_state.json",
+    "objective_axis_slave": 4,
+    "focus_axis_slave": 3,
+    "objective_move_result": {
+      "target": 166347,
+      "err_to_target_pulse": 0
+    },
+    "focus_move_result": {
+      "target": -2019367,
+      "err_to_target_pulse": 0
+    },
+    "message": "Objective and focus switching completed"
+  },
+  "autofocus_decision": {
+    "enabled": true,
+    "should_run": true,
+    "reason": "objective_switched",
+    "config_path": "C:\\colony_system\\config\\autofocus.yaml",
+    "trigger": {
+      "after_objective_switch": true,
+      "always_before_capture": false,
+      "always_before_capture_objectives": [],
+      "run_at": "before_first_capture_after_stage_move",
+      "scope": "once_per_well"
+    },
+    "objective_switched": true,
+    "run_at": "before_first_capture_after_stage_move"
+  }
+}
