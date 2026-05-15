@@ -110,10 +110,17 @@ def main() -> None:
             # 正常模式：移动电机、采图、计算清晰度并搜索最佳焦点。
             result = _run_autofocus(camera, cfg)
             # 把搜索过程写成 CSV，便于分析曲线。
-            _save_focus_log(result.focus_log, _get_output_path(cfg, "log_path"))
+            _save_focus_log(result.focus_log, _get_output_path(cfg, "log_path"), cfg)
 
             # 打印本次自动对焦结果。
+            run_info = _get_run_log_info(cfg)
             print("\n自动对焦完成")
+            print(f"当前倍镜: {run_info['objective']}")
+            print(f"曝光时间: {run_info['exposure']}")
+            print(
+                f"调焦范围: {run_info['min_pos']:.0f} 到 {run_info['max_pos']:.0f} "
+                f"({run_info['range_label']})"
+            )
             print(f"最佳焦距位置: {result.best_pos:.2f}")
             print(f"最佳清晰度分数: {result.best_value:.2f}")
             print(f"耗时: {result.elapsed_sec:.2f}s")
@@ -147,7 +154,7 @@ def run_autofocus_from_config(
     camera = _create_camera(cfg)
     try:
         result = _run_autofocus(camera, cfg)
-        _save_focus_log(result.focus_log, _get_output_path(cfg, "log_path"))
+        _save_focus_log(result.focus_log, _get_output_path(cfg, "log_path"), cfg)
         return result
     finally:
         camera.close()
@@ -218,19 +225,25 @@ def _create_camera(cfg: Mapping[str, Any]) -> Any:
 
     # 取出 camera 配置段。
     camera_cfg = _section(cfg, "camera")
+    motor_cfg = _section(cfg, "motor")
+    camera_settings, _ = _resolve_camera_settings(camera_cfg, motor_cfg)
     # backend 决定使用 OpenCV 还是海康 MVS。
-    backend = str(camera_cfg.get("backend", "opencv")).lower()
+    backend = str(camera_settings.get("backend", "opencv")).lower()
     # 目前只支持这两种相机后端。
     if backend not in {"opencv", "mvs"}:
         raise ValueError("配置错误：camera.backend 只能是 opencv 或 mvs")
 
     # 创建统一相机对象，后续代码只调用 capture()。
     return HikrobotCamera(
-        device=camera_cfg.get("ip"),
+        device=camera_settings.get("ip"),
         use_mvs=backend == "mvs",
-        opencv_index=int(camera_cfg.get("opencv_index", 0)),
-        net_export_ip=camera_cfg.get("net_export_ip"),
-        mvs_sdk_path=camera_cfg.get("mvs_sdk_path"),
+        opencv_index=int(camera_settings.get("opencv_index", 0)),
+        net_export_ip=camera_settings.get("net_export_ip"),
+        mvs_sdk_path=camera_settings.get("mvs_sdk_path"),
+        exposure_auto=_optional_bool(camera_settings, "exposure_auto", "camera.exposure_auto"),
+        exposure_time_us=_optional_float(
+            camera_settings, "exposure_time_us", "camera.exposure_time_us"
+        ),
     )
 
 
@@ -352,12 +365,20 @@ def _load_yaml_config(path: Path) -> dict[str, Any]:
     return data
 
 
-def _save_focus_log(focus_log, path: Path) -> None:
+def _save_focus_log(focus_log, path: Path, cfg: Mapping[str, Any] | None = None) -> None:
     # 确保日志目录存在。
     path.parent.mkdir(parents=True, exist_ok=True)
     # newline="" 避免 Windows 下 CSV 出现空行。
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
+        if cfg is not None:
+            run_info = _get_run_log_info(cfg)
+            writer.writerow(["当前倍镜", run_info["objective"]])
+            writer.writerow(["曝光时间", run_info["exposure"]])
+            writer.writerow(["最小调焦范围", f"{run_info['min_pos']:.0f}"])
+            writer.writerow(["最大调焦范围", f"{run_info['max_pos']:.0f}"])
+            writer.writerow(["范围来源", run_info["range_label"]])
+            writer.writerow([])
         # 写表头。
         writer.writerow(["序号", "位置", "清晰度"])
         # 逐行写入每个采样位置和对应清晰度。
@@ -440,6 +461,69 @@ def _get_output_run_dir(output_cfg: dict[str, Any], base_dir: Path) -> Path:
 def _camera_uses_mvs(cfg: Mapping[str, Any]) -> bool:
     # 判断当前相机后端是不是海康 MVS。
     return str(_section(cfg, "camera").get("backend", "opencv")).lower() == "mvs"
+
+
+def _resolve_camera_settings(
+    camera_cfg: Mapping[str, Any], motor_cfg: Mapping[str, Any]
+) -> tuple[dict[str, Any], str]:
+    """返回当前倍镜对应的相机配置；倍镜配置会覆盖 camera 顶层配置。"""
+
+    settings = dict(camera_cfg)
+    objective_settings = camera_cfg.get("objective_settings")
+    objective = motor_cfg.get("objective")
+
+    if objective_settings is None or objective is None:
+        return settings, "camera"
+
+    if not isinstance(objective_settings, Mapping):
+        raise ValueError("配置错误：camera.objective_settings 必须是 YAML 字典")
+
+    objective_cfg, matched_key = _find_objective_camera_settings(objective_settings, objective)
+    settings.update(objective_cfg)
+    return settings, f"camera.objective_settings.{matched_key}"
+
+
+def _find_objective_camera_settings(
+    objective_settings: Mapping[Any, Any], objective: Any
+) -> tuple[Mapping[str, Any], str]:
+    target = _normalize_objective_key(objective)
+    available: list[str] = []
+
+    for key, value in objective_settings.items():
+        available.append(str(key))
+        if _normalize_objective_key(key) == target:
+            if not isinstance(value, Mapping):
+                raise ValueError(f"配置错误：camera.objective_settings.{key} 必须是 YAML 字典")
+            return value, str(key)
+
+    choices = "、".join(available) if available else "空"
+    raise ValueError(f"配置错误：未知相机倍镜配置 {objective!r}，可选倍镜：{choices}")
+
+
+def _optional_bool(cfg: Mapping[str, Any], key: str, label: str) -> bool | None:
+    if key not in cfg or cfg.get(key) is None:
+        return None
+
+    value = cfg.get(key)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"1", "true", "yes", "on"}:
+            return True
+        if text in {"0", "false", "no", "off"}:
+            return False
+    raise ValueError(f"配置错误：{label} 必须是 true/false")
+
+
+def _optional_float(cfg: Mapping[str, Any], key: str, label: str) -> float | None:
+    if key not in cfg or cfg.get(key) is None:
+        return None
+
+    try:
+        return float(cfg.get(key))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"配置错误：{label} 必须是数字") from exc
 
 
 def _section(cfg: Mapping[str, Any], key: str) -> dict[str, Any]:
@@ -540,16 +624,55 @@ def _get_bool(cfg: Mapping[str, Any], path: tuple[str, str], default: bool) -> b
     return bool(value)
 
 
+def _get_run_log_info(cfg: Mapping[str, Any]) -> dict[str, Any]:
+    """返回控制台和 CSV 共同使用的本次运行信息。"""
+
+    camera_cfg = _section(cfg, "camera")
+    motor_cfg = _section(cfg, "motor")
+    camera_settings, camera_label = _resolve_camera_settings(camera_cfg, motor_cfg)
+    min_pos, max_pos, range_label = _resolve_focus_range(motor_cfg)
+    objective = motor_cfg.get("objective", "未配置")
+    exposure_auto = _optional_bool(camera_settings, "exposure_auto", "camera.exposure_auto")
+    exposure_time_us = _optional_float(
+        camera_settings, "exposure_time_us", "camera.exposure_time_us"
+    )
+    return {
+        "objective": objective,
+        "exposure": _format_exposure(exposure_auto, exposure_time_us, camera_label),
+        "min_pos": min_pos,
+        "max_pos": max_pos,
+        "range_label": range_label,
+    }
+
+
+def _format_exposure(
+    exposure_auto: bool | None, exposure_time_us: float | None, camera_label: str
+) -> str:
+    if exposure_auto is None and exposure_time_us is None:
+        return "沿用相机当前设置"
+    if exposure_auto:
+        return f"自动曝光 ({camera_label})"
+    if exposure_time_us is None:
+        return f"手动，沿用相机当前曝光时间 ({camera_label})"
+    return f"{exposure_time_us:.1f} us ({camera_label})"
+
+
 def _print_config_summary(config_path: Path, cfg: Mapping[str, Any]) -> None:
     # 取出主要配置段用于打印。
     camera_cfg = _section(cfg, "camera")
     motor_cfg = _section(cfg, "motor")
     output_cfg = _section(cfg, "output")
+    camera_settings, camera_label = _resolve_camera_settings(camera_cfg, motor_cfg)
     print(f"配置文件: {config_path}")
-    print(f"相机: {camera_cfg.get('backend', 'opencv')}")
-    if str(camera_cfg.get("backend", "opencv")).lower() == "mvs":
-        print(f"相机 IP: {camera_cfg.get('ip', '自动枚举')}")
-        print(f"电脑网卡 IP: {camera_cfg.get('net_export_ip', '自动选择')}")
+    print(f"相机: {camera_settings.get('backend', 'opencv')}")
+    if str(camera_settings.get("backend", "opencv")).lower() == "mvs":
+        print(f"相机 IP: {camera_settings.get('ip', '自动枚举')}")
+        print(f"电脑网卡 IP: {camera_settings.get('net_export_ip', '自动选择')}")
+    exposure_auto = _optional_bool(camera_settings, "exposure_auto", "camera.exposure_auto")
+    exposure_time_us = _optional_float(
+        camera_settings, "exposure_time_us", "camera.exposure_time_us"
+    )
+    print(f"曝光: {_format_exposure(exposure_auto, exposure_time_us, camera_label)}")
     print(f"电机: {motor_cfg.get('type', 'virtual')}")
     min_pos, max_pos, range_label = _resolve_focus_range(motor_cfg)
     objective = motor_cfg.get("objective")

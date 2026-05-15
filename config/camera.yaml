@@ -21,11 +21,11 @@ camera:
   # 新增：不同物镜对应不同相机参数
   objective_settings:
     4x:
-      exposure_us: 2000
+      exposure_us: 1000
       gain: 0.0
 
     10x:
-      exposure_us: 10000
+      exposure_us: 5000
       gain: 0.0
 
   trigger_mode: software

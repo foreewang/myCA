@@ -10,6 +10,17 @@ camera:
   backend: opencv
   # OpenCV 摄像头编号，0 通常是默认摄像头。
   opencv_index: 0
+  # 曝光控制示例。留空表示不改相机当前设置。
+  # 使用海康 MVS 时，建议按倍镜固定曝光，避免自动曝光影响清晰度评分。
+  exposure_auto:
+  exposure_time_us:
+  objective_settings:
+    4x:
+      exposure_auto:
+      exposure_time_us:
+    10x:
+      exposure_auto:
+      exposure_time_us:
 
 motor:
   # modbus 表示控制真实电机。

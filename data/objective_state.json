@@ -1,22 +1,22 @@
 {
-  "current_objective": "4x",
-  "previous_objective": "10x",
+  "current_objective": "10x",
+  "previous_objective": "4x",
   "last_result": {
-    "requested_objective": "4x",
-    "previous_objective": "10x",
-    "current_objective": "4x",
+    "requested_objective": "10x",
+    "previous_objective": "4x",
+    "current_objective": "10x",
     "switched": true,
     "mode": "motor_manager",
     "state_file": "C:\\colony_system\\data\\objective_state.json",
     "objective_axis_slave": 4,
     "focus_axis_slave": 3,
     "objective_move_result": {
-      "target": 166347,
-      "err_to_target_pulse": -5
+      "target": -165903,
+      "err_to_target_pulse": 2
     },
     "focus_move_result": {
-      "target": -2019367,
-      "err_to_target_pulse": 0
+      "target": -2053794,
+      "err_to_target_pulse": -1
     },
     "message": "Objective and focus switching completed"
   }
