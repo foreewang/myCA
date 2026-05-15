@@ -305,20 +305,20 @@ if __name__ == "__main__":
         
         # x.pp_absolute_move(4206434, profile_vel=800000, profile_acc=800000, profile_dec=800000)
         # y.pp_absolute_move(109746, profile_vel=800000, profile_acc=800000, profile_dec=800000)
-        x.pp_absolute_move(0, profile_vel=1000000, profile_acc=1000000, profile_dec=1000000)
-        y.pp_absolute_move(109746, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        # x.pp_absolute_move(0, profile_vel=1000000, profile_acc=1000000, profile_dec=1000000)
+        # y.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
        
-        x.pp_absolute_move(4206434+(3196-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
-        y.pp_absolute_move(109746+(3917-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        x.pp_absolute_move(4206434+(3209-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        y.pp_absolute_move(109746+(3850-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         
         # x.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # y.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # x 轴正向移动 3 毫米
-        # y.pp_relative_move( (3004-2560)*86, 500000,500000,500000)
+        # y.pp_relative_move(-(3850-2560)*86, 500000,500000,500000)
         # x 轴逆向移动 3 毫米8563500,5755000
         # x.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
         # y轴正向移动 3毫米
-        # x.pp_relative_move( -(1303-2560)*86 , 5000,5000,5000)
+        # x.pp_relative_move(-(3209-2560)*86 , 500000,500000,500000)
         # y轴逆向移动 3毫米
         # y.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
 
