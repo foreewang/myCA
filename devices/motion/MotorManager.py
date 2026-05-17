@@ -302,14 +302,14 @@ if __name__ == "__main__":
         # y.pp_absolute_move(target_pos=point_48[1] - ((point_48_d *rpm_mm)+ (point_48_gap*rpm_mm))*1, profile_vel=500000, profile_acc=100000, profile_dec=100000)
     
         # 移动到48 孔托盘 10 点位
-        
-        # x.pp_absolute_move(4206434, profile_vel=800000, profile_acc=800000, profile_dec=800000)
-        # y.pp_absolute_move(109746, profile_vel=800000, profile_acc=800000, profile_dec=800000)
         # x.pp_absolute_move(0, profile_vel=1000000, profile_acc=1000000, profile_dec=1000000)
         # y.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
        
-        x.pp_absolute_move(4206434+(3209-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
-        y.pp_absolute_move(109746+(3850-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        # x.pp_absolute_move(4206434, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        # y.pp_absolute_move(109746, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        
+        x.pp_absolute_move(4206434+(2331-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        y.pp_absolute_move(109746+(2110-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         
         # x.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # y.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
