@@ -211,6 +211,31 @@ camera:
 
 `ip` 是相机 IP，`net_export_ip` 是连接相机的电脑有线网卡 IP。只调相机时建议先运行 `python run.py --preview`，这样不会进入电机自动对焦流程。
 
+曝光控制：
+
+```yaml
+camera:
+  backend: mvs
+  exposure_auto: false
+  exposure_time_us: 8000
+```
+
+`exposure_time_us` 的单位是微秒。只要设置了 `exposure_time_us`，程序会自动关闭海康相机的自动曝光并写入手动曝光时间；不设置时沿用相机当前状态。四倍镜和十倍镜亮度不一样时，推荐按倍镜分别配置：
+
+```yaml
+camera:
+  backend: mvs
+  objective_settings:
+    4x:
+      exposure_auto: false
+      exposure_time_us: 8000
+    10x:
+      exposure_auto: false
+      exposure_time_us: 12000
+```
+
+具体数值需要用 `python run.py --preview --objective 4x` 和 `python run.py --preview --objective 10x` 现场看画面亮度与清晰度曲线来定。原则是不过曝、不太暗，并且调焦过程中曝光保持固定。
+
 ## 新版本文件
 
 - `run.py` / `__main__.py`：YAML 运行入口。

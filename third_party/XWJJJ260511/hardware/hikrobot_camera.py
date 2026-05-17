@@ -45,6 +45,8 @@ class HikrobotCamera(CameraBase):
         opencv_index: int = 0,
         net_export_ip: Optional[str] = None,
         mvs_sdk_path: Optional[str] = None,
+        exposure_auto: Optional[bool] = None,
+        exposure_time_us: Optional[float] = None,
     ):
         """
         device: MVS 模式下为相机 IP，例如 192.168.1.253；OpenCV 模式下忽略。
@@ -52,7 +54,12 @@ class HikrobotCamera(CameraBase):
         opencv_index: use_mvs=False 时，OpenCV 打开的相机索引（0 为默认摄像头）。
         net_export_ip: 连接相机的电脑网卡 IP，例如 192.168.1.168。
         mvs_sdk_path: MVS Python MvImport 目录。
+        exposure_auto: 是否启用相机自动曝光；None 表示不改相机当前设置。
+        exposure_time_us: 手动曝光时间，单位微秒；None 表示不改相机当前设置。
         """
+        if exposure_auto is True and exposure_time_us is not None:
+            raise ValueError("exposure_auto=True 时不能同时设置 exposure_time_us")
+
         self._device = device
         # 保存是否使用 MVS；False 时走 OpenCV。
         self._use_mvs = use_mvs
@@ -62,6 +69,9 @@ class HikrobotCamera(CameraBase):
         self._net_export_ip = net_export_ip
         # 保存 MVS Python SDK 路径。
         self._mvs_sdk_path = mvs_sdk_path
+        # 保存曝光配置；None 表示沿用相机当前状态。
+        self._exposure_auto = exposure_auto
+        self._exposure_time_us = exposure_time_us
         # OpenCV VideoCapture 对象，只有 OpenCV 模式会用到。
         self._cap: Optional[cv2.VideoCapture] = None
         # MVS 相机句柄，打开成功后才会有值。
@@ -124,6 +134,8 @@ class HikrobotCamera(CameraBase):
 
             # 关闭触发模式，使用连续采集。
             cam.MV_CC_SetEnumValue("TriggerMode", mvs.MV_TRIGGER_MODE_OFF)
+            # 按配置设置曝光；未配置时不主动改相机当前状态。
+            self._apply_mvs_exposure(cam)
 
             # 开始采流，后续 capture() 才能取到图像。
             ret = cam.MV_CC_StartGrabbing()
@@ -146,7 +158,42 @@ class HikrobotCamera(CameraBase):
         # 打不开时直接报错。
         if not self._cap.isOpened():
             raise RuntimeError(f"OpenCV 无法打开相机 index={self._opencv_index}")
+        self._apply_opencv_exposure()
         logger.info("OpenCV 相机已打开: index=%s", self._opencv_index)
+
+    def _apply_mvs_exposure(self, cam) -> None:
+        """把曝光配置写入海康 MVS 相机。"""
+
+        exposure_auto = self._exposure_auto
+        if self._exposure_time_us is not None and exposure_auto is None:
+            exposure_auto = False
+
+        if exposure_auto is not None:
+            # 海康 MVS 常用枚举：0=Off，1=Once，2=Continuous。
+            ret = cam.MV_CC_SetEnumValue("ExposureAuto", 2 if exposure_auto else 0)
+            self._check_mvs(ret, "set ExposureAuto")
+
+        if self._exposure_time_us is not None:
+            if self._exposure_time_us <= 0:
+                raise ValueError("exposure_time_us 必须大于 0")
+            ret = cam.MV_CC_SetFloatValue("ExposureTime", float(self._exposure_time_us))
+            self._check_mvs(ret, "set ExposureTime")
+            logger.info("MVS 手动曝光时间已设置: %.1f us", self._exposure_time_us)
+
+    def _apply_opencv_exposure(self) -> None:
+        """尽量把曝光配置写入 OpenCV 相机。"""
+
+        if self._cap is None:
+            return
+
+        if self._exposure_auto is not None:
+            # 不同 OpenCV 后端含义略有差异；DirectShow 常用 0.75=自动，0.25=手动。
+            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75 if self._exposure_auto else 0.25)
+
+        if self._exposure_time_us is not None:
+            logger.warning(
+                "OpenCV 后端不支持按微秒精确设置 exposure_time_us；请优先使用 MVS 后端。"
+            )
 
     def capture(self) -> np.ndarray:
         """实时采一帧，返回 BGR (H,W,3) uint8。"""

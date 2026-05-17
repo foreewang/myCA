@@ -1,3 +1,5 @@
+# 计算两张图像之间的整图偏移，验证往复运动精度
+
 import cv2
 import numpy as np
 
