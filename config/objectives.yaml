@@ -2,8 +2,8 @@ objectives:
   "4x":
     magnification: 4
     fov_mm:
-      width: 3.0
-      height: 3.0
+      width: 3.22
+      height: 3.22
 
     switch:
       enabled: true
@@ -23,8 +23,8 @@ objectives:
   "10x":
     magnification: 10
     fov_mm:
-      width: 1.2
-      height: 1.2
+      width: 1.31
+      height: 1.31
 
     switch:
       enabled: true
