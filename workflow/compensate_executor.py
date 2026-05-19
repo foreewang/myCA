@@ -97,6 +97,7 @@ def _axis_actual_from_move(move_result: Dict[str, Any], axis: str, fallback: int
 def _calc_compensate_target(
     *,
     ctx: Dict[str, Any],
+    params: Dict[str, Any],
     image_item: Dict[str, Any],
     clone_item: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -118,8 +119,12 @@ def _calc_compensate_target(
     if base_x is None or base_y is None:
         raise ValueError("无法确定补偿基准坐标：stage_x/stage_y 缺失")
 
-    target_x = int(round(float(base_x) - x_sign * offset_down_mm * ppm))
-    target_y = int(round(float(base_y) - y_sign * offset_right_mm * ppm))
+    scale_cfg = params.get("compensate_scale") or {}
+    x_scale = float(scale_cfg.get("x", 1.0))
+    y_scale = float(scale_cfg.get("y", 1.0))
+
+    target_x = int(round(float(base_x) - x_sign * offset_down_mm * ppm * x_scale))
+    target_y = int(round(float(base_y) - y_sign * offset_right_mm * ppm * y_scale))
 
     return {
         "base_stage": {
@@ -130,6 +135,10 @@ def _calc_compensate_target(
         "offset_mm": {
             "view_right_mm": offset_right_mm,
             "view_down_mm": offset_down_mm,
+        },
+        "scale": {
+            "x": x_scale,
+            "y": y_scale,
         },
         "compensate_target": {
             "x": target_x,
@@ -276,7 +285,7 @@ def _run_closed_loop(
         )
         loop_detect_result = {"images": [image_item]}
         image_item, clone_item = select_clone_for_compensation(loop_detect_result, selector_cfg)
-        calc = _calc_compensate_target(ctx=ctx, image_item=image_item, clone_item=clone_item)
+        calc = _calc_compensate_target(ctx=ctx, params=params, image_item=image_item, clone_item=clone_item)
         in_tolerance = _within_tolerance(calc["offset_from_image_center_px"], cfg)
 
         item: Dict[str, Any] = {
@@ -325,7 +334,7 @@ def execute_compensate_on_detect_result(
     selector_cfg = params.get("compensate_selector", {}) or {}
     image_item, clone_item = select_clone_for_compensation(detect_result, selector_cfg)
 
-    calc = _calc_compensate_target(ctx=ctx, image_item=image_item, clone_item=clone_item)
+    calc = _calc_compensate_target(ctx=ctx, params=params, image_item=image_item, clone_item=clone_item)
     target = calc["compensate_target"]
     move_result = _move_to_compensate_target(
         params=params,
@@ -355,6 +364,7 @@ def execute_compensate_on_detect_result(
         "base_stage": calc["base_stage"],
         "offset_from_image_center_px": calc["offset_from_image_center_px"],
         "offset_mm": calc["offset_mm"],
+        "scale": calc["scale"],
         "compensate_target": target,
         "approach": params.get("compensate_approach") or {},
         "move_result": move_result,

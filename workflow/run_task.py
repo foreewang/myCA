@@ -253,6 +253,7 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "compensate_selector": compensate_cfg.get("selector", {}) or {},
         "compensate_approach": compensate_cfg.get("approach", {}) or {},
         "compensate_closed_loop": compensate_cfg.get("closed_loop", {}) or {},
+        "compensate_scale": compensate_cfg.get("scale", {}) or {},
         "compensate_input_detect_json": compensate_cfg.get("input_detect_json") or output_cfg.get("detect_json"),
         "compensate_input_detect_result": compensate_cfg.get("input_detect_result"),
         "compensate_output_json": compensate_cfg.get("output_json") or output_cfg.get("compensate_json"),

@@ -3,13 +3,13 @@
   "status": "success",
   "task_type": "compensate",
   "observe_scope": null,
-  "plate_type": "48-well",
+  "plate_type": "24-well",
   "objective_name": "4x",
-  "stored_at_utc": "2026-05-19T06:12:31.693233+00:00",
-  "created_at": "2026-05-19T06:12:31.693233+00:00",
+  "stored_at_utc": "2026-05-19T09:33:55.816993+00:00",
+  "created_at": "2026-05-19T09:33:55.816993+00:00",
   "started_at": null,
-  "updated_at": "2026-05-19T06:12:31.693233+00:00",
-  "finished_at": "2026-05-19T06:12:31.693233+00:00",
+  "updated_at": "2026-05-19T09:33:55.816993+00:00",
+  "finished_at": "2026-05-19T09:33:55.816993+00:00",
   "persist_result": true,
   "result_json_path": "C:/colony_system/data/compensate_eval/result_after_open_lid.json",
   "base_save_dir": null,
@@ -18,7 +18,7 @@
   "current_stage": null,
   "current_well": null,
   "wells": {
-    "D4": {
+    "B4": {
       "image_dir": null,
       "capture_result_json": null,
       "detect_result_json": null,
@@ -32,42 +32,42 @@
     "task_id": "manual_compensate_after_open_lid_001",
     "status": "success",
     "task_type": "compensate",
-    "plate_type": "48-well",
-    "well_name": "D4",
+    "plate_type": "24-well",
+    "well_name": "B4",
     "objective_name": "4x",
     "selector": {
       "clone_id": "C_MANUAL_001",
       "mode": "image_and_clone",
-      "image_index": 2
+      "image_index": 12
     },
-    "selected_image_index": 2,
+    "selected_image_index": 12,
     "selected_clone": {
       "clone_id": "C_MANUAL_001",
       "target_id": "C_MANUAL_001",
       "rank": 1,
       "center_pixel": [
-        3297.0,
-        2324.0
+        2385.0,
+        2739.0
       ],
       "center_pixel_xy": {
-        "x": 3297.0,
-        "y": 2324.0
+        "x": 2385.0,
+        "y": 2739.0
       },
       "offset_from_image_center_px": [
-        737.5,
-        -235.5
+        -174.5,
+        179.5
       ],
       "offset_from_image_center_px_xy": {
-        "x": 737.5,
-        "y": -235.5
+        "x": -174.5,
+        "y": 179.5
       },
       "offset_from_image_center_mm": [
-        0.43212890625,
-        -0.13798828124999998
+        -0.109744140625,
+        0.112888671875
       ],
       "offset_from_image_center_mm_xy": {
-        "x": 0.43212890625,
-        "y": -0.13798828124999998
+        "x": -0.109744140625,
+        "y": 0.112888671875
       },
       "area_px": 1.0,
       "area": 1.0,
@@ -75,38 +75,48 @@
       "source": "manual_annotation"
     },
     "base_stage": {
-      "x": 4235034,
-      "y": 266425
+      "x": 6756181,
+      "y": -1520345
     },
     "offset_from_image_center_px": [
-      737,
-      -235
+      -174,
+      179
     ],
     "offset_mm": {
-      "view_right_mm": 0.43212890625,
-      "view_down_mm": -0.13798828124999998
+      "view_right_mm": -0.109744140625,
+      "view_down_mm": 0.112888671875
+    },
+    "scale": {
+      "x": 0.79,
+      "y": 1.0
     },
     "compensate_target": {
-      "x": 4214681,
-      "y": 330164
+      "x": 6769335,
+      "y": -1536532
     },
-    "approach": {},
+    "approach": {
+      "x_margin_pulse": 30000,
+      "y_direction": 1,
+      "x_direction": 1,
+      "y_margin_pulse": 0,
+      "enabled": true
+    },
     "move_result": {
       "target": {
-        "x": 4214681,
-        "y": 330164
+        "x": 6769335,
+        "y": -1536532
       },
       "before": {
         "x": {
           "axis": "x",
           "slave": 1,
-          "current_pos": 4141663,
+          "current_pos": 6739265,
           "statusword": 545
         },
         "y": {
           "axis": "y",
           "slave": 2,
-          "current_pos": 457968,
+          "current_pos": -1536529,
           "statusword": 545
         }
       },
@@ -118,19 +128,114 @@
         "x": {
           "axis": "x",
           "slave": 1,
-          "current_pos": 4214567,
+          "current_pos": 6769290,
           "statusword": 545
         },
         "y": {
           "axis": "y",
           "slave": 2,
-          "current_pos": 330207,
+          "current_pos": -1536528,
           "statusword": 545
         }
       },
       "err_to_target": {
-        "x": -114,
-        "y": 43
+        "x": -45,
+        "y": 4
+      },
+      "approach": {
+        "enabled": true,
+        "x_direction": 1,
+        "y_direction": 1,
+        "x_margin_pulse": 30000,
+        "y_margin_pulse": 0,
+        "pre_target": {
+          "x": 6739335,
+          "y": -1536532
+        },
+        "pre_move": {
+          "target": {
+            "x": 6739335,
+            "y": -1536532
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 104,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": 7499991,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 6739265,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1536529,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -70,
+            "y": 3
+          }
+        },
+        "final_move": {
+          "target": {
+            "x": 6769335,
+            "y": -1536532
+          },
+          "before": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 6739265,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1536529,
+              "statusword": 545
+            }
+          },
+          "move_result": {
+            "x_diff": 0,
+            "y_diff": 0
+          },
+          "after": {
+            "x": {
+              "axis": "x",
+              "slave": 1,
+              "current_pos": 6769290,
+              "statusword": 545
+            },
+            "y": {
+              "axis": "y",
+              "slave": 2,
+              "current_pos": -1536528,
+              "statusword": 545
+            }
+          },
+          "err_to_target": {
+            "x": -45,
+            "y": 4
+          }
+        }
       }
     },
     "closed_loop": null,
@@ -162,6 +267,7 @@
     "output": {
       "result_json": "C:/colony_system/data/compensate_eval/result_after_open_lid.json"
     },
+    "well_name": "B4",
     "task_type": "compensate",
     "objective": "4x",
     "motion": {
@@ -175,19 +281,33 @@
       "timeout_s": 120
     },
     "target": {
-      "well_name": "D4"
+      "well_name": "B4"
     },
-    "plate_type": "48-well",
+    "plate_type": "24-well",
     "task_id": "manual_compensate_after_open_lid_001",
     "observe_scope": "single_well",
     "compensate": {
+      "approach": {
+        "x_margin_pulse": 30000,
+        "y_direction": 1,
+        "x_direction": 1,
+        "y_margin_pulse": 0,
+        "enabled": true
+      },
+      "output_json": "C:/colony_system/data/compensate_eval/compensate_after_open_lid_result.json",
       "selector": {
         "clone_id": "C_MANUAL_001",
         "mode": "image_and_clone",
-        "image_index": 2
+        "image_index": 12
       },
       "input_detect_json": "C:/colony_system/data/compensate_eval/manual_detect_result.json",
-      "output_json": "C:/colony_system/data/compensate_eval/compensate_after_open_lid_result.json"
+      "closed_loop": {
+        "enabled": false
+      },
+      "scale": {
+        "y": 1,
+        "x": 0.79
+      }
     }
   }
 }
