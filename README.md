@@ -42,6 +42,8 @@ colony_system/
 │  ├─ handoff.yaml             # 机械臂上下料对接点
 │  └─ task_*.json              # 任务模板
 ├─ data/                       # 任务索引、运行输出、测试输出
+│  ├─ ...
+│  └─ objective_state.json     # 当前物镜状态，需跟真实物镜状态匹配，否则影响切镜动作
 ├─ third_party/XWJJJ260511/    # 自动对焦模块
 ├─ tools/                      # 辅助工具脚本
 └─ README.md

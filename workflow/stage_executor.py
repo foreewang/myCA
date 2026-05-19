@@ -200,3 +200,93 @@ def move_to_absolute(
             "after": after,
             "err_to_target": err_to_target,
         }
+
+
+def move_to_absolute_with_approach(
+    *,
+    port: str,
+    x_target: int,
+    y_target: int,
+    profile_vel: int,
+    profile_acc: int,
+    profile_dec: int,
+    x_slave: int = 1,
+    y_slave: int = 2,
+    baudrate: int = 115200,
+    settle_s: float = 0.8,
+    approach_cfg: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Move to a target using an optional fixed-direction final approach.
+
+    The normal compensation move is a direct absolute move. When backlash matters,
+    the final arrival should come from a consistent direction so the screw gap is
+    always loaded on the same side. This helper first moves to a pre-target point,
+    then makes the final move into the requested target.
+    """
+    cfg = approach_cfg or {}
+    if not bool(cfg.get("enabled", False)):
+        return move_to_absolute(
+            port=port,
+            x_target=x_target,
+            y_target=y_target,
+            profile_vel=profile_vel,
+            profile_acc=profile_acc,
+            profile_dec=profile_dec,
+            x_slave=x_slave,
+            y_slave=y_slave,
+            baudrate=baudrate,
+            settle_s=settle_s,
+        )
+
+    x_direction = int(cfg.get("x_direction", cfg.get("direction", 1)))
+    y_direction = int(cfg.get("y_direction", cfg.get("direction", 1)))
+    if x_direction not in (-1, 1) or y_direction not in (-1, 1):
+        raise ValueError("approach x_direction/y_direction 必须为 +1 或 -1")
+
+    default_margin = int(cfg.get("margin_pulse", 0))
+    x_margin = int(cfg.get("x_margin_pulse", default_margin))
+    y_margin = int(cfg.get("y_margin_pulse", default_margin))
+    if x_margin < 0 or y_margin < 0:
+        raise ValueError("approach margin_pulse 不能为负数")
+
+    pre_x = int(x_target) - x_direction * x_margin
+    pre_y = int(y_target) - y_direction * y_margin
+
+    pre_move = move_to_absolute(
+        port=port,
+        x_target=pre_x,
+        y_target=pre_y,
+        profile_vel=profile_vel,
+        profile_acc=profile_acc,
+        profile_dec=profile_dec,
+        x_slave=x_slave,
+        y_slave=y_slave,
+        baudrate=baudrate,
+        settle_s=float(cfg.get("pre_settle_s", settle_s)),
+    )
+    final_move = move_to_absolute(
+        port=port,
+        x_target=x_target,
+        y_target=y_target,
+        profile_vel=profile_vel,
+        profile_acc=profile_acc,
+        profile_dec=profile_dec,
+        x_slave=x_slave,
+        y_slave=y_slave,
+        baudrate=baudrate,
+        settle_s=settle_s,
+    )
+
+    return {
+        **final_move,
+        "approach": {
+            "enabled": True,
+            "x_direction": x_direction,
+            "y_direction": y_direction,
+            "x_margin_pulse": x_margin,
+            "y_margin_pulse": y_margin,
+            "pre_target": {"x": pre_x, "y": pre_y},
+            "pre_move": pre_move,
+            "final_move": final_move,
+        },
+    }

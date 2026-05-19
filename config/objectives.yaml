@@ -9,7 +9,7 @@ objectives:
       enabled: true
       mode: motor_manager
       objective_target_pos: 166347
-      focus_target_pos: -2019367
+      focus_target_pos: -1923201 #对应细准焦螺旋，粗准焦螺旋不应移动
 
       # 物镜/调焦电机运动参数
       objective_profile_vel: 100000
@@ -30,7 +30,7 @@ objectives:
       enabled: true
       mode: motor_manager
       objective_target_pos: -165903
-      focus_target_pos: -2053794
+      focus_target_pos: -2074313
 
       objective_profile_vel: 100000
       objective_profile_acc: 100000

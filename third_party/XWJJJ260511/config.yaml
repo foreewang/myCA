@@ -29,10 +29,10 @@ camera:
   objective_settings:
     4x:
       exposure_auto: false
-      exposure_time_us: 1000
+      exposure_time_us: 5000
     10x:
       exposure_auto: false
-      exposure_time_us: 5000
+      exposure_time_us: 20000
 
 motor:
   # virtual: 虚拟电机，不碰真实硬件
@@ -51,11 +51,11 @@ motor:
   objective: 4x
   objective_ranges:
     4x:
-      min_pos: -2063120
-      max_pos: -1769500
+      min_pos: -2510646
+      max_pos: -1465906
     10x:
-      min_pos: -2095551
-      max_pos: -2028750
+      min_pos: -2202860
+      max_pos: -1901466
 
   # 兼容旧调用：如果没有配置 objective/objective_ranges，仍然会读取下面这组范围。
   min_pos: -2063120
