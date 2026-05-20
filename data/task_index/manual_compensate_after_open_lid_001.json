@@ -5,11 +5,11 @@
   "observe_scope": null,
   "plate_type": "24-well",
   "objective_name": "4x",
-  "stored_at_utc": "2026-05-19T09:33:55.816993+00:00",
-  "created_at": "2026-05-19T09:33:55.816993+00:00",
+  "stored_at_utc": "2026-05-20T06:40:32.291953+00:00",
+  "created_at": "2026-05-20T06:40:32.291953+00:00",
   "started_at": null,
-  "updated_at": "2026-05-19T09:33:55.816993+00:00",
-  "finished_at": "2026-05-19T09:33:55.816993+00:00",
+  "updated_at": "2026-05-20T06:40:32.291953+00:00",
+  "finished_at": "2026-05-20T06:40:32.291953+00:00",
   "persist_result": true,
   "result_json_path": "C:/colony_system/data/compensate_eval/result_after_open_lid.json",
   "base_save_dir": null,
@@ -17,82 +17,72 @@
   "message": "task completed",
   "current_stage": null,
   "current_well": null,
-  "wells": {
-    "B4": {
-      "image_dir": null,
-      "capture_result_json": null,
-      "detect_result_json": null,
-      "compensate_result_json": "C:/colony_system/data/compensate_eval/compensate_after_open_lid_result.json",
-      "status": "success",
-      "progress": 100,
-      "message": "completed"
-    }
-  },
+  "wells": {},
   "result": {
     "task_id": "manual_compensate_after_open_lid_001",
     "status": "success",
     "task_type": "compensate",
     "plate_type": "24-well",
-    "well_name": "B4",
+    "well_name": null,
     "objective_name": "4x",
     "selector": {
-      "clone_id": "C_MANUAL_001",
+      "clone_id": "C_MANUAL_002",
       "mode": "image_and_clone",
-      "image_index": 12
+      "image_index": 1
     },
-    "selected_image_index": 12,
+    "selected_image_index": 1,
     "selected_clone": {
-      "clone_id": "C_MANUAL_001",
-      "target_id": "C_MANUAL_001",
+      "clone_id": "C_MANUAL_002",
+      "target_id": "C_MANUAL_002",
       "rank": 1,
       "center_pixel": [
-        2385.0,
-        2739.0
+        2662.0,
+        2769.0
       ],
       "center_pixel_xy": {
-        "x": 2385.0,
-        "y": 2739.0
+        "x": 2662.0,
+        "y": 2769.0
       },
       "offset_from_image_center_px": [
-        -174.5,
-        179.5
+        102.5,
+        209.5
       ],
       "offset_from_image_center_px_xy": {
-        "x": -174.5,
-        "y": 179.5
+        "x": 102.5,
+        "y": 209.5
       },
       "offset_from_image_center_mm": [
-        -0.109744140625,
-        0.112888671875
+        0.064462890625,
+        0.131755859375
       ],
       "offset_from_image_center_mm_xy": {
-        "x": -0.109744140625,
-        "y": 0.112888671875
+        "x": 0.064462890625,
+        "y": 0.131755859375
       },
       "area_px": 1.0,
       "area": 1.0,
       "score": 1.0,
-      "source": "manual_annotation"
+      "source": "manual_annotation_from_stage"
     },
     "base_stage": {
-      "x": 6756181,
-      "y": -1520345
+      "x": 5845696,
+      "y": -1524694
     },
     "offset_from_image_center_px": [
-      -174,
-      179
+      102,
+      209
     ],
     "offset_mm": {
-      "view_right_mm": -0.109744140625,
-      "view_down_mm": 0.112888671875
+      "view_right_mm": 0.064462890625,
+      "view_down_mm": 0.131755859375
     },
     "scale": {
       "x": 0.79,
       "y": 1.0
     },
     "compensate_target": {
-      "x": 6769335,
-      "y": -1536532
+      "x": 5861049,
+      "y": -1515186
     },
     "approach": {
       "x_margin_pulse": 30000,
@@ -103,20 +93,20 @@
     },
     "move_result": {
       "target": {
-        "x": 6769335,
-        "y": -1536532
+        "x": 5861049,
+        "y": -1515186
       },
       "before": {
         "x": {
           "axis": "x",
           "slave": 1,
-          "current_pos": 6739265,
+          "current_pos": 5831125,
           "statusword": 545
         },
         "y": {
           "axis": "y",
           "slave": 2,
-          "current_pos": -1536529,
+          "current_pos": -1515155,
           "statusword": 545
         }
       },
@@ -128,19 +118,19 @@
         "x": {
           "axis": "x",
           "slave": 1,
-          "current_pos": 6769290,
+          "current_pos": 5860941,
           "statusword": 545
         },
         "y": {
           "axis": "y",
           "slave": 2,
-          "current_pos": -1536528,
+          "current_pos": -1515162,
           "statusword": 545
         }
       },
       "err_to_target": {
-        "x": -45,
-        "y": 4
+        "x": -108,
+        "y": 24
       },
       "approach": {
         "enabled": true,
@@ -149,25 +139,25 @@
         "x_margin_pulse": 30000,
         "y_margin_pulse": 0,
         "pre_target": {
-          "x": 6739335,
-          "y": -1536532
+          "x": 5831049,
+          "y": -1515186
         },
         "pre_move": {
           "target": {
-            "x": 6739335,
-            "y": -1536532
+            "x": 5831049,
+            "y": -1515186
           },
           "before": {
             "x": {
               "axis": "x",
               "slave": 1,
-              "current_pos": 104,
+              "current_pos": 5845696,
               "statusword": 545
             },
             "y": {
               "axis": "y",
               "slave": 2,
-              "current_pos": 7499991,
+              "current_pos": -1524694,
               "statusword": 545
             }
           },
@@ -179,37 +169,37 @@
             "x": {
               "axis": "x",
               "slave": 1,
-              "current_pos": 6739265,
+              "current_pos": 5831125,
               "statusword": 545
             },
             "y": {
               "axis": "y",
               "slave": 2,
-              "current_pos": -1536529,
+              "current_pos": -1515155,
               "statusword": 545
             }
           },
           "err_to_target": {
-            "x": -70,
-            "y": 3
+            "x": 76,
+            "y": 31
           }
         },
         "final_move": {
           "target": {
-            "x": 6769335,
-            "y": -1536532
+            "x": 5861049,
+            "y": -1515186
           },
           "before": {
             "x": {
               "axis": "x",
               "slave": 1,
-              "current_pos": 6739265,
+              "current_pos": 5831125,
               "statusword": 545
             },
             "y": {
               "axis": "y",
               "slave": 2,
-              "current_pos": -1536529,
+              "current_pos": -1515155,
               "statusword": 545
             }
           },
@@ -221,19 +211,19 @@
             "x": {
               "axis": "x",
               "slave": 1,
-              "current_pos": 6769290,
+              "current_pos": 5860941,
               "statusword": 545
             },
             "y": {
               "axis": "y",
               "slave": 2,
-              "current_pos": -1536528,
+              "current_pos": -1515162,
               "statusword": 545
             }
           },
           "err_to_target": {
-            "x": -45,
-            "y": 4
+            "x": -108,
+            "y": 24
           }
         }
       }
@@ -267,7 +257,6 @@
     "output": {
       "result_json": "C:/colony_system/data/compensate_eval/result_after_open_lid.json"
     },
-    "well_name": "B4",
     "task_type": "compensate",
     "objective": "4x",
     "motion": {
@@ -281,11 +270,13 @@
       "timeout_s": 120
     },
     "target": {
-      "well_name": "B4"
+      "well_list": [
+        "B4"
+      ]
     },
     "plate_type": "24-well",
     "task_id": "manual_compensate_after_open_lid_001",
-    "observe_scope": "single_well",
+    "observe_scope": "well_list",
     "compensate": {
       "approach": {
         "x_margin_pulse": 30000,
@@ -296,11 +287,11 @@
       },
       "output_json": "C:/colony_system/data/compensate_eval/compensate_after_open_lid_result.json",
       "selector": {
-        "clone_id": "C_MANUAL_001",
+        "clone_id": "C_MANUAL_002",
         "mode": "image_and_clone",
-        "image_index": 12
+        "image_index": 1
       },
-      "input_detect_json": "C:/colony_system/data/compensate_eval/manual_detect_result.json",
+      "input_detect_json": "C:/colony_system/data/compensate_eval/manual_detect_result_2.json",
       "closed_loop": {
         "enabled": false
       },
