@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict
 
@@ -23,6 +24,28 @@ if str(DEVICES_DIR) not in sys.path:
     sys.path.insert(0, str(DEVICES_DIR))
 
 from camera_controller import HikCameraController  # type: ignore
+
+
+_SHARED_CAMERA_LOCK = threading.RLock()
+_RECORDING_CAMERA: HikCameraController | None = None
+_RECORDING_CAMERA_SETTINGS: Dict[str, Any] = {}
+
+
+def _is_recording_camera(cam: HikCameraController | None) -> bool:
+    return cam is not None and cam is _RECORDING_CAMERA
+
+
+def _recording_is_active() -> bool:
+    return _RECORDING_CAMERA is not None and bool(getattr(_RECORDING_CAMERA, "recording", False))
+
+
+def _settings_match_recording(device_index: int, serial_number: str | None) -> bool:
+    if not _recording_is_active():
+        return False
+    active_serial = _RECORDING_CAMERA_SETTINGS.get("serial_number")
+    if active_serial or serial_number:
+        return str(active_serial or "") == str(serial_number or "")
+    return int(_RECORDING_CAMERA_SETTINGS.get("device_index", 0)) == int(device_index)
 
 
 def build_image_name(pattern: str, format_kwargs: Dict[str, Any]) -> str:
@@ -201,6 +224,12 @@ def open_camera(
     如果参数设置失败，应明确暴露问题，避免“程序看似正常运行，
     实际相机参数没有生效”的隐蔽错误。
     """
+    with _SHARED_CAMERA_LOCK:
+        if _recording_is_active():
+            if not _settings_match_recording(device_index, serial_number):
+                raise RuntimeError("录像正在使用另一台相机，不能同时打开不同相机执行拍照任务")
+            return _RECORDING_CAMERA  # type: ignore[return-value]
+
     cam = HikCameraController(
         mvs_python_dir=mvs_python_dir,
         device_index=device_index,
@@ -233,6 +262,9 @@ def close_camera(cam: HikCameraController | None) -> None:
     """
     if cam is None:
         return
+    with _SHARED_CAMERA_LOCK:
+        if _is_recording_camera(cam) and _recording_is_active():
+            return
     cam.close()
 
 
@@ -383,6 +415,101 @@ def record_video_with_opened_camera(
         "saved_path": str(raw_video.saved_path),
         "video": videoinfo_to_dict(raw_video),
     }
+
+
+def start_recording_camera(
+    *,
+    save_path: str,
+    mvs_python_dir: str | None = None,
+    device_index: int = 0,
+    serial_number: str | None = None,
+    exposure_us: int | float | None = None,
+    gain: float | None = None,
+    fps: float | None = None,
+    bitrate_kbps: int = 1000,
+    timeout_ms: int | None = None,
+) -> Dict[str, Any]:
+    global _RECORDING_CAMERA, _RECORDING_CAMERA_SETTINGS
+
+    with _SHARED_CAMERA_LOCK:
+        if _recording_is_active():
+            raise RuntimeError(f"录像已在进行中: {_RECORDING_CAMERA_SETTINGS.get('save_path')}")
+
+        cam = HikCameraController(
+            mvs_python_dir=mvs_python_dir,
+            device_index=device_index,
+            serial_number=serial_number,
+        )
+        try:
+            cam.open()
+            if exposure_us is not None:
+                cam.set_exposure_us(float(exposure_us))
+            if gain is not None:
+                cam.set_gain(float(gain))
+            cam.start_background_recording(
+                save_path=save_path,
+                fps=fps,
+                bitrate_kbps=bitrate_kbps,
+                timeout_ms=timeout_ms,
+            )
+        except Exception:
+            cam.close()
+            raise
+
+        _RECORDING_CAMERA = cam
+        _RECORDING_CAMERA_SETTINGS = {
+            "save_path": str(cam.recording_status().get("saved_path") or save_path),
+            "mvs_python_dir": mvs_python_dir,
+            "device_index": int(device_index),
+            "serial_number": serial_number,
+            "exposure_us": exposure_us,
+            "gain": gain,
+            "fps": fps,
+            "bitrate_kbps": int(bitrate_kbps),
+            "timeout_ms": timeout_ms,
+        }
+        return recording_camera_status()
+
+
+def stop_recording_camera() -> Dict[str, Any]:
+    global _RECORDING_CAMERA, _RECORDING_CAMERA_SETTINGS
+
+    with _SHARED_CAMERA_LOCK:
+        cam = _RECORDING_CAMERA
+        if cam is None or not getattr(cam, "recording", False):
+            raise RuntimeError("当前没有正在进行的录像")
+        try:
+            info = cam.stop_background_recording()
+            return {
+                "status": "stopped",
+                "video": videoinfo_to_dict(info),
+                "settings": dict(_RECORDING_CAMERA_SETTINGS),
+            }
+        finally:
+            cam.close()
+            _RECORDING_CAMERA = None
+            _RECORDING_CAMERA_SETTINGS = {}
+
+
+def recording_camera_status() -> Dict[str, Any]:
+    with _SHARED_CAMERA_LOCK:
+        cam = _RECORDING_CAMERA
+        if cam is None:
+            return {
+                "recording": False,
+                "background": False,
+                "settings": {},
+            }
+        status = cam.recording_status()
+        status["settings"] = dict(_RECORDING_CAMERA_SETTINGS)
+        return status
+
+
+def get_recording_camera() -> HikCameraController | None:
+    with _SHARED_CAMERA_LOCK:
+        if _recording_is_active():
+            return _RECORDING_CAMERA
+        return None
 
 
 def record_video(

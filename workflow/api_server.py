@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from workflow.run_task import execute_task_request
+from workflow.run_task import execute_task_request, load_structured_file
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
@@ -32,6 +32,19 @@ class ExecuteTaskRequest(BaseModel):
     plates_path: str | None = Field(default=None, description="可选，覆盖默认 plates.yaml")
     dump_json: str | None = Field(default=None, description="可选，覆盖结果落盘路径")
     persist_result: bool = Field(default=True, description="是否仍然把结果写到本地文件")
+
+
+class CameraRecordStartRequest(BaseModel):
+    save_path: str = Field(default="data/camera_records/recording.avi")
+    camera_path: str | None = None
+    device_index: int | None = None
+    serial_number: str | None = None
+    mvs_python_dir: str | None = None
+    exposure_us: float | None = None
+    gain: float | None = None
+    fps: float | None = Field(default=10.0)
+    bitrate_kbps: int = Field(default=1000)
+    timeout_ms: int | None = None
 
 
 def _task_index_dir() -> Path:
@@ -55,6 +68,22 @@ def _task_record_path(task_id: str) -> Path:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[str, Any]:
+    camera_path = req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(PROJECT_ROOT / "config" / "camera.yaml")
+    cfg = load_structured_file(camera_path)
+    camera_cfg = cfg.get("camera", cfg) if isinstance(cfg, dict) else {}
+    if not isinstance(camera_cfg, dict):
+        camera_cfg = {}
+    return {
+        "mvs_python_dir": req.mvs_python_dir if req.mvs_python_dir is not None else camera_cfg.get("mvs_sdk_path") or camera_cfg.get("mvs_python_dir"),
+        "device_index": int(req.device_index if req.device_index is not None else camera_cfg.get("device_index", 0)),
+        "serial_number": req.serial_number if req.serial_number is not None else camera_cfg.get("serial_number"),
+        "exposure_us": req.exposure_us if req.exposure_us is not None else camera_cfg.get("exposure_us"),
+        "gain": req.gain if req.gain is not None else camera_cfg.get("gain"),
+        "camera_path": camera_path,
+    }
 
 
 def _safe_str_path(value: Any) -> str | None:
@@ -425,6 +454,46 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/camera/record/status")
+def get_camera_record_status() -> Dict[str, Any]:
+    from workflow.camera_executor import recording_camera_status
+
+    return recording_camera_status()
+
+
+@app.post("/api/camera/record/start")
+def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
+    from workflow.camera_executor import start_recording_camera
+
+    settings = _load_camera_settings_for_recording(req)
+    try:
+        result = start_recording_camera(
+            save_path=req.save_path,
+            mvs_python_dir=settings.get("mvs_python_dir"),
+            device_index=int(settings.get("device_index", 0)),
+            serial_number=settings.get("serial_number"),
+            exposure_us=settings.get("exposure_us"),
+            gain=settings.get("gain"),
+            fps=req.fps,
+            bitrate_kbps=int(req.bitrate_kbps),
+            timeout_ms=req.timeout_ms,
+        )
+        result["camera_path"] = settings.get("camera_path")
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/camera/record/stop")
+def stop_camera_record() -> Dict[str, Any]:
+    from workflow.camera_executor import stop_recording_camera
+
+    try:
+        return stop_recording_camera()
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/api/tasks/execute", status_code=202)

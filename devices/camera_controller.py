@@ -20,6 +20,7 @@ import ctypes
 import logging
 import importlib
 import argparse
+import threading
 # import cv2  # 如后续需要 OpenCV 保存/处理，可再启用
 from PIL import Image
 import numpy as np
@@ -143,6 +144,11 @@ class HikCameraController:
         self.opened = False
         self.grabbing = False
         self.recording = False
+        self._sdk_lock = threading.RLock()
+        self._record_stop_event = threading.Event()
+        self._record_thread: Optional[threading.Thread] = None
+        self._snapshot_condition = threading.Condition()
+        self._snapshot_requests: list[Dict[str, Any]] = []
         self._record_path: Optional[str] = None
         self._record_started_at: Optional[float] = None
         self._record_width = 0
@@ -151,6 +157,7 @@ class HikCameraController:
         self._record_frame_rate = 0.0
         self._record_bitrate_kbps = 0
         self._record_frame_count = 0
+        self._record_error: Optional[str] = None
 
     def _load_sdk(self) -> None:
         """
@@ -555,6 +562,91 @@ class HikCameraController:
     def get_gain(self) -> float:
         return self._get_float_value("Gain")
 
+    @property
+    def is_background_recording(self) -> bool:
+        return self.recording and self._record_thread is not None and self._record_thread.is_alive()
+
+    def _grab_one_frame(self, timeout_ms: int):
+        if self.trigger_source == "software":
+            self._set_command("TriggerSoftware")
+
+        MV_FRAME_OUT_INFO_EX = self._sdk["MV_FRAME_OUT_INFO_EX"]
+        frame_info = MV_FRAME_OUT_INFO_EX()
+        ctypes.memset(ctypes.byref(frame_info), 0, ctypes.sizeof(frame_info))
+
+        data_buf = (ctypes.c_ubyte * int(self.payload_size))()
+        ret = self._call_variants(
+            self.cam.MV_CC_GetOneFrameTimeout,
+            [
+                (data_buf, int(self.payload_size), frame_info, timeout_ms),
+                (ctypes.byref(data_buf), int(self.payload_size), frame_info, timeout_ms),
+                (data_buf, int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
+                (ctypes.byref(data_buf), int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
+            ],
+            "MV_CC_GetOneFrameTimeout",
+        )
+        self._check(ret, "MV_CC_GetOneFrameTimeout")
+        return data_buf, frame_info
+
+    def capture_snapshot_during_recording(
+        self,
+        save_path: str,
+        timeout_ms: Optional[int] = None,
+    ) -> FrameInfo:
+        timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
+        request: Dict[str, Any] = {
+            "save_path": str(Path(save_path)),
+            "done": False,
+            "frame": None,
+            "error": None,
+        }
+        Path(request["save_path"]).parent.mkdir(parents=True, exist_ok=True)
+
+        deadline = time.monotonic() + max(timeout_ms / 1000.0, 0.1)
+        with self._snapshot_condition:
+            self._snapshot_requests.append(request)
+            self._snapshot_condition.notify_all()
+            while not request["done"]:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    try:
+                        self._snapshot_requests.remove(request)
+                    except ValueError:
+                        pass
+                    raise CameraSDKError(f"录像中拍照等待超时: {request['save_path']}")
+                self._snapshot_condition.wait(timeout=remaining)
+
+        if request["error"] is not None:
+            raise CameraSDKError(str(request["error"]))
+        return request["frame"]
+
+    def _fulfill_snapshot_requests(self, data_buf, frame_info) -> None:
+        with self._snapshot_condition:
+            requests = list(self._snapshot_requests)
+            self._snapshot_requests.clear()
+
+        for request in requests:
+            try:
+                save_path = str(request["save_path"])
+                self._save_frame(save_path, data_buf, frame_info)
+                request["frame"] = FrameInfo(
+                    width=int(getattr(frame_info, "nWidth", 0)),
+                    height=int(getattr(frame_info, "nHeight", 0)),
+                    frame_num=int(getattr(frame_info, "nFrameNum", 0)),
+                    pixel_type=int(getattr(frame_info, "enPixelType", 0)),
+                    frame_len=int(getattr(frame_info, "nFrameLen", 0)),
+                    saved_path=save_path,
+                    timestamp=time.time(),
+                )
+            except Exception as exc:
+                request["error"] = exc
+            finally:
+                request["done"] = True
+
+        if requests:
+            with self._snapshot_condition:
+                self._snapshot_condition.notify_all()
+
     def capture_once(self, save_path: str, timeout_ms: Optional[int] = None) -> FrameInfo:
         """
         软件触发采一张图并保存。
@@ -568,6 +660,9 @@ class HikCameraController:
         6. 调用 _save_frame 保存到磁盘
         7. 返回本帧信息
         """
+        if self.is_background_recording:
+            return self.capture_snapshot_during_recording(save_path, timeout_ms=timeout_ms)
+
         if not self.opened:
             raise CameraSDKError("相机尚未打开，请先调用 open()")
         if not self.payload_size:
@@ -734,6 +829,7 @@ class HikCameraController:
 
         frame_len = int(getattr(frame_info, "nFrameLen", 0))
         self._input_record_frame(data_buf, frame_len)
+        self._fulfill_snapshot_requests(data_buf, frame_info)
 
         return FrameInfo(
             width=int(getattr(frame_info, "nWidth", 0)),
@@ -814,6 +910,75 @@ class HikCameraController:
                     pass
             raise
 
+    def _recording_worker(self, timeout_ms: Optional[int]) -> None:
+        frame_interval = 1.0 / max(float(self._record_frame_rate), 0.001)
+        next_frame_at = time.monotonic()
+        try:
+            while not self._record_stop_event.is_set():
+                now = time.monotonic()
+                if now < next_frame_at:
+                    self._record_stop_event.wait(min(next_frame_at - now, 0.01))
+                    continue
+                with self._sdk_lock:
+                    self.record_one_frame(timeout_ms=timeout_ms)
+                next_frame_at += frame_interval
+        except Exception as exc:
+            self._record_error = str(exc)
+            logger.exception("background recording failed")
+            with self._snapshot_condition:
+                for request in self._snapshot_requests:
+                    request["error"] = exc
+                    request["done"] = True
+                self._snapshot_requests.clear()
+                self._snapshot_condition.notify_all()
+
+    def start_background_recording(
+        self,
+        save_path: str,
+        *,
+        fps: Optional[float] = None,
+        bitrate_kbps: int = 1000,
+        timeout_ms: Optional[int] = None,
+    ) -> None:
+        self._record_error = None
+        self._record_stop_event.clear()
+        self.start_recording(save_path, fps=fps, bitrate_kbps=bitrate_kbps)
+        self._record_thread = threading.Thread(
+            target=self._recording_worker,
+            args=(timeout_ms,),
+            name="hik-camera-recording",
+            daemon=True,
+        )
+        self._record_thread.start()
+
+    def stop_background_recording(self, join_timeout_s: float = 5.0) -> VideoRecordInfo:
+        self._record_stop_event.set()
+        thread = self._record_thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=max(float(join_timeout_s), 0.1))
+        self._record_thread = None
+        with self._snapshot_condition:
+            for request in self._snapshot_requests:
+                request["error"] = "录像已停止，拍照请求未完成"
+                request["done"] = True
+            self._snapshot_requests.clear()
+            self._snapshot_condition.notify_all()
+        return self.stop_recording()
+
+    def recording_status(self) -> Dict[str, Any]:
+        now = time.time()
+        started_at = self._record_started_at
+        return {
+            "recording": bool(self.recording),
+            "background": bool(self.is_background_recording),
+            "saved_path": self._record_path,
+            "frame_rate": self._record_frame_rate,
+            "bitrate_kbps": self._record_bitrate_kbps,
+            "frame_count": self._record_frame_count,
+            "duration_s": float(now - started_at) if started_at else 0.0,
+            "error": self._record_error,
+        }
+
     def close(self) -> None:
         """
         关闭相机并释放资源。
@@ -830,7 +995,10 @@ class HikCameraController:
             if self.cam is not None:
                 if self.recording:
                     try:
-                        self.stop_recording()
+                        if self.is_background_recording:
+                            self.stop_background_recording()
+                        else:
+                            self.stop_recording()
                     except Exception:
                         pass
                 try:

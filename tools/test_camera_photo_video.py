@@ -61,14 +61,34 @@ def main() -> None:
     try:
         cam.open()
 
-        if not args.skip_photo:
+        if not args.skip_video and not args.skip_photo:
+            cam.start_background_recording(
+                args.video_path,
+                fps=args.fps,
+                bitrate_kbps=args.bitrate_kbps,
+                timeout_ms=args.timeout_ms,
+            )
+            time.sleep(min(max(args.duration_s * 0.25, 0.2), 1.0))
+            photo_frame = cam.capture_once(args.photo_path, timeout_ms=args.timeout_ms)
+            result["photo"] = {
+                "frame": photo_frame.__dict__,
+                "file": _file_info(args.photo_path),
+            }
+            time.sleep(max(args.duration_s - (time.time() - result["started_at"]), 0.0))
+            video_info = cam.stop_background_recording()
+            result["video"] = {
+                "record": video_info.__dict__,
+                "file": _file_info(video_info.saved_path),
+            }
+
+        elif not args.skip_photo:
             photo_frame = cam.capture_once(args.photo_path, timeout_ms=args.timeout_ms)
             result["photo"] = {
                 "frame": photo_frame.__dict__,
                 "file": _file_info(args.photo_path),
             }
 
-        if not args.skip_video:
+        elif not args.skip_video:
             video_info = cam.record_video(
                 args.video_path,
                 duration_s=args.duration_s,

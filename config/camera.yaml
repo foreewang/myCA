@@ -15,7 +15,7 @@ camera:
         height: 2560
 
   # 默认值：如果某个物镜没有单独配置，就用这里
-  exposure_us: 30000
+  exposure_us: 5000
   gain: 0.0
 
   # 新增：不同物镜对应不同相机参数，需要同步到third_party/camera_manager/config/camera.yaml
