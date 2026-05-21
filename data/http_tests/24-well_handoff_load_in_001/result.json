@@ -17,9 +17,9 @@
     "baudrate": 115200,
     "x_slave": 1,
     "y_slave": 2,
-    "profile_vel": 200000,
-    "profile_acc": 50000,
-    "profile_dec": 50000,
+    "profile_vel": 500000,
+    "profile_acc": 100000,
+    "profile_dec": 100000,
     "timeout_s": 120.0,
     "settle_s": 0.5
   },

@@ -1,9 +1,9 @@
 {
-  "task_id": "pipeline_b2_detect_http_001_B2",
+  "task_id": "pipeline_realcolon_detect_http_001_c4",
   "status": "success",
   "task_type": "pipeline",
   "plate_type": "24-well",
-  "well_name": "B2",
+  "well_name": "c4",
   "objective_name": "4x",
   "camera_settings": {
     "exposure_us": 5000,
@@ -13,14 +13,14 @@
     "mvs_python_dir": null
   },
   "reference": {
-    "meaning": "B2孔左侧观测起始点",
+    "meaning": "c4孔左侧观测起始点",
     "a1_start": {
       "x": 8865800,
       "y": 6185500
     },
     "well_start": {
-      "x": 6328800,
-      "y": 3648500
+      "x": 3791800,
+      "y": -1425500
     },
     "well_diameter_mm": 13.7,
     "well_gap_mm": 3.5,
@@ -76,24 +76,24 @@
       "col_index": 0,
       "view_down_mm": 0.0,
       "view_right_mm": 0.0,
-      "stage_x_target": 6328800,
-      "stage_y_target": 3648500,
+      "stage_x_target": 3791800,
+      "stage_y_target": -1425500,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 3648500
+          "x": 3791800,
+          "y": -1425500
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 91,
+            "current_pos": 2936879,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 7500025,
+            "current_pos": -437385,
             "statusword": 545
           }
         },
@@ -105,28 +105,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328769,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3648524,
+            "current_pos": -1425474,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -31,
-          "y": 24
+          "x": -15,
+          "y": 26
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_001_row00_col00.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_001_row00_col00.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_001_row00_col00.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_001_row00_col00.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 1,
+          "frame_num": 53,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -138,24 +138,24 @@
       "col_index": 1,
       "view_down_mm": 0.0,
       "view_right_mm": 2.898,
-      "stage_x_target": 6328800,
-      "stage_y_target": 3221045,
+      "stage_x_target": 3791800,
+      "stage_y_target": -1852955,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 3221045
+          "x": 3791800,
+          "y": -1852955
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328769,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3648524,
+            "current_pos": -1425474,
             "statusword": 545
           }
         },
@@ -167,28 +167,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328768,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3221129,
+            "current_pos": -1852966,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -32,
-          "y": 84
+          "x": -15,
+          "y": -11
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_002_row00_col01.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_002_row00_col01.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_002_row00_col01.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_002_row00_col01.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 2,
+          "frame_num": 54,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -200,24 +200,24 @@
       "col_index": 2,
       "view_down_mm": 0.0,
       "view_right_mm": 5.796,
-      "stage_x_target": 6328800,
-      "stage_y_target": 2793590,
+      "stage_x_target": 3791800,
+      "stage_y_target": -2280410,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 2793590
+          "x": 3791800,
+          "y": -2280410
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328768,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3221130,
+            "current_pos": -1852966,
             "statusword": 545
           }
         },
@@ -229,28 +229,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2793624,
+            "current_pos": -2280419,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -33,
-          "y": 34
+          "x": -15,
+          "y": -9
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_003_row00_col02.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_003_row00_col02.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_003_row00_col02.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 3,
+          "frame_num": 55,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -262,24 +262,24 @@
       "col_index": 3,
       "view_down_mm": 0.0,
       "view_right_mm": 8.694,
-      "stage_x_target": 6328800,
-      "stage_y_target": 2366135,
+      "stage_x_target": 3791800,
+      "stage_y_target": -2707865,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 2366135
+          "x": 3791800,
+          "y": -2707865
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2793624,
+            "current_pos": -2280419,
             "statusword": 545
           }
         },
@@ -291,28 +291,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791784,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2366147,
+            "current_pos": -2707885,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -33,
-          "y": 12
+          "x": -16,
+          "y": -20
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_004_row00_col03.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_004_row00_col03.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_004_row00_col03.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_004_row00_col03.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 4,
+          "frame_num": 56,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -324,24 +324,24 @@
       "col_index": 4,
       "view_down_mm": 0.0,
       "view_right_mm": 11.592,
-      "stage_x_target": 6328800,
-      "stage_y_target": 1938680,
+      "stage_x_target": 3791800,
+      "stage_y_target": -3135320,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 1938680
+          "x": 3791800,
+          "y": -3135320
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791784,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2366147,
+            "current_pos": -2707885,
             "statusword": 545
           }
         },
@@ -353,28 +353,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1938717,
+            "current_pos": -3135293,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -33,
-          "y": 37
+          "x": -15,
+          "y": 27
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_005_row00_col04.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_005_row00_col04.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_005_row00_col04.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_005_row00_col04.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 5,
+          "frame_num": 57,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -386,24 +386,24 @@
       "col_index": 5,
       "view_down_mm": 0.0,
       "view_right_mm": 13.7,
-      "stage_x_target": 6328800,
-      "stage_y_target": 1627750,
+      "stage_x_target": 3791800,
+      "stage_y_target": -3446250,
       "motion_result": {
         "target": {
-          "x": 6328800,
-          "y": 1627750
+          "x": 3791800,
+          "y": -3446250
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1938717,
+            "current_pos": -3135293,
             "statusword": 545
           }
         },
@@ -415,28 +415,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1627802,
+            "current_pos": -3446117,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -33,
-          "y": 52
+          "x": -15,
+          "y": 133
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_006_row00_col05.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_006_row00_col05.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_006_row00_col05.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 6,
+          "frame_num": 58,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -448,24 +448,24 @@
       "col_index": 0,
       "view_down_mm": -2.898,
       "view_right_mm": 13.056778,
-      "stage_x_target": 6756255,
-      "stage_y_target": 1722625,
+      "stage_x_target": 4219255,
+      "stage_y_target": -3351375,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 1722625
+          "x": 4219255,
+          "y": -3351375
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6328767,
+            "current_pos": 3791785,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1627802,
+            "current_pos": -3446117,
             "statusword": 545
           }
         },
@@ -477,28 +477,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756211,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1722578,
+            "current_pos": -3351447,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -44,
-          "y": -47
+          "x": -38,
+          "y": -72
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_007_row01_col00.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_007_row01_col00.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_007_row01_col00.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_007_row01_col00.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 7,
+          "frame_num": 59,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -510,24 +510,24 @@
       "col_index": 1,
       "view_down_mm": -2.898,
       "view_right_mm": 12.235222,
-      "stage_x_target": 6756255,
-      "stage_y_target": 1843805,
+      "stage_x_target": 4219255,
+      "stage_y_target": -3230195,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 1843805
+          "x": 4219255,
+          "y": -3230195
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756211,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1722578,
+            "current_pos": -3351447,
             "statusword": 545
           }
         },
@@ -539,28 +539,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1843749,
+            "current_pos": -3230297,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -45,
-          "y": -56
+          "x": -38,
+          "y": -102
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_008_row01_col01.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_008_row01_col01.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_008_row01_col01.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_008_row01_col01.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 8,
+          "frame_num": 60,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -572,24 +572,24 @@
       "col_index": 2,
       "view_down_mm": -2.898,
       "view_right_mm": 9.337222,
-      "stage_x_target": 6756255,
-      "stage_y_target": 2271260,
+      "stage_x_target": 4219255,
+      "stage_y_target": -2802740,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 2271260
+          "x": 4219255,
+          "y": -2802740
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1843749,
+            "current_pos": -3230297,
             "statusword": 545
           }
         },
@@ -601,28 +601,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2271241,
+            "current_pos": -2802785,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -45,
-          "y": -19
+          "x": -38,
+          "y": -45
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_009_row01_col02.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_009_row01_col02.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_009_row01_col02.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_009_row01_col02.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 9,
+          "frame_num": 61,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -634,24 +634,24 @@
       "col_index": 3,
       "view_down_mm": -2.898,
       "view_right_mm": 6.439222,
-      "stage_x_target": 6756255,
-      "stage_y_target": 2698715,
+      "stage_x_target": 4219255,
+      "stage_y_target": -2375285,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 2698715
+          "x": 4219255,
+          "y": -2375285
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219217,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2271241,
+            "current_pos": -2802785,
             "statusword": 545
           }
         },
@@ -663,28 +663,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219219,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2698637,
+            "current_pos": -2375399,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -45,
-          "y": -78
+          "x": -36,
+          "y": -114
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_010_row01_col03.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_010_row01_col03.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_010_row01_col03.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_010_row01_col03.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 10,
+          "frame_num": 62,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -696,24 +696,24 @@
       "col_index": 4,
       "view_down_mm": -2.898,
       "view_right_mm": 3.541222,
-      "stage_x_target": 6756255,
-      "stage_y_target": 3126170,
+      "stage_x_target": 4219255,
+      "stage_y_target": -1947830,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 3126170
+          "x": 4219255,
+          "y": -1947830
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219219,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2698637,
+            "current_pos": -2375399,
             "statusword": 545
           }
         },
@@ -725,28 +725,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219220,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3126130,
+            "current_pos": -1947857,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -45,
-          "y": -40
+          "x": -35,
+          "y": -27
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col04.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_011_row01_col04.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_011_row01_col04.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_011_row01_col04.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 11,
+          "frame_num": 63,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -758,57 +758,57 @@
       "col_index": 5,
       "view_down_mm": -2.898,
       "view_right_mm": 0.643222,
-      "stage_x_target": 6756255,
-      "stage_y_target": 3553625,
+      "stage_x_target": 4219255,
+      "stage_y_target": -1520375,
       "motion_result": {
         "target": {
-          "x": 6756255,
-          "y": 3553625
+          "x": 4219255,
+          "y": -1520375
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219220,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3126130,
+            "current_pos": -1947857,
             "statusword": 545
           }
         },
         "move_result": {
           "x_diff": 0,
-          "y_diff": 0
+          "y_diff": 1
         },
         "after": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219219,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3553590,
+            "current_pos": -1520510,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -45,
-          "y": -35
+          "x": -36,
+          "y": -135
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_012_row01_col05.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_012_row01_col05.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_012_row01_col05.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_012_row01_col05.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 12,
+          "frame_num": 64,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -820,24 +820,24 @@
       "col_index": 0,
       "view_down_mm": 2.898,
       "view_right_mm": 0.643222,
-      "stage_x_target": 5901345,
-      "stage_y_target": 3553625,
+      "stage_x_target": 3364345,
+      "stage_y_target": -1520375,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 3553625
+          "x": 3364345,
+          "y": -1520375
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 6756210,
+            "current_pos": 4219219,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3553590,
+            "current_pos": -1520510,
             "statusword": 545
           }
         },
@@ -849,28 +849,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364353,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3553591,
+            "current_pos": -1520547,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 68,
-          "y": -34
+          "x": 8,
+          "y": -172
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_013_row02_col00.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_013_row02_col00.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_013_row02_col00.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_013_row02_col00.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 13,
+          "frame_num": 65,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -882,24 +882,24 @@
       "col_index": 1,
       "view_down_mm": 2.898,
       "view_right_mm": 3.541222,
-      "stage_x_target": 5901345,
-      "stage_y_target": 3126170,
+      "stage_x_target": 3364345,
+      "stage_y_target": -1947830,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 3126170
+          "x": 3364345,
+          "y": -1947830
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364353,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3553591,
+            "current_pos": -1520548,
             "statusword": 545
           }
         },
@@ -911,28 +911,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901414,
+            "current_pos": 3364354,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3126192,
+            "current_pos": -1947821,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 69,
-          "y": 22
+          "x": 9,
+          "y": 9
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_014_row02_col01.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_014_row02_col01.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_014_row02_col01.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_014_row02_col01.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 14,
+          "frame_num": 66,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -944,24 +944,24 @@
       "col_index": 2,
       "view_down_mm": 2.898,
       "view_right_mm": 6.439222,
-      "stage_x_target": 5901345,
-      "stage_y_target": 2698715,
+      "stage_x_target": 3364345,
+      "stage_y_target": -2375285,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 2698715
+          "x": 3364345,
+          "y": -2375285
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901414,
+            "current_pos": 3364354,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3126192,
+            "current_pos": -1947821,
             "statusword": 545
           }
         },
@@ -973,28 +973,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2698731,
+            "current_pos": -2375268,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 68,
-          "y": 16
+          "x": 11,
+          "y": 17
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col02.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_015_row02_col02.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_015_row02_col02.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_015_row02_col02.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 15,
+          "frame_num": 67,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1006,24 +1006,24 @@
       "col_index": 3,
       "view_down_mm": 2.898,
       "view_right_mm": 9.337222,
-      "stage_x_target": 5901345,
-      "stage_y_target": 2271260,
+      "stage_x_target": 3364345,
+      "stage_y_target": -2802740,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 2271260
+          "x": 3364345,
+          "y": -2802740
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2698731,
+            "current_pos": -2375268,
             "statusword": 545
           }
         },
@@ -1035,28 +1035,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901412,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2271319,
+            "current_pos": -2802659,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 67,
-          "y": 59
+          "x": 11,
+          "y": 81
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_016_row02_col03.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_016_row02_col03.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_016_row02_col03.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_016_row02_col03.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 16,
+          "frame_num": 68,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1068,24 +1068,24 @@
       "col_index": 4,
       "view_down_mm": 2.898,
       "view_right_mm": 12.235222,
-      "stage_x_target": 5901345,
-      "stage_y_target": 1843805,
+      "stage_x_target": 3364345,
+      "stage_y_target": -3230195,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 1843805
+          "x": 3364345,
+          "y": -3230195
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901412,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2271319,
+            "current_pos": -2802658,
             "statusword": 545
           }
         },
@@ -1097,28 +1097,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1843824,
+            "current_pos": -3230154,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 68,
-          "y": 19
+          "x": 11,
+          "y": 41
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_017_row02_col04.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_017_row02_col04.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_017_row02_col04.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_017_row02_col04.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 17,
+          "frame_num": 69,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1130,24 +1130,24 @@
       "col_index": 5,
       "view_down_mm": 2.898,
       "view_right_mm": 13.056778,
-      "stage_x_target": 5901345,
-      "stage_y_target": 1722625,
+      "stage_x_target": 3364345,
+      "stage_y_target": -3351375,
       "motion_result": {
         "target": {
-          "x": 5901345,
-          "y": 1722625
+          "x": 3364345,
+          "y": -3351375
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1843824,
+            "current_pos": -3230154,
             "statusword": 545
           }
         },
@@ -1159,28 +1159,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1722609,
+            "current_pos": -3351300,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 68,
-          "y": -16
+          "x": 11,
+          "y": 75
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_018_row02_col05.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_018_row02_col05.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_018_row02_col05.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_018_row02_col05.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 18,
+          "frame_num": 70,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1192,24 +1192,24 @@
       "col_index": 0,
       "view_down_mm": -5.796,
       "view_right_mm": 10.500874,
-      "stage_x_target": 7183710,
-      "stage_y_target": 2099621,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2974379,
       "motion_result": {
         "target": {
-          "x": 7183710,
-          "y": 2099621
+          "x": 4646710,
+          "y": -2974379
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5901413,
+            "current_pos": 3364356,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 1722609,
+            "current_pos": -3351300,
             "statusword": 545
           }
         },
@@ -1221,28 +1221,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2099580,
+            "current_pos": -2974423,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -30,
-          "y": -41
+          "x": -51,
+          "y": -44
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_019_row03_col00.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_019_row03_col00.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_019_row03_col00.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_019_row03_col00.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 19,
+          "frame_num": 71,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1254,24 +1254,24 @@
       "col_index": 1,
       "view_down_mm": -5.796,
       "view_right_mm": 8.995126,
-      "stage_x_target": 7183710,
-      "stage_y_target": 2321719,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2752281,
       "motion_result": {
         "target": {
-          "x": 7183710,
-          "y": 2321719
+          "x": 4646710,
+          "y": -2752281
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2099580,
+            "current_pos": -2974423,
             "statusword": 545
           }
         },
@@ -1283,28 +1283,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2321660,
+            "current_pos": -2752261,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -30,
-          "y": -59
+          "x": -51,
+          "y": 20
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_020_row03_col01.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_020_row03_col01.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_020_row03_col01.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_020_row03_col01.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 20,
+          "frame_num": 72,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1316,24 +1316,24 @@
       "col_index": 2,
       "view_down_mm": -5.796,
       "view_right_mm": 6.097126,
-      "stage_x_target": 7183710,
-      "stage_y_target": 2749174,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2324826,
       "motion_result": {
         "target": {
-          "x": 7183710,
-          "y": 2749174
+          "x": 4646710,
+          "y": -2324826
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2321660,
+            "current_pos": -2752261,
             "statusword": 545
           }
         },
@@ -1345,28 +1345,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2749004,
+            "current_pos": -2324840,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -30,
-          "y": -170
+          "x": -51,
+          "y": -14
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_021_row03_col02.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_021_row03_col02.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_021_row03_col02.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_021_row03_col02.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 21,
+          "frame_num": 73,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1378,24 +1378,24 @@
       "col_index": 3,
       "view_down_mm": -5.796,
       "view_right_mm": 3.199126,
-      "stage_x_target": 7183710,
-      "stage_y_target": 3176629,
+      "stage_x_target": 4646710,
+      "stage_y_target": -1897371,
       "motion_result": {
         "target": {
-          "x": 7183710,
-          "y": 3176629
+          "x": 4646710,
+          "y": -1897371
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183680,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2749003,
+            "current_pos": -2324840,
             "statusword": 545
           }
         },
@@ -1407,28 +1407,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183679,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3176619,
+            "current_pos": -1897374,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": -31,
-          "y": -10
+          "x": -51,
+          "y": -3
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_022_row03_col03.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_022_row03_col03.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_022_row03_col03.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_022_row03_col03.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 22,
+          "frame_num": 74,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1440,24 +1440,24 @@
       "col_index": 0,
       "view_down_mm": 5.796,
       "view_right_mm": 3.199126,
-      "stage_x_target": 5473890,
-      "stage_y_target": 3176629,
+      "stage_x_target": 2936890,
+      "stage_y_target": -1897371,
       "motion_result": {
         "target": {
-          "x": 5473890,
-          "y": 3176629
+          "x": 2936890,
+          "y": -1897371
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 7183679,
+            "current_pos": 4646659,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3176619,
+            "current_pos": -1897374,
             "statusword": 545
           }
         },
@@ -1469,28 +1469,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473978,
+            "current_pos": 2936877,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3176618,
+            "current_pos": -1897373,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 88,
-          "y": -11
+          "x": -13,
+          "y": -2
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_023_row04_col00.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_023_row04_col00.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_023_row04_col00.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_023_row04_col00.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 23,
+          "frame_num": 75,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1502,24 +1502,24 @@
       "col_index": 1,
       "view_down_mm": 5.796,
       "view_right_mm": 6.097126,
-      "stage_x_target": 5473890,
-      "stage_y_target": 2749174,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2324826,
       "motion_result": {
         "target": {
-          "x": 5473890,
-          "y": 2749174
+          "x": 2936890,
+          "y": -2324826
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473978,
+            "current_pos": 2936877,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 3176618,
+            "current_pos": -1897373,
             "statusword": 545
           }
         },
@@ -1531,28 +1531,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473975,
+            "current_pos": 2936878,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2749187,
+            "current_pos": -2324860,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 85,
-          "y": 13
+          "x": -12,
+          "y": -34
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_024_row04_col01.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_024_row04_col01.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_024_row04_col01.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_024_row04_col01.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 24,
+          "frame_num": 76,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1564,24 +1564,24 @@
       "col_index": 2,
       "view_down_mm": 5.796,
       "view_right_mm": 8.995126,
-      "stage_x_target": 5473890,
-      "stage_y_target": 2321719,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2752281,
       "motion_result": {
         "target": {
-          "x": 5473890,
-          "y": 2321719
+          "x": 2936890,
+          "y": -2752281
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473975,
+            "current_pos": 2936878,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2749187,
+            "current_pos": -2324860,
             "statusword": 545
           }
         },
@@ -1593,28 +1593,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473973,
+            "current_pos": 2936878,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2321763,
+            "current_pos": -2752300,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 83,
-          "y": 44
+          "x": -12,
+          "y": -19
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_025_row04_col02.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_025_row04_col02.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_025_row04_col02.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_025_row04_col02.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 25,
+          "frame_num": 77,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
@@ -1626,24 +1626,24 @@
       "col_index": 3,
       "view_down_mm": 5.796,
       "view_right_mm": 10.500874,
-      "stage_x_target": 5473890,
-      "stage_y_target": 2099621,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2974379,
       "motion_result": {
         "target": {
-          "x": 5473890,
-          "y": 2099621
+          "x": 2936890,
+          "y": -2974379
         },
         "before": {
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473973,
+            "current_pos": 2936878,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2321763,
+            "current_pos": -2752300,
             "statusword": 545
           }
         },
@@ -1655,28 +1655,28 @@
           "x": {
             "axis": "x",
             "slave": 1,
-            "current_pos": 5473973,
+            "current_pos": 2936878,
             "statusword": 545
           },
           "y": {
             "axis": "y",
             "slave": 2,
-            "current_pos": 2099678,
+            "current_pos": -2974384,
             "statusword": 545
           }
         },
         "err_to_target": {
-          "x": 83,
-          "y": 57
+          "x": -12,
+          "y": -5
         }
       },
       "capture_result": {
-        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_026_row04_col03.bmp",
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_026_row04_col03.bmp",
         "frame": {
-          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_b2_detect_http_001\\B2\\images\\B2_026_row04_col03.bmp",
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_026_row04_col03.bmp",
           "width": 5120,
           "height": 5120,
-          "frame_num": 26,
+          "frame_num": 78,
           "pixel_type": 17301515,
           "frame_len": 26214400
         }
