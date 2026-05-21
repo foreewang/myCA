@@ -3,7 +3,7 @@
   "status": "success",
   "task_type": "detect",
   "plate_type": "24-well",
-  "well_name": "B4",
+  "well_name": "B3",
   "objective_name": "4x",
   "fov_mm": {
     "width": 3.22,
@@ -19,11 +19,11 @@
   },
   "images": [
     {
-      "image_index": 13,
-      "index": 13,
-      "image_id": "B4_013_row02_col00",
-      "image_name": "B4_013_row02_col00.bmp",
-      "image_path": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b4_detect_http_001\\B4\\images\\B4_013_row02_col00.bmp",
+      "image_index": 14,
+      "index": 14,
+      "image_id": "B3_014_row02_col01",
+      "image_name": "B3_014_row02_col01.bmp",
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_B3_detect_http_001\\B3\\images\\B3_014_row02_col01.bmp",
       "width": 5120,
       "height": 5120,
       "fov_mm": {
@@ -39,41 +39,41 @@
         "y": 0.00062890625
       },
       "stage_x_target": 5901345,
-      "stage_y_target": -1520375,
-      "stage_x_actual": 5901450,
-      "stage_y_actual": -1520356,
+      "stage_y_target": 589170,
+      "stage_x_actual": 5901421,
+      "stage_y_actual": 589212,
       "row_index": 2,
-      "col_index": 0,
+      "col_index": 1,
       "view_down_mm": 2.898,
-      "view_right_mm": 0.643222,
+      "view_right_mm": 3.541222,
       "clones": [
         {
           "clone_id": "C_MANUAL_001",
           "target_id": "C_MANUAL_001",
           "rank": 1,
           "center_pixel": [
-            2513.0,
-            1800.0
+            4826.0,
+            4484.0
           ],
           "center_pixel_xy": {
-            "x": 2513.0,
-            "y": 1800.0
+            "x": 4826.0,
+            "y": 4484.0
           },
           "offset_from_image_center_px": [
-            -46.5,
-            -759.5
+            2266.5,
+            1924.5
           ],
           "offset_from_image_center_px_xy": {
-            "x": -46.5,
-            "y": -759.5
+            "x": 2266.5,
+            "y": 1924.5
           },
           "offset_from_image_center_mm": [
-            -0.029244140625,
-            -0.477654296875
+            1.425416015625,
+            1.210330078125
           ],
           "offset_from_image_center_mm_xy": {
-            "x": -0.029244140625,
-            "y": -0.477654296875
+            "x": 1.425416015625,
+            "y": 1.210330078125
           },
           "area_px": 1.0,
           "area": 1.0,
@@ -87,28 +87,28 @@
           "target_id": "C_MANUAL_001",
           "rank": 1,
           "center_pixel": [
-            2513.0,
-            1800.0
+            4826.0,
+            4484.0
           ],
           "center_pixel_xy": {
-            "x": 2513.0,
-            "y": 1800.0
+            "x": 4826.0,
+            "y": 4484.0
           },
           "offset_from_image_center_px": [
-            -46.5,
-            -759.5
+            2266.5,
+            1924.5
           ],
           "offset_from_image_center_px_xy": {
-            "x": -46.5,
-            "y": -759.5
+            "x": 2266.5,
+            "y": 1924.5
           },
           "offset_from_image_center_mm": [
-            -0.029244140625,
-            -0.477654296875
+            1.425416015625,
+            1.210330078125
           ],
           "offset_from_image_center_mm_xy": {
-            "x": -0.029244140625,
-            "y": -0.477654296875
+            "x": 1.425416015625,
+            "y": 1.210330078125
           },
           "area_px": 1.0,
           "area": 1.0,
@@ -122,28 +122,28 @@
           "target_id": "C_MANUAL_001",
           "rank": 1,
           "center_pixel": [
-            2513.0,
-            1800.0
+            4826.0,
+            4484.0
           ],
           "center_pixel_xy": {
-            "x": 2513.0,
-            "y": 1800.0
+            "x": 4826.0,
+            "y": 4484.0
           },
           "offset_from_image_center_px": [
-            -46.5,
-            -759.5
+            2266.5,
+            1924.5
           ],
           "offset_from_image_center_px_xy": {
-            "x": -46.5,
-            "y": -759.5
+            "x": 2266.5,
+            "y": 1924.5
           },
           "offset_from_image_center_mm": [
-            -0.029244140625,
-            -0.477654296875
+            1.425416015625,
+            1.210330078125
           ],
           "offset_from_image_center_mm_xy": {
-            "x": -0.029244140625,
-            "y": -0.477654296875
+            "x": 1.425416015625,
+            "y": 1.210330078125
           },
           "area_px": 1.0,
           "area": 1.0,
@@ -155,7 +155,7 @@
   ],
   "source": {
     "type": "manual_annotation_from_task_result",
-    "result_json": "C:\\colony_system\\data\\http_tests\\24-well_pipeline_b4_detect_http_001\\result.json",
-    "matched_capture_index": 13
+    "result_json": "C:\\colony_system\\data\\http_tests\\pipeline_B3_detect_http_001\\result.json",
+    "matched_capture_index": 14
   }
 }
