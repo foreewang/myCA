@@ -1,3 +1,5 @@
+#人工标注结果生成工具：根据已知的stage坐标和点击的图像坐标，生成detect_result.json文件，供后续分析使用。
+
 from __future__ import annotations
 
 import argparse

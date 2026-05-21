@@ -1,3 +1,4 @@
+#人工标注工具：在图像上点击目标中心，获取像素坐标，供后续分析使用。
 from __future__ import annotations
 
 import argparse

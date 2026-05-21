@@ -1,3 +1,5 @@
+#评估图像的清晰度，比较有无自动对焦的效果
+
 import cv2
 import numpy as np
 from pathlib import Path

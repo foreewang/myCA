@@ -1,3 +1,5 @@
+#人工标注结果生成工具：根据result.json中的capture_result.captures信息和点击的图像坐标，生成detect_result.json文件，供后续分析使用。适用于没有stage坐标但有capture_result的情况。
+
 from __future__ import annotations
 
 import argparse
