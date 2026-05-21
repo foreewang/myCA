@@ -140,6 +140,21 @@ def frameinfo_to_dict(frame: Any, saved_path: str) -> Dict[str, Any]:
     }
 
 
+def videoinfo_to_dict(video: Any) -> Dict[str, Any]:
+    return {
+        "saved_path": str(getattr(video, "saved_path", "")),
+        "width": _safe_int_attr(video, "width"),
+        "height": _safe_int_attr(video, "height"),
+        "pixel_type": _safe_int_attr(video, "pixel_type"),
+        "frame_rate": float(getattr(video, "frame_rate", 0.0)),
+        "bitrate_kbps": _safe_int_attr(video, "bitrate_kbps"),
+        "frame_count": _safe_int_attr(video, "frame_count"),
+        "duration_s": float(getattr(video, "duration_s", 0.0)),
+        "timestamp_started": float(getattr(video, "timestamp_started", 0.0)),
+        "timestamp_finished": float(getattr(video, "timestamp_finished", 0.0)),
+    }
+
+
 def open_camera(
     *,
     mvs_python_dir: str | None = None,
@@ -343,6 +358,62 @@ def capture_single_image(
             save_dir=save_dir,
             filename_pattern=filename_pattern,
             format_kwargs=format_kwargs,
+        )
+    finally:
+        close_camera(cam)
+
+
+def record_video_with_opened_camera(
+    *,
+    cam: HikCameraController,
+    save_path: str,
+    duration_s: float,
+    fps: float | None = None,
+    bitrate_kbps: int = 1000,
+    timeout_ms: int | None = None,
+) -> Dict[str, Any]:
+    raw_video = cam.record_video(
+        save_path=save_path,
+        duration_s=duration_s,
+        fps=fps,
+        bitrate_kbps=bitrate_kbps,
+        timeout_ms=timeout_ms,
+    )
+    return {
+        "saved_path": str(raw_video.saved_path),
+        "video": videoinfo_to_dict(raw_video),
+    }
+
+
+def record_video(
+    *,
+    save_path: str,
+    duration_s: float,
+    mvs_python_dir: str | None = None,
+    device_index: int = 0,
+    serial_number: str | None = None,
+    exposure_us: int | float | None = None,
+    gain: float | None = None,
+    fps: float | None = None,
+    bitrate_kbps: int = 1000,
+    timeout_ms: int | None = None,
+) -> Dict[str, Any]:
+    cam = None
+    try:
+        cam = open_camera(
+            mvs_python_dir=mvs_python_dir,
+            device_index=device_index,
+            serial_number=serial_number,
+            exposure_us=exposure_us,
+            gain=gain,
+        )
+        return record_video_with_opened_camera(
+            cam=cam,
+            save_path=save_path,
+            duration_s=duration_s,
+            fps=fps,
+            bitrate_kbps=bitrate_kbps,
+            timeout_ms=timeout_ms,
         )
     finally:
         close_camera(cam)

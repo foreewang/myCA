@@ -61,6 +61,20 @@ class FrameInfo:
     timestamp: float
 
 
+@dataclass
+class VideoRecordInfo:
+    saved_path: str
+    width: int
+    height: int
+    pixel_type: int
+    frame_rate: float
+    bitrate_kbps: int
+    frame_count: int
+    duration_s: float
+    timestamp_started: float
+    timestamp_finished: float
+
+
 class HikCameraController:
     """
     海康工业相机控制器。
@@ -128,6 +142,15 @@ class HikCameraController:
         # 状态标志
         self.opened = False
         self.grabbing = False
+        self.recording = False
+        self._record_path: Optional[str] = None
+        self._record_started_at: Optional[float] = None
+        self._record_width = 0
+        self._record_height = 0
+        self._record_pixel_type = 0
+        self._record_frame_rate = 0.0
+        self._record_bitrate_kbps = 0
+        self._record_frame_count = 0
 
     def _load_sdk(self) -> None:
         """
@@ -176,6 +199,8 @@ class HikCameraController:
             "MVCC_FLOATVALUE": getattr(hdr_mod, "MVCC_FLOATVALUE", None),
             "MV_FRAME_OUT_INFO_EX": getattr(hdr_mod, "MV_FRAME_OUT_INFO_EX"),
             "MV_SAVE_IMAGE_PARAM_EX": getattr(hdr_mod, "MV_SAVE_IMAGE_PARAM_EX"),
+            "MV_CC_RECORD_PARAM": getattr(hdr_mod, "MV_CC_RECORD_PARAM", None),
+            "MV_CC_INPUT_FRAME_INFO": getattr(hdr_mod, "MV_CC_INPUT_FRAME_INFO", None),
             **consts,
         }
         self._sdk = sdk
@@ -357,6 +382,25 @@ class HikCameraController:
             if hasattr(st, attr):
                 return float(getattr(st, attr))
         raise CameraSDKError(f"读取 {key} 成功，但未找到当前值字段")
+
+    def _get_enum_value(self, key: str) -> int:
+        MVCC_ENUMVALUE = self._sdk["MVCC_ENUMVALUE"]
+        if MVCC_ENUMVALUE is None or not hasattr(self.cam, "MV_CC_GetEnumValue"):
+            raise CameraSDKError("当前 MVS Python 包装不支持枚举参数读取")
+        st = MVCC_ENUMVALUE()
+        ctypes.memset(ctypes.byref(st), 0, ctypes.sizeof(st))
+        ret = self._call_variants(
+            self.cam.MV_CC_GetEnumValue,
+            [
+                (key, st),
+                (key, ctypes.byref(st)),
+                (key.encode("ascii"), st),
+                (key.encode("ascii"), ctypes.byref(st)),
+            ],
+            f"MV_CC_GetEnumValue({key})",
+        )
+        self._check(ret, f"MV_CC_GetEnumValue({key})")
+        return int(getattr(st, "nCurValue", 0))
 
     def _set_int(self, key: str, value: int) -> None:
         if not hasattr(self.cam, "MV_CC_SetIntValue"):
@@ -578,6 +622,198 @@ class HikCameraController:
         save_path = str(Path(save_path).with_suffix(".png"))
         return self.capture_once(save_path=save_path, timeout_ms=timeout_ms)
 
+    def _resolve_record_frame_rate(self, fps: Optional[float]) -> float:
+        if fps is not None and float(fps) > 0:
+            return float(fps)
+        for key in ("ResultingFrameRate", "AcquisitionFrameRate"):
+            try:
+                value = self._get_float_value(key)
+                if value > 0:
+                    return float(value)
+            except Exception:
+                continue
+        return 20.0
+
+    def start_recording(
+        self,
+        save_path: str,
+        *,
+        fps: Optional[float] = None,
+        bitrate_kbps: int = 1000,
+    ) -> None:
+        if not self.opened:
+            raise CameraSDKError("相机尚未打开，请先调用 open()")
+        if self.recording:
+            raise CameraSDKError(f"录像已在进行中: {self._record_path}")
+        if not hasattr(self.cam, "MV_CC_StartRecord"):
+            raise CameraSDKError("当前 MVS Python 包装不支持 MV_CC_StartRecord")
+
+        MV_CC_RECORD_PARAM = self._sdk.get("MV_CC_RECORD_PARAM")
+        if MV_CC_RECORD_PARAM is None:
+            raise CameraSDKError("当前 MVS Python 包装中不存在 MV_CC_RECORD_PARAM")
+
+        save_path = str(Path(save_path).with_suffix(".avi"))
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+
+        width = self._get_int_value("Width")
+        height = self._get_int_value("Height")
+        pixel_type = self._get_enum_value("PixelFormat")
+        frame_rate = self._resolve_record_frame_rate(fps)
+
+        record_param = MV_CC_RECORD_PARAM()
+        ctypes.memset(ctypes.byref(record_param), 0, ctypes.sizeof(record_param))
+        record_param.nWidth = int(width)
+        record_param.nHeight = int(height)
+        record_param.enPixelType = int(pixel_type)
+        record_param.fFrameRate = float(frame_rate)
+        record_param.nBitRate = int(bitrate_kbps)
+        record_param.enRecordFmtType = int(self._sdk.get("MV_FormatType_AVI", 1))
+        record_param.strFilePath = str(save_path).encode("utf-8")
+
+        ret = self.cam.MV_CC_StartRecord(record_param)
+        self._check(ret, "MV_CC_StartRecord")
+
+        self.recording = True
+        self._record_path = save_path
+        self._record_started_at = time.time()
+        self._record_width = int(width)
+        self._record_height = int(height)
+        self._record_pixel_type = int(pixel_type)
+        self._record_frame_rate = float(frame_rate)
+        self._record_bitrate_kbps = int(bitrate_kbps)
+        self._record_frame_count = 0
+        logger.info("recording started: path=%s fps=%s bitrate=%s", save_path, frame_rate, bitrate_kbps)
+
+    def _input_record_frame(self, data_buf, frame_len: int) -> None:
+        if not self.recording:
+            raise CameraSDKError("录像尚未开始")
+        if not hasattr(self.cam, "MV_CC_InputOneFrame"):
+            raise CameraSDKError("当前 MVS Python 包装不支持 MV_CC_InputOneFrame")
+
+        MV_CC_INPUT_FRAME_INFO = self._sdk.get("MV_CC_INPUT_FRAME_INFO")
+        if MV_CC_INPUT_FRAME_INFO is None:
+            raise CameraSDKError("当前 MVS Python 包装中不存在 MV_CC_INPUT_FRAME_INFO")
+
+        input_frame = MV_CC_INPUT_FRAME_INFO()
+        ctypes.memset(ctypes.byref(input_frame), 0, ctypes.sizeof(input_frame))
+        input_frame.pData = ctypes.cast(data_buf, ctypes.POINTER(ctypes.c_ubyte))
+        input_frame.nDataLen = int(frame_len)
+
+        ret = self.cam.MV_CC_InputOneFrame(input_frame)
+        self._check(ret, "MV_CC_InputOneFrame")
+        self._record_frame_count += 1
+
+    def record_one_frame(self, timeout_ms: Optional[int] = None) -> FrameInfo:
+        if not self.opened:
+            raise CameraSDKError("相机尚未打开，请先调用 open()")
+        if not self.payload_size:
+            raise CameraSDKError("payload_size 未初始化")
+        if not self.grabbing:
+            self.start_grabbing()
+
+        timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
+        if self.trigger_source == "software":
+            self._set_command("TriggerSoftware")
+
+        MV_FRAME_OUT_INFO_EX = self._sdk["MV_FRAME_OUT_INFO_EX"]
+        frame_info = MV_FRAME_OUT_INFO_EX()
+        ctypes.memset(ctypes.byref(frame_info), 0, ctypes.sizeof(frame_info))
+
+        data_buf = (ctypes.c_ubyte * int(self.payload_size))()
+        ret = self._call_variants(
+            self.cam.MV_CC_GetOneFrameTimeout,
+            [
+                (data_buf, int(self.payload_size), frame_info, timeout_ms),
+                (ctypes.byref(data_buf), int(self.payload_size), frame_info, timeout_ms),
+                (data_buf, int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
+                (ctypes.byref(data_buf), int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
+            ],
+            "MV_CC_GetOneFrameTimeout",
+        )
+        self._check(ret, "MV_CC_GetOneFrameTimeout")
+
+        frame_len = int(getattr(frame_info, "nFrameLen", 0))
+        self._input_record_frame(data_buf, frame_len)
+
+        return FrameInfo(
+            width=int(getattr(frame_info, "nWidth", 0)),
+            height=int(getattr(frame_info, "nHeight", 0)),
+            frame_num=int(getattr(frame_info, "nFrameNum", 0)),
+            pixel_type=int(getattr(frame_info, "enPixelType", 0)),
+            frame_len=frame_len,
+            saved_path=str(self._record_path or ""),
+            timestamp=time.time(),
+        )
+
+    def stop_recording(self) -> VideoRecordInfo:
+        if not self.recording:
+            raise CameraSDKError("录像尚未开始")
+        if not hasattr(self.cam, "MV_CC_StopRecord"):
+            raise CameraSDKError("当前 MVS Python 包装不支持 MV_CC_StopRecord")
+
+        ret = self.cam.MV_CC_StopRecord()
+        self._check(ret, "MV_CC_StopRecord")
+
+        finished_at = time.time()
+        started_at = float(self._record_started_at or finished_at)
+        info = VideoRecordInfo(
+            saved_path=str(self._record_path or ""),
+            width=int(self._record_width),
+            height=int(self._record_height),
+            pixel_type=int(self._record_pixel_type),
+            frame_rate=float(self._record_frame_rate),
+            bitrate_kbps=int(self._record_bitrate_kbps),
+            frame_count=int(self._record_frame_count),
+            duration_s=float(finished_at - started_at),
+            timestamp_started=started_at,
+            timestamp_finished=finished_at,
+        )
+
+        self.recording = False
+        self._record_path = None
+        self._record_started_at = None
+        self._record_width = 0
+        self._record_height = 0
+        self._record_pixel_type = 0
+        self._record_frame_rate = 0.0
+        self._record_bitrate_kbps = 0
+        self._record_frame_count = 0
+        logger.info("recording stopped: %s", info)
+        return info
+
+    def record_video(
+        self,
+        save_path: str,
+        *,
+        duration_s: float,
+        fps: Optional[float] = None,
+        bitrate_kbps: int = 1000,
+        timeout_ms: Optional[int] = None,
+    ) -> VideoRecordInfo:
+        if float(duration_s) <= 0:
+            raise ValueError("duration_s 必须大于 0")
+
+        self.start_recording(save_path, fps=fps, bitrate_kbps=bitrate_kbps)
+        frame_interval = 1.0 / max(float(self._record_frame_rate), 0.001)
+        deadline = time.monotonic() + float(duration_s)
+        next_frame_at = time.monotonic()
+        try:
+            while time.monotonic() < deadline:
+                now = time.monotonic()
+                if now < next_frame_at:
+                    time.sleep(min(next_frame_at - now, 0.01))
+                    continue
+                self.record_one_frame(timeout_ms=timeout_ms)
+                next_frame_at += frame_interval
+            return self.stop_recording()
+        except Exception:
+            if self.recording:
+                try:
+                    self.stop_recording()
+                except Exception:
+                    pass
+            raise
+
     def close(self) -> None:
         """
         关闭相机并释放资源。
@@ -592,6 +828,11 @@ class HikCameraController:
             return
         try:
             if self.cam is not None:
+                if self.recording:
+                    try:
+                        self.stop_recording()
+                    except Exception:
+                        pass
                 try:
                     self.stop_grabbing()
                 except Exception:
@@ -611,6 +852,7 @@ class HikCameraController:
                 pass
             self.opened = False
             self.grabbing = False
+            self.recording = False
             self.cam = None
             self.payload_size = None
 
@@ -766,6 +1008,10 @@ if __name__ == "__main__":
     parser.add_argument("--exposure-us", type=float, default=None)
     parser.add_argument("--gain", type=float, default=None)
     parser.add_argument("--save-path", default="test_capture.bmp")
+    parser.add_argument("--record-path", default=None)
+    parser.add_argument("--record-duration-s", type=float, default=0.0)
+    parser.add_argument("--record-fps", type=float, default=None)
+    parser.add_argument("--record-bitrate-kbps", type=int, default=1000)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(message)s")
@@ -789,7 +1035,16 @@ if __name__ == "__main__":
                 print(f"current gain={cam.get_gain():.3f}")
         except Exception as e:
             print(f"read gain failed: {e}")
-        frame = cam.capture_once(args.save_path)
-        print(frame)
+        if args.record_path:
+            video = cam.record_video(
+                args.record_path,
+                duration_s=args.record_duration_s or 5.0,
+                fps=args.record_fps,
+                bitrate_kbps=args.record_bitrate_kbps,
+            )
+            print(video)
+        else:
+            frame = cam.capture_once(args.save_path)
+            print(frame)
     finally:
         cam.close()
