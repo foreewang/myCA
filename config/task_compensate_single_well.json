@@ -21,6 +21,23 @@
         "image_index": 1,
         "clone_id": "C01"
       },
+      "approach": {
+        "enabled": true,
+        "x_direction": 1,
+        "y_direction": 1,
+        "x_margin_pulse": 50000,
+        "y_margin_pulse": 50000
+      },
+      "closed_loop": {
+        "enabled": true,
+        "max_iterations": 2,
+        "tolerance_px": 10,
+        "save_dir": "C:/colony_system/data/pipeline_a1_detect_001/closed_loop",
+        "filename_pattern": "closed_loop_{task_id}_{well}_iter{iteration:02d}.bmp",
+        "selector": {
+          "mode": "nearest_image_center"
+        }
+      },
       "output_json": "C:/colony_system/data/pipeline_a1_detect_001/compensate_result.json"
     },
     "output": {

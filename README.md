@@ -1,247 +1,328 @@
 # Colony System 使用说明
 
-本项目是一套**菌落培养板自动化工作流**：在 Modbus 位移台与海康工业相机联机的前提下，按任务配置完成**孔内扫描规划 → 逐点运动与采图 → 菌落识别 → 可选补偿定位**；并支持**物镜自动切换**与**机械臂/上下料对接位（handoff）**等扩展动作。
+本项目是一套培养板菌落自动化工作流系统，用于在位移台、海康工业相机、物镜切换轴、调焦轴等硬件协同下，按任务配置完成：
 
-**对外集成方式**
+- 培养孔扫描路径规划
+- XY 位移台绝对运动
+- 相机采图与结果落盘
+- 菌落/克隆识别
+- 可选自动对焦
+- 可选目标补偿定位
+- 机械臂上下料对接位移动
 
-- **HTTP**：`workflow/api_server.py`（FastAPI，同步执行任务并落盘任务索引）
-- **命令行**：`workflow/run_task.py`（与 HTTP 共用 `execute_task_request`）
-- **生产化 API 草案**：根目录 `openapi_v1.yaml`（OpenAPI 3.0，供调度端导入 Swagger/Postman；与当前 HTTP 路径可并存演进）
+系统既支持命令行本地执行，也支持 FastAPI HTTP 服务提交任务。核心入口是 `workflow/run_task.py` 中的 `execute_task_request`。
 
-**适用读者**
-
-- 开发者（算法、流程、设备、接口）
-- 软件调度端（MES/LIMS/上位机）
-- 无编程基础使用者（改 JSON 配置 + 一条命令执行）
-
----
-
-## 1. 功能总览
-
-### 1.1 主流程（`capture` / `pipeline`）
-
-1. 读取任务中的 `task` 与全局配置（相机、物镜、板型）
-2. 若任务声明了 `objective`，在执行前通过 `workflow/objective_executor.py` **对齐物镜与调焦轴**（Modbus），并写入 `data/objective_state.json` 等状态
-3. `workflow/scan_planner.py` 按孔径、视野、重叠率生成孔内扫描点；可做**限位预检查**
-4. `workflow/scan_executor.py`：**位移台移动**（`workflow/stage_executor.py`）→ **相机采图**（`workflow/camera_executor.py` → `devices/camera_controller.py`）
-5. 若 `stages` 含 `detect`，`workflow/detect_executor.py` 逐图调用 `workflow/detect_api.py` 所配置的入口（如 `vision.vision.detect_pipeline`）
-6. 若含 `compensate`，`workflow/compensate_executor.py` 按策略选克隆并计算补偿位移后再次运动
-7. 各阶段 JSON 与总结果落盘；HTTP 侧在 `data/task_index/` 写入任务记录便于查询
-
-### 1.2 独立流程
-
-| `task_type` | 说明 |
-|-------------|------|
-| `capture` | 仅采集（默认 `stages`: `capture`） |
-| `pipeline` | 可配置 `stages`: `capture` / `detect` / `compensate` 组合 |
-| `compensate` | 仅补偿（依赖已有 detect 结果 JSON 或内嵌结果） |
-| `handoff` | **上下料/对接位**：按 `config/handoff.yaml` 将 XY 台移动到指定动作点位（如 `load_in` / `unload_out`），由 `workflow/handoff_executor.py` 执行 |
-
-### 1.3 观察范围（`observe_scope`，仅扫描类任务）
-
-- `single_well`：单孔
-- `well_list`：`target.well_list` 多孔
-- `full_plate`：整板所有孔（由 `workflow/plate_geometry.py` 展开）
-
-### 1.4 辅助脚本（非核心服务）
-
-- `vision/run_detect.py`：单图检测调试
-- `generate_circle_scan_plan.py`：扫描规划相关工具
-- `compare_scan_manifests.py`：扫描清单对比
-- `workflow/scan_visualizer.py`：扫描结果可视化
-
----
-
-## 2. 目录结构（关键部分）
+## 项目结构
 
 ```text
 colony_system/
-├─ workflow/
-│  ├─ run_task.py              # CLI 入口；execute_task_request
-│  ├─ api_server.py            # FastAPI：/health、/api/tasks/*
-│  ├─ config_loader.py         # 合并 task + camera + objectives + plates → ctx
-│  ├─ objective_executor.py    # 物镜/调焦轴 Modbus 切换
-│  ├─ handoff_executor.py      # handoff 动作与点位
-│  ├─ stage_executor.py        # XY 绝对位移（Modbus + MotorManager）
-│  ├─ scan_planner.py          # 单孔扫描路径规划、限位预检
-│  ├─ scan_executor.py         # 按规划逐点运动 + 拍照
-│  ├─ camera_executor.py       # 海康相机封装（开/关/连续采图）
-│  ├─ detect_api.py            # 动态加载 detect.entrypoint
-│  ├─ detect_executor.py       # 扫描结果批量检测
-│  ├─ compensate_executor.py   # 选点 + 补偿运动
-│  ├─ plate_geometry.py        # 孔位几何与板参数
-│  └─ scan_visualizer.py
+├─ workflow/                  # 任务编排与执行层
+│  ├─ run_task.py              # CLI 入口与 execute_task_request
+│  ├─ api_server.py            # FastAPI 服务，提交/查询/下载任务结果
+│  ├─ config_loader.py         # 加载 task、camera、objectives、plates
+│  ├─ objective_executor.py    # 物镜轴与调焦轴切换
+│  ├─ autofocus_executor.py    # 调用第三方自动对焦模块
+│  ├─ scan_planner.py          # 孔内扫描点规划与限位预检查
+│  ├─ scan_executor.py         # 位移台移动、自动对焦、相机拍照
+│  ├─ detect_executor.py       # 对采集图像批量检测并生成标注图
+│  ├─ compensate_executor.py   # 按检测目标计算补偿位移
+│  ├─ handoff_executor.py      # 上下料对接位移动
+│  └─ plate_geometry.py        # 板型、孔位、脉冲/mm 等几何计算
 ├─ devices/
-│  ├─ camera_controller.py     # HikCameraController（MVS SDK）
-│  └─ motion/
-│     ├─ modbus.py             # Modbus RTU 客户端
-│     └─ MotorManager.py       # 单轴 CiA402 风格封装
-├─ vision/                     # 菌落检测管线（OpenCV 等）
+│  ├─ camera_controller.py     # 海康 MVS 相机控制封装
+│  └─ motion/                  # Modbus RTU 与 MotorManager
+├─ vision/
+│  ├─ run_detect.py            # 单图检测调试入口
+│  └─ vision/                  # 图像检测流水线
 ├─ config/
-│  ├─ camera.yaml
-│  ├─ objectives.yaml          # 物镜 FOV、硬件切换参数、state 文件路径等
-│  ├─ plates.yaml              # 板型、A1 基准、限位、runtime_guard
-│  ├─ handoff.yaml             # handoff 点位与 load_in / unload_out 动作
-│  └─ task_*.json              # 任务模板示例
-├─ data/
-│  ├─ task_index/              # API 任务记录（每 task_id 一个 json）
-│  └─ ...                      # 运行输出、http_tests 等
-├─ openapi_v1.yaml             # 生产化 API v1 OpenAPI 草案
+│  ├─ camera.yaml              # 相机配置
+│  ├─ objectives.yaml          # 4x/10x 物镜视野、切换点、状态文件
+│  ├─ plates.yaml              # 6/12/24/48 孔板几何参数和安全限位
+│  ├─ autofocus.yaml           # 自动对焦策略与第三方模块配置
+│  ├─ handoff.yaml             # 机械臂上下料对接点
+│  └─ task_*.json              # 任务模板
+├─ data/                       # 任务索引、运行输出、测试输出
+│  ├─ ...
+│  └─ objective_state.json     # 当前物镜状态，需跟真实物镜状态匹配，否则影响切镜动作
+├─ third_party/XWJJJ260511/    # 自动对焦模块
+├─ tools/                      # 辅助工具脚本
 └─ README.md
 ```
 
----
+## 主要能力
 
-## 3. 给开发者
+### 任务类型
 
-### 3.1 依赖（代码中已使用）
+| task_type | 说明 |
+| --- | --- |
+| `capture` | 只执行采集，默认阶段为 `capture` |
+| `pipeline` | 执行阶段流水线，可包含 `capture`、`detect`、`compensate` |
+| `compensate` | 独立补偿任务，读取已有检测结果后移动到目标中心 |
+| `handoff` | 移动到机械臂上下料对接点，支持 `load_in` 和 `unload_out` |
 
-Python 包：`fastapi`、`pydantic`、`Pillow`、`PyYAML`、`opencv-python`、`numpy`；跑 API 常用 `uvicorn`。
+### 观察范围
 
-硬件/SDK：海康 MVS Python 路径与相机驱动；串口与 Modbus 从站（位移台、物镜/调焦轴等）。
+| observe_scope | 说明 |
+| --- | --- |
+| `single_well` | 单个孔位 |
+| `well_list` | 任务中指定的多个孔位 |
+| `full_plate` | 根据板型配置展开整板孔位 |
 
-> 仓库未附带统一 `requirements.txt` 时，请按上表在虚拟环境中安装，并补齐厂商 SDK。
+### 物镜与自动对焦
 
-### 3.2 入口
+- 非 `handoff` 任务会根据 `task.objective` 读取 `config/objectives.yaml`，必要时通过 Modbus 控制物镜轴和调焦轴。
+- 物镜状态默认写入 `data/objective_state.json`，用于判断是否需要切换。
+- `workflow/run_task.py` 会读取 `config/autofocus.yaml` 生成 `autofocus_decision`。
+- 真正的自动对焦发生在 `scan_executor.py`：第一个扫描点完成 XY 移动并稳定后、第一张拍照前执行。
+- 默认触发策略是物镜发生切换后自动对焦；也可在 `config/autofocus.yaml` 中设置强制每次采集前对焦或指定物镜对焦。
 
-| 方式 | 命令 / 模块 |
-|------|-------------|
-| 本地跑任务 | `python workflow/run_task.py --task <path>` |
-| 可选参数 | `--camera`、`--objectives`、`--plates`、`--handoff`、`--dump-json` |
-| HTTP 服务 | `uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000` |
-| 单图视觉调试 | `python vision/run_detect.py <image.bmp> [--out_dir ...]` |
+## 环境准备
 
-### 3.3 设计要点
+建议使用 Python 虚拟环境。当前仓库没有统一的根目录 `requirements.txt`，代码中用到的主要 Python 包包括：
 
-- **任务驱动**：行为由 `task` JSON/YAML 描述，`execute_task_request` 统一调度。
-- **物镜**：非 `handoff` 任务在进主流程前会 `ensure_objective_for_task`；结果会 `attach_objective_result` 写回总结果。
-- **安全**：板型上可配置 `stage_limits`、`runtime_guard`；扫描前越界点会失败；执行中可检测疑似卡死与到位误差（见 `scan_executor.py`）。
-- **检测入口**：`detect.entrypoint` 格式为 `模块路径:函数名`，由 `detect_api` 解析并调用。
-
-### 3.4 与调度端对接
-
-- **当前已实现**：见下文「HTTP 接口」；任务索引目录默认 `data/task_index`，可通过环境变量 `TASK_INDEX_DIR` 覆盖。
-- **规划中的契约**：`openapi_v1.yaml`（异步 `jobs`、统一 envelope 等），实现时可与现有 `/api/tasks/*` 并行版本化（如 `/api/v1/...`）。
-
----
-
-## 4. 给软件调度端（HTTP）
-
-### 4.1 启动
-
-```bash
-uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000
+```text
+fastapi
+uvicorn
+pydantic
+pyyaml
+numpy
+opencv-python
+pillow
 ```
 
-环境变量（可选）：`TASK_INDEX_DIR`、`CAMERA_CONFIG_PATH`、`OBJECTIVES_CONFIG_PATH`、`PLATES_CONFIG_PATH`（后三项在 `ExecuteTaskRequest` 未传时作为默认配置路径）。
+硬件与 SDK 依赖：
 
-### 4.2 接口一览
+- 海康 MVS Python SDK，配置项见 `config/camera.yaml` 和 `config/autofocus.yaml`
+- Modbus RTU 串口设备，默认端口常见为 `COM3`
+- XY 位移台从站默认 `x_slave=1`、`y_slave=2`
+- 调焦轴默认从站 `3`
+- 物镜轴默认从站 `4`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/health` | 存活探测 |
-| POST | `/api/tasks/execute` | 提交 `task` 并**同步执行**至结束；成功/失败均可能写入 `data/task_index/{task_id}.json` |
-| GET | `/api/tasks/{task_id}/status` | 从索引读取状态摘要 |
-| GET | `/api/tasks/{task_id}/result` | 优先读 `result_json_path` 文件，否则返回记录内嵌结果 |
-| GET | `/api/tasks/{task_id}/wells/{well_name}/images` | 列目录下图片文件名 |
-| GET | `/api/tasks/{task_id}/wells/{well_name}/images/{filename}` | 下载单张图 |
+## 命令行使用
 
-请求体（`POST /api/tasks/execute`）字段：`task`（必填）、`camera_path`、`objectives_path`、`plates_path`、`dump_json`、`persist_result`。
-
-**说明**
-
-- `task_type: handoff` 时由 `execute_task_request` 走 `handoff` 分支，**默认**读取 `config/handoff.yaml`；CLI 可通过 `--handoff` 指定其它文件；当前 `api_server` 未暴露 `handoff_path` 字段，若需多环境请在代码中扩展或固定使用默认路径。
-- 长耗时任务会长时间占用 HTTP 连接；生产环境建议按 `openapi_v1.yaml` 演进为异步任务 + 轮询。
-
-### 4.3 集成建议
-
-- 用任务里的 `task_id` 与索引文件对应；执行后轮询 `status`，再拉 `result`。
-- 在业务系统留存 `result_json_path`、各孔 `capture_result_json` / `detect_result_json` 等路径以便审计。
-
----
-
-## 5. 给无编程基础使用者（命令行）
-
-### 5.1 准备
-
-1. 相机、位移台、串口连接正常  
-2. 确认 `motion.port`（如 `COM3`）与 `config/*.yaml` 已按现场标定  
-3. 选好 `config/task_*.json` 模板，按需改路径与孔位列表  
-
-### 5.2 执行示例
+在项目根目录执行：
 
 ```bash
 cd C:\colony_system
 python workflow/run_task.py --task config/task_pipeline_well_list_detect.json
 ```
 
-上下料示例：
+可选参数：
 
 ```bash
-python workflow/run_task.py --task config/task_handoff_load_in.json
-# 自定义 handoff 配置：
+python workflow/run_task.py ^
+  --task config/task_capture_single_well.json ^
+  --camera config/camera.yaml ^
+  --objectives config/objectives.yaml ^
+  --plates config/plates.yaml ^
+  --dump-json data/my_result.json
+```
+
+handoff 示例：
+
+```bash
+python workflow/run_task.py --task config/task_handoff_load_in.json --handoff config/handoff.yaml
 python workflow/run_task.py --task config/task_handoff_unload_out.json --handoff config/handoff.yaml
 ```
 
-结果：看任务里 `output.result_json`；图片在 `capture.save_dir` 下按 `filename_pattern` 生成。
+单图视觉检测调试：
 
-### 5.3 常用任务模板（`config/`）
+```bash
+python vision/run_detect.py path\to\image.bmp
+```
+
+## HTTP 服务
+
+启动服务：
+
+```bash
+uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000
+```
+
+当前 HTTP 执行接口是异步提交：`POST /api/tasks/execute` 返回 `202 Accepted` 后，后台线程执行任务；调用方通过状态接口轮询。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/health` | 健康检查 |
+| `POST` | `/api/tasks/execute` | 提交任务，返回 accepted |
+| `GET` | `/api/tasks/{task_id}/status` | 查询任务状态、进度和当前阶段 |
+| `GET` | `/api/tasks/{task_id}/result` | 查询任务结果，运行中时返回进度摘要 |
+| `GET` | `/api/tasks/{task_id}/wells/{well_name}/images` | 列出某孔位图片与结果文件 |
+| `GET` | `/api/tasks/{task_id}/wells/{well_name}/images/{filename}` | 下载某张图片 |
+
+请求体示例：
+
+```json
+{
+  "task": {
+    "task_id": "pipeline_well_list_detect_001",
+    "task_type": "pipeline",
+    "stages": ["capture", "detect"],
+    "plate_type": "12-well",
+    "objective": "4x",
+    "observe_scope": "well_list",
+    "target": {
+      "well_list": ["A1", "A2", "B1"]
+    },
+    "capture": {
+      "save_dir": "C:/colony_system/data/pipeline_well_list_detect_001",
+      "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
+    },
+    "motion": {
+      "port": "COM3",
+      "baudrate": 115200,
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 200000,
+      "profile_acc": 50000,
+      "profile_dec": 50000,
+      "timeout_s": 120.0
+    },
+    "scan": {
+      "overlap": 0.1,
+      "use_objective_fov": true,
+      "settle_s": 0.8
+    },
+    "detect": {
+      "entrypoint": "vision.vision.detect_pipeline:process_image"
+    },
+    "output": {
+      "result_json": "C:/colony_system/data/pipeline_well_list_detect_001/result.json"
+    }
+  },
+  "persist_result": true
+}
+```
+
+服务端会在 `data/task_index/{task_id}.json` 写入任务记录。可通过环境变量覆盖默认配置路径：
+
+```text
+TASK_INDEX_DIR
+CAMERA_CONFIG_PATH
+OBJECTIVES_CONFIG_PATH
+PLATES_CONFIG_PATH
+```
+
+## 任务配置要点
+
+任务文件顶层必须包含 `task` 字段。常见字段如下：
+
+| 字段 | 说明 |
+| --- | --- |
+| `task_id` | 任务唯一标识，HTTP 任务索引会使用它作为文件名 |
+| `task_type` | `capture`、`pipeline`、`compensate` 或 `handoff` |
+| `plate_type` | 板型名称，如 `12-well`、`48-well` |
+| `objective` | 物镜名称，如 `4x`、`10x` |
+| `observe_scope` | `single_well`、`well_list`、`full_plate` |
+| `target.well_name` | 单孔任务目标孔位 |
+| `target.well_list` | 多孔任务孔位列表 |
+| `stages` | 流水线阶段，如 `["capture", "detect"]` |
+| `capture.save_dir` | 图片和单孔结果保存目录 |
+| `capture.filename_pattern` | 图片命名模板 |
+| `motion` | 串口、从站、速度、加减速等运动参数 |
+| `scan.overlap` | 扫描重叠率，要求 `0 <= overlap < 1` |
+| `scan.use_objective_fov` | 是否使用当前物镜视野生成扫描步长 |
+| `detect.entrypoint` | 检测入口，格式为 `模块路径:函数名` |
+| `detect.save_overlay` | 是否保存检测标注图，默认开启 |
+| `compensate.selector` | 补偿目标选择策略 |
+| `output.result_json` | 总结果 JSON 输出路径 |
+| `handoff.action` | `load_in` 或 `unload_out` |
+
+## 输出结果
+
+采集任务会输出扫描结果 JSON，包含：
+
+- 扫描参考点、视野、重叠率、点位数量
+- 每个扫描点的目标坐标和实际运动结果
+- 相机参数与图片路径
+- 自动对焦决策和首次采图前自动对焦结果
+- 运动安全检查结果
+
+检测任务会输出：
+
+- 每张图片的克隆数量
+- 克隆中心、面积、边框、相对图像中心偏移
+- 原图中心和 mm/pixel 换算
+- 可选 overlay 标注图路径
+
+多孔任务会在基础保存目录下按孔位拆分，例如：
+
+```text
+data/some_task/
+├─ A1/
+│  ├─ images/
+│  ├─ scan_result.json
+│  └─ detect_result.json
+├─ A2/
+│  ├─ images/
+│  ├─ scan_result.json
+│  └─ detect_result.json
+└─ result.json
+```
+
+## 安全机制
+
+`config/plates.yaml` 中的板型配置包含两类安全控制：
+
+- `stage_limits`：扫描前检查所有计划点是否越过 X/Y 轴安全范围。
+- `runtime_guard`：执行中检测疑似卡死、实际移动过小、到位误差过大等问题。
+
+如果 `abort_on_motion_failure` 为 `true`，运行中发现运动异常会中止任务，并把已完成图片数量和错误信息写入失败结果。
+
+## 常用模板
 
 | 文件 | 用途 |
-|------|------|
-| `task_capture_single_well.json` | 单孔拍照 |
-| `task_capture_well_list.json` | 多孔拍照 |
-| `task_capture_full_plate.json` | 整板拍照 |
-| `task_pipeline_single_well_detect.json` | 单孔拍照 + 识别 |
-| `task_pipeline_well_list_detect.json` | 多孔拍照 + 识别 |
-| `task_compensate_single_well.json` | 单孔补偿 |
-| `task_handoff_load_in.json` / `task_handoff_unload_out.json` | 对接位 handoff |
+| --- | --- |
+| `config/task_capture_single_well.json` | 单孔采集 |
+| `config/task_capture_well_list.json` | 多孔采集 |
+| `config/task_capture_full_plate.json` | 整板采集 |
+| `config/task_pipeline_single_well_detect.json` | 单孔采集并检测 |
+| `config/task_pipeline_well_list_detect.json` | 多孔采集并检测 |
+| `config/task_compensate_single_well.json` | 单孔补偿 |
+| `config/task_align_from_detect.json` | 基于检测结果对齐 |
+| `config/task_handoff_load_in.json` | 移动到上料对接位 |
+| `config/task_handoff_unload_out.json` | 移动到下料对接位 |
 
-### 5.4 结果 JSON 里常看的字段
+## 常见问题
 
-- `status`：`success` / `failed`（扫描失败时 `scan_result` 可能带 `error`）
-- `observe_scope`、`wells`（多孔/整板）
-- `capture_result` / `detect_result` / `compensate_result`
-- 物镜切换摘要：结果中由 `objective_executor` 附加的字段（具体键名以运行输出为准）
+### 任务提交后没有立即完成
 
----
+HTTP 接口是异步执行。`POST /api/tasks/execute` 只表示任务已接收，需要继续访问 `/api/tasks/{task_id}/status` 或 `/api/tasks/{task_id}/result`。
 
-## 6. 任务配置速查
+### 扫描前提示越界
 
-顶层可为 `{"task": {...}}` 或直接兼容 `run_task` 读入的结构；`execute_task_request` 要求存在顶层键 **`task`**。
+检查 `config/plates.yaml` 中对应板型的 `a1_start`、孔径、孔间距、`pulses_per_mm`、方向符号和 `stage_limits`。扫描计划会在移动前一次性检查所有点。
 
-常用 `task` 字段：
+### 自动对焦没有执行
 
-- **通用**：`task_id`、`task_type`、`plate_type`、`objective`（扫描类会触发物镜对齐）
-- **扫描类**：`observe_scope`、`target.well_name` / `target.well_list`、`stages`
-- **采集**：`capture.save_dir`、`capture.filename_pattern`
-- **运动**：`motion.port`、`baudrate`、`x_slave`、`y_slave`、`profile_vel` / `profile_acc` / `profile_dec`
-- **扫描**：`scan.overlap`、`scan.use_objective_fov`、`scan.settle_s`
-- **识别**：`detect.entrypoint`、`detect.output_json` 等
-- **补偿**：`compensate.selector`、`compensate.input_detect_json` 等
-- **输出**：`output.result_json` 等
-- **handoff**：`handoff.action`（如 `load_in`，与 `config/handoff.yaml` 中 `actions` 一致）
+检查 `config/autofocus.yaml`：
 
----
+- `enabled` 是否为 `true`
+- `trigger.after_objective_switch` 是否开启
+- 本次任务物镜是否真的发生切换
+- 是否设置了 `always_before_capture` 或 `always_before_capture_objectives`
 
-## 7. 常见问题（FAQ）
+### 检测算法如何替换
 
-- **任务失败怎么办？**  
-  查看返回或落盘 JSON 中的 `error` / `status: failed` 说明；检查串口占用、相机是否被其它进程打开、`plates.yaml` 限位与 A1 坐标是否已标定。
+修改任务中的 `detect.entrypoint`。入口格式为：
 
-- **某板型不能扫？**  
-  `plates.yaml` 里对应板型的 `a1_start`、孔径、间距等若为 `null`，需先标定再跑。
+```text
+python.module.path:function_name
+```
 
-- **如何换检测算法？**  
-  设置 `detect.entrypoint` 为 `模块:函数`，函数签名需与 `detect_api` 的调用约定一致（单图路径入参等）。
+函数应接收图片路径并返回包含克隆信息的结构化结果。当前默认入口是：
 
-- **调度端如何对齐 OpenAPI 草案？**  
-  导入 `openapi_v1.yaml` 生成客户端或 Mock；实现服务端时再映射到 `execute_task_request` 与队列。
+```text
+vision.vision.detect_pipeline:process_image
+```
 
----
+### 串口或相机被占用
 
-## 8. 维护建议
+确认没有其他进程打开同一个 COM 口或 MVS 相机。自动对焦会自行打开相机，所以需要自动对焦时，系统会避免提前打开共享采集相机。
 
-- 版本化保存任务 JSON 与每次 `result.json`，便于复现。  
-- 补充 `requirements.txt`、一键启动脚本、板型/物镜/限位**标定操作文档**。  
-- 生产环境：异步任务、鉴权、设备互斥锁、结构化日志与指标。
+## 维护建议
+
+- 每次变更板型、物镜、相机曝光参数后，保留对应任务 JSON 与结果 JSON，方便复现。
+- 生产环境建议补充统一 `requirements.txt` 或安装脚本。
+- 标定文件建议纳入版本管理，但现场私有参数可用单独配置文件覆盖。
+- 长任务建议通过 HTTP 状态轮询接入调度端，不要假设提交接口会同步返回最终结果。

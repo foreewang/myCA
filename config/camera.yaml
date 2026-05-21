@@ -18,14 +18,14 @@ camera:
   exposure_us: 30000
   gain: 0.0
 
-  # 新增：不同物镜对应不同相机参数
+  # 新增：不同物镜对应不同相机参数，需要同步到third_party/camera_manager/config/camera.yaml
   objective_settings:
     4x:
-      exposure_us: 1000
+      exposure_us: 5000
       gain: 0.0
 
     10x:
-      exposure_us: 5000
+      exposure_us: 20000
       gain: 0.0
 
   trigger_mode: software

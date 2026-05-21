@@ -218,8 +218,9 @@ point_48_d = 93
 # 48 孔托盘 孔位间隙 (0.1mm)
 point_48_gap= 24
 
+# 实际 1mm 对应 131072
 # 0.1mm 对应 14750 rpm 
-rpm_mm = 14750
+rpm_mm = 147500
 
 # 镜片电机旋转参数
 x4 = 166347
@@ -302,16 +303,23 @@ if __name__ == "__main__":
         # y.pp_absolute_move(target_pos=point_48[1] - ((point_48_d *rpm_mm)+ (point_48_gap*rpm_mm))*1, profile_vel=500000, profile_acc=100000, profile_dec=100000)
     
         # 移动到48 孔托盘 10 点位
-        # x.pp_absolute_move(target_pos=point_48[0] - ((point_48_d *rpm_mm) + (point_48_gap*rpm_mm))*1, profile_vel=500000, profile_acc=100000, profile_dec=100000)
-        # y.pp_absolute_move(target_pos=point_48[1], profile_vel=500000, profile_acc=100000, profile_dec=100000)
+        # x.pp_absolute_move(0, profile_vel=1000000, profile_acc=1000000, profile_dec=1000000)
+        # y.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+       
+        # x.pp_absolute_move(4206434, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        # y.pp_absolute_move(109746, profile_vel=800000, profile_acc=800000, profile_dec=800000)
         
-
+        # x.pp_absolute_move(4206434+(2331-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        # y.pp_absolute_move(109746+(2110-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        
+        x.pp_absolute_move(0, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        y.pp_absolute_move(7500000, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # x 轴正向移动 3 毫米
-        # x.pp_relative_move( 30 * rpm_mm, 50000,50000,50000)
+        # y.pp_relative_move(-(3850-2560)*86, 500000,500000,500000)
         # x 轴逆向移动 3 毫米8563500,5755000
         # x.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
         # y轴正向移动 3毫米
-        # y.pp_relative_move( 30 * rpm_mm , 50000,50000,50000)
+        # x.pp_relative_move(-(3209-2560)*86 , 500000,500000,500000)
         # y轴逆向移动 3毫米
         # y.pp_relative_move( -30 * rpm_mm, 50000,50000,50000)
 
