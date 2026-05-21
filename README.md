@@ -74,7 +74,7 @@ colony_system/
 - 物镜状态默认写入 `data/objective_state.json`，用于判断是否需要切换。
 - `workflow/run_task.py` 会读取 `config/autofocus.yaml` 生成 `autofocus_decision`。
 - 真正的自动对焦发生在 `scan_executor.py`：第一个扫描点完成 XY 移动并稳定后、第一张拍照前执行。
-- 默认触发策略是物镜发生切换后自动对焦；也可在 `config/autofocus.yaml` 中设置强制每次采集前对焦或指定物镜对焦。
+- 默认触发策略是物镜发生切换后自动对焦；也可在 `config/autofocus.yaml` 中设置强制每次采集前对焦或指定物镜对焦。触发时机在移动位移台使培养板到达观察位之后。
 
 ## 环境准备
 
