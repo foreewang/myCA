@@ -5,11 +5,11 @@
   "observe_scope": null,
   "plate_type": "24-well",
   "objective_name": null,
-  "stored_at_utc": "2026-05-19T03:24:29.979037+00:00",
-  "created_at": "2026-05-19T03:24:29.979037+00:00",
+  "stored_at_utc": "2026-05-20T08:26:38.398038+00:00",
+  "created_at": "2026-05-20T08:26:38.398038+00:00",
   "started_at": null,
-  "updated_at": "2026-05-19T03:24:29.979037+00:00",
-  "finished_at": "2026-05-19T03:24:29.979037+00:00",
+  "updated_at": "2026-05-20T08:26:38.398038+00:00",
+  "finished_at": "2026-05-20T08:26:38.398038+00:00",
   "persist_result": true,
   "result_json_path": "C:/colony_system/data/http_tests/24-well_handoff_load_in_001/result.json",
   "base_save_dir": null,
@@ -37,9 +37,9 @@
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
-      "profile_vel": 500000,
-      "profile_acc": 100000,
-      "profile_dec": 100000,
+      "profile_vel": 200000,
+      "profile_acc": 50000,
+      "profile_dec": 50000,
       "timeout_s": 120.0,
       "settle_s": 0.5
     },
@@ -53,20 +53,24 @@
     }
   },
   "request_task": {
-    "output": {
-      "result_json": "C:/colony_system/data/http_tests/24-well_handoff_load_in_001/result.json"
-    },
-    "plate_type": "24-well",
     "task_id": "24-well_handoff_load_in_001",
+    "task_type": "handoff",
+    "plate_type": "24-well",
     "handoff": {
       "action": "load_in"
     },
-    "task_type": "handoff",
     "motion": {
       "port": "COM3",
-      "x_slave": 1,
       "baudrate": 115200,
-      "y_slave": 2
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 200000,
+      "profile_acc": 50000,
+      "profile_dec": 50000,
+      "timeout_s": 120.0
+    },
+    "output": {
+      "result_json": "C:/colony_system/data/http_tests/24-well_handoff_load_in_001/result.json"
     }
   }
 }
