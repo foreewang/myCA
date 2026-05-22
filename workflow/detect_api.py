@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Sequence
@@ -34,7 +35,7 @@ def _ensure_import_paths() -> None:
             sys.path.insert(0, p_str)
 
 
-def _resolve_callable(entrypoint: str | None = None) -> Callable[[str], Any]:
+def _resolve_callable(entrypoint: str | None = None) -> Callable[..., Any]:
     _ensure_import_paths()
 
     candidates: List[tuple[str, str]] = []
@@ -214,11 +215,36 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
     }
 
 
-def run_detect_on_image(image_path: str | Path, entrypoint: str | None = None) -> Dict[str, Any]:
+def _call_detect_entrypoint(fn: Callable[..., Any], image_path: str, detect_kwargs: Dict[str, Any]) -> Any:
+    if not detect_kwargs:
+        return fn(image_path)
+
+    try:
+        signature = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return fn(image_path, **detect_kwargs)
+
+    params = signature.parameters
+    accepts_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params.values())
+    if accepts_kwargs:
+        return fn(image_path, **detect_kwargs)
+
+    accepted_kwargs = {key: value for key, value in detect_kwargs.items() if key in params}
+    if accepted_kwargs:
+        return fn(image_path, **accepted_kwargs)
+
+    return fn(image_path)
+
+
+def run_detect_on_image(
+    image_path: str | Path,
+    entrypoint: str | None = None,
+    detect_kwargs: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     image_path = str(Path(image_path))
     fn = _resolve_callable(entrypoint)
     try:
-        raw_result = fn(image_path)
+        raw_result = _call_detect_entrypoint(fn, image_path, detect_kwargs or {})
     except TypeError as exc:
         raise DetectAPIError(
             f"视觉入口函数调用失败：{exc}。当前默认按 fn(image_path) 调用，"

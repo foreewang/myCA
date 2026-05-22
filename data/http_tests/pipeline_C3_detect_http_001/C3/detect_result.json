@@ -1,0 +1,1633 @@
+{
+  "task_id": "pipeline_C3_detect_http_001_C3",
+  "status": "success",
+  "task_type": "single_well_scan_and_detect",
+  "plate_type": "24-well",
+  "well_name": "C3",
+  "objective_name": "4x",
+  "reference": {
+    "meaning": "C3孔左侧观测起始点",
+    "a1_start": {
+      "x": 8722905,
+      "y": 6528979
+    },
+    "well_start": {
+      "x": 3648905,
+      "y": 1454979
+    },
+    "well_diameter_mm": 13.7,
+    "well_gap_mm": 3.5,
+    "pitch_mm": 17.2,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.22,
+      "height": 3.22
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.898,
+      "height": 2.898
+    },
+    "point_count": 26
+  },
+  "scan_result_json": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\scan_result.json",
+  "detect_overlay_dir": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays",
+  "image_count": 26,
+  "total_clone_count": 42,
+  "images": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_001_row00_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_001_row00_col00_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": 1454979,
+      "stage_x_actual": 3648920,
+      "stage_y_actual": 1454970,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4084,
+            2642
+          ],
+          "offset_from_image_center_px": [
+            1524,
+            82
+          ],
+          "bbox": [
+            3239,
+            1677,
+            1779,
+            1942
+          ],
+          "area_px": 2827802.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_001_row00_col00.bmp",
+          "stage_x_actual": 3648920,
+          "stage_y_actual": 1454970,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_002_row00_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_002_row00_col01_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": 1027524,
+      "stage_x_actual": 3648921,
+      "stage_y_actual": 1027491,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1991,
+            1837
+          ],
+          "offset_from_image_center_px": [
+            -569,
+            -723
+          ],
+          "bbox": [
+            1613,
+            1499,
+            751,
+            686
+          ],
+          "area_px": 357097.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_002_row00_col01.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": 1027491,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_003_row00_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_003_row00_col02_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": 600069,
+      "stage_x_actual": 3648920,
+      "stage_y_actual": 600055,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4442,
+            4333
+          ],
+          "offset_from_image_center_px": [
+            1882,
+            1773
+          ],
+          "bbox": [
+            4048,
+            3898,
+            810,
+            840
+          ],
+          "area_px": 444118.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_003_row00_col02.bmp",
+          "stage_x_actual": 3648920,
+          "stage_y_actual": 600055,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_004_row00_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_004_row00_col03_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": 172614,
+      "stage_x_actual": 3648921,
+      "stage_y_actual": 172707,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            839,
+            2722
+          ],
+          "offset_from_image_center_px": [
+            -1721,
+            162
+          ],
+          "bbox": [
+            9,
+            1886,
+            1686,
+            1681
+          ],
+          "area_px": 1973226.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_004_row00_col03.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": 172707,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2769,
+            2449
+          ],
+          "offset_from_image_center_px": [
+            209,
+            -111
+          ],
+          "bbox": [
+            2356,
+            1983,
+            874,
+            902
+          ],
+          "area_px": 573565.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_004_row00_col03.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": 172707,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_005_row00_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_005_row00_col04_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": -254841,
+      "stage_x_actual": 3648921,
+      "stage_y_actual": -254804,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2016,
+            2504
+          ],
+          "offset_from_image_center_px": [
+            -544,
+            -56
+          ],
+          "bbox": [
+            48,
+            538,
+            3430,
+            3994
+          ],
+          "area_px": 10030099.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_005_row00_col04.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": -254804,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4651,
+            2029
+          ],
+          "offset_from_image_center_px": [
+            2091,
+            -531
+          ],
+          "bbox": [
+            4187,
+            1592,
+            875,
+            873
+          ],
+          "area_px": 562562.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_005_row00_col04.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": -254804,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            381,
+            2619
+          ],
+          "offset_from_image_center_px": [
+            -2179,
+            59
+          ],
+          "bbox": [
+            43,
+            2360,
+            674,
+            572
+          ],
+          "area_px": 288479.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_005_row00_col04.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": -254804,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_006_row00_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_006_row00_col05_detect_overlay.png",
+      "stage_x_target": 3648905,
+      "stage_y_target": -565771,
+      "stage_x_actual": 3648921,
+      "stage_y_actual": -565777,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1816,
+            2471
+          ],
+          "offset_from_image_center_px": [
+            -744,
+            -89
+          ],
+          "bbox": [
+            86,
+            939,
+            3335,
+            3098
+          ],
+          "area_px": 7132679.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_006_row00_col05.bmp",
+          "stage_x_actual": 3648921,
+          "stage_y_actual": -565777,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "row_index": 1,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_007_row01_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_007_row01_col00_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": -470896,
+      "stage_x_actual": 4076301,
+      "stage_y_actual": -470890,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 4,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            2349,
+            2620
+          ],
+          "offset_from_image_center_px": [
+            -211,
+            60
+          ],
+          "bbox": [
+            624,
+            939,
+            3528,
+            3439
+          ],
+          "area_px": 8444072.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_007_row01_col00.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": -470890,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C04",
+          "center_px": [
+            1770,
+            3803
+          ],
+          "offset_from_image_center_px": [
+            -790,
+            1243
+          ],
+          "bbox": [
+            1118,
+            3080,
+            1293,
+            1437
+          ],
+          "area_px": 1363763.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_007_row01_col00.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": -470890,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            764,
+            1473
+          ],
+          "offset_from_image_center_px": [
+            -1796,
+            -1087
+          ],
+          "bbox": [
+            114,
+            766,
+            1292,
+            1402
+          ],
+          "area_px": 1328746.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_007_row01_col00.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": -470890,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4671,
+            1114
+          ],
+          "offset_from_image_center_px": [
+            2111,
+            -1446
+          ],
+          "bbox": [
+            4288,
+            701,
+            800,
+            803
+          ],
+          "area_px": 400633.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_007_row01_col00.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": -470890,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "row_index": 1,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_008_row01_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_008_row01_col01_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": -349716,
+      "stage_x_actual": 4076300,
+      "stage_y_actual": -349799,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4111,
+            1894
+          ],
+          "offset_from_image_center_px": [
+            1551,
+            -666
+          ],
+          "bbox": [
+            3149,
+            1003,
+            1912,
+            1886
+          ],
+          "area_px": 2656305.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_008_row01_col01.bmp",
+          "stage_x_actual": 4076300,
+          "stage_y_actual": -349799,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            998,
+            2536
+          ],
+          "offset_from_image_center_px": [
+            -1562,
+            -24
+          ],
+          "bbox": [
+            0,
+            1686,
+            1921,
+            1779
+          ],
+          "area_px": 1895044.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_008_row01_col01.bmp",
+          "stage_x_actual": 4076300,
+          "stage_y_actual": -349799,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "row_index": 1,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_009_row01_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_009_row01_col02_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": 77739,
+      "stage_x_actual": 4076300,
+      "stage_y_actual": 77644,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2507,
+            2554
+          ],
+          "offset_from_image_center_px": [
+            -53,
+            -6
+          ],
+          "bbox": [
+            47,
+            60,
+            4975,
+            4996
+          ],
+          "area_px": 17628437.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_009_row01_col02.bmp",
+          "stage_x_actual": 4076300,
+          "stage_y_actual": 77644,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_010_row01_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_010_row01_col03_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": 505194,
+      "stage_x_actual": 4076301,
+      "stage_y_actual": 505003,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2307,
+            4366
+          ],
+          "offset_from_image_center_px": [
+            -253,
+            1806
+          ],
+          "bbox": [
+            1549,
+            3687,
+            1498,
+            1374
+          ],
+          "area_px": 1520684.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_010_row01_col03.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": 505003,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_011_row01_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_011_row01_col04_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": 932649,
+      "stage_x_actual": 4076301,
+      "stage_y_actual": 932589,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3311,
+            4012
+          ],
+          "offset_from_image_center_px": [
+            751,
+            1452
+          ],
+          "bbox": [
+            2223,
+            2898,
+            2031,
+            2176
+          ],
+          "area_px": 2624363.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_011_row01_col04.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": 932589,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_012_row01_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_012_row01_col05_detect_overlay.png",
+      "stage_x_target": 4076360,
+      "stage_y_target": 1360104,
+      "stage_x_actual": 4076301,
+      "stage_y_actual": 1360094,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2465,
+            2475
+          ],
+          "offset_from_image_center_px": [
+            -95,
+            -85
+          ],
+          "bbox": [
+            171,
+            137,
+            4561,
+            4646
+          ],
+          "area_px": 15642180.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_012_row01_col05.bmp",
+          "stage_x_actual": 4076301,
+          "stage_y_actual": 1360094,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "row_index": 2,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_013_row02_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_013_row02_col00_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": 1360104,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": 1360091,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            4051,
+            2079
+          ],
+          "offset_from_image_center_px": [
+            1491,
+            -481
+          ],
+          "bbox": [
+            2974,
+            1029,
+            2087,
+            2235
+          ],
+          "area_px": 3324396.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_013_row02_col00.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 1360091,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "row_index": 2,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_014_row02_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_014_row02_col01_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": 932649,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": 932726,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3920,
+            1228
+          ],
+          "offset_from_image_center_px": [
+            1360,
+            -1332
+          ],
+          "bbox": [
+            2671,
+            99,
+            2420,
+            2363
+          ],
+          "area_px": 4022156.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_014_row02_col01.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 932726,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "row_index": 2,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_015_row02_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_015_row02_col02_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": 505194,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": 505237,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3262,
+            4117
+          ],
+          "offset_from_image_center_px": [
+            702,
+            1557
+          ],
+          "bbox": [
+            2308,
+            3295,
+            1845,
+            1763
+          ],
+          "area_px": 2351972.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_015_row02_col02.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 505237,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1714,
+            467
+          ],
+          "offset_from_image_center_px": [
+            -846,
+            -2093
+          ],
+          "bbox": [
+            1302,
+            0,
+            832,
+            871
+          ],
+          "area_px": 534996.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_015_row02_col02.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 505237,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "row_index": 2,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_016_row02_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_016_row02_col03_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": 77739,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": 77833,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            1562,
+            2477
+          ],
+          "offset_from_image_center_px": [
+            -998,
+            -83
+          ],
+          "bbox": [
+            39,
+            1037,
+            3051,
+            3000
+          ],
+          "area_px": 5879934.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_016_row02_col03.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 77833,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4459,
+            4110
+          ],
+          "offset_from_image_center_px": [
+            1899,
+            1550
+          ],
+          "bbox": [
+            3949,
+            3640,
+            1073,
+            990
+          ],
+          "area_px": 775727.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_016_row02_col03.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": 77833,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "row_index": 2,
+      "col_index": 4,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_017_row02_col04.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_017_row02_col04_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": -349716,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": -349668,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 3,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3883,
+            2797
+          ],
+          "offset_from_image_center_px": [
+            1323,
+            237
+          ],
+          "bbox": [
+            2726,
+            1583,
+            2275,
+            2356
+          ],
+          "area_px": 3871671.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_017_row02_col04.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": -349668,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            954,
+            2220
+          ],
+          "offset_from_image_center_px": [
+            -1606,
+            -340
+          ],
+          "bbox": [
+            103,
+            1374,
+            1656,
+            1622
+          ],
+          "area_px": 1766604.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_017_row02_col04.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": -349668,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C03",
+          "center_px": [
+            4647,
+            3345
+          ],
+          "offset_from_image_center_px": [
+            2087,
+            785
+          ],
+          "bbox": [
+            4203,
+            2901,
+            877,
+            895
+          ],
+          "area_px": 516906.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_017_row02_col04.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": -349668,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 5,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_018_row02_col05.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_018_row02_col05_detect_overlay.png",
+      "stage_x_target": 3221450,
+      "stage_y_target": -470896,
+      "stage_x_actual": 3221469,
+      "stage_y_actual": -470836,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2101,
+            2318
+          ],
+          "offset_from_image_center_px": [
+            -459,
+            -242
+          ],
+          "bbox": [
+            536,
+            670,
+            3234,
+            3243
+          ],
+          "area_px": 7210281.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_018_row02_col05.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": -470836,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            4624,
+            3771
+          ],
+          "offset_from_image_center_px": [
+            2064,
+            1211
+          ],
+          "bbox": [
+            4175,
+            3305,
+            872,
+            927
+          ],
+          "area_px": 560857.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_018_row02_col05.bmp",
+          "stage_x_actual": 3221469,
+          "stage_y_actual": -470836,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "row_index": 3,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_019_row03_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_019_row03_col00_detect_overlay.png",
+      "stage_x_target": 4503815,
+      "stage_y_target": -93900,
+      "stage_x_actual": 4503776,
+      "stage_y_actual": -93890,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1538,
+            3936
+          ],
+          "offset_from_image_center_px": [
+            -1022,
+            1376
+          ],
+          "bbox": [
+            497,
+            2870,
+            2101,
+            2141
+          ],
+          "area_px": 2949212.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_019_row03_col00.bmp",
+          "stage_x_actual": 4503776,
+          "stage_y_actual": -93890,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3939,
+            1017
+          ],
+          "offset_from_image_center_px": [
+            1379,
+            -1543
+          ],
+          "bbox": [
+            2956,
+            68,
+            1967,
+            1949
+          ],
+          "area_px": 2688957.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_019_row03_col00.bmp",
+          "stage_x_actual": 4503776,
+          "stage_y_actual": -93890,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "row_index": 3,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_020_row03_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_020_row03_col01_detect_overlay.png",
+      "stage_x_target": 4503815,
+      "stage_y_target": 128198,
+      "stage_x_actual": 4503775,
+      "stage_y_actual": 128183,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2854,
+            1568
+          ],
+          "offset_from_image_center_px": [
+            294,
+            -992
+          ],
+          "bbox": [
+            1340,
+            94,
+            3030,
+            2953
+          ],
+          "area_px": 6649588.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_020_row03_col01.bmp",
+          "stage_x_actual": 4503775,
+          "stage_y_actual": 128183,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "row_index": 3,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_021_row03_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_021_row03_col02_detect_overlay.png",
+      "stage_x_target": 4503815,
+      "stage_y_target": 555653,
+      "stage_x_actual": 4503775,
+      "stage_y_actual": 555577,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2529,
+            3298
+          ],
+          "offset_from_image_center_px": [
+            -31,
+            738
+          ],
+          "bbox": [
+            679,
+            1865,
+            3614,
+            3238
+          ],
+          "area_px": 7829995.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_021_row03_col02.bmp",
+          "stage_x_actual": 4503775,
+          "stage_y_actual": 555577,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "row_index": 3,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_022_row03_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_022_row03_col03_detect_overlay.png",
+      "stage_x_target": 4503815,
+      "stage_y_target": 983108,
+      "stage_x_actual": 4503775,
+      "stage_y_actual": 983128,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2904,
+            2629
+          ],
+          "offset_from_image_center_px": [
+            344,
+            69
+          ],
+          "bbox": [
+            611,
+            760,
+            4326,
+            3874
+          ],
+          "area_px": 11841284.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_022_row03_col03.bmp",
+          "stage_x_actual": 4503775,
+          "stage_y_actual": 983128,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "row_index": 4,
+      "col_index": 0,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_023_row04_col00.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_023_row04_col00_detect_overlay.png",
+      "stage_x_target": 2793995,
+      "stage_y_target": 983108,
+      "stage_x_actual": 2794011,
+      "stage_y_actual": 983125,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3226,
+            2251
+          ],
+          "offset_from_image_center_px": [
+            666,
+            -309
+          ],
+          "bbox": [
+            1182,
+            692,
+            3862,
+            3225
+          ],
+          "area_px": 8527726.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_023_row04_col00.bmp",
+          "stage_x_actual": 2794011,
+          "stage_y_actual": 983125,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2282,
+            1510
+          ],
+          "offset_from_image_center_px": [
+            -278,
+            -1050
+          ],
+          "bbox": [
+            1144,
+            184,
+            2522,
+            2505
+          ],
+          "area_px": 4124866.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_023_row04_col00.bmp",
+          "stage_x_actual": 2794011,
+          "stage_y_actual": 983125,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "row_index": 4,
+      "col_index": 1,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_024_row04_col01.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_024_row04_col01_detect_overlay.png",
+      "stage_x_target": 2793995,
+      "stage_y_target": 555653,
+      "stage_x_actual": 2794012,
+      "stage_y_actual": 555652,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 1,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            2429,
+            1205
+          ],
+          "offset_from_image_center_px": [
+            -131,
+            -1355
+          ],
+          "bbox": [
+            1298,
+            154,
+            2286,
+            2160
+          ],
+          "area_px": 3812028.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_024_row04_col01.bmp",
+          "stage_x_actual": 2794012,
+          "stage_y_actual": 555652,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "row_index": 4,
+      "col_index": 2,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_025_row04_col02.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_025_row04_col02_detect_overlay.png",
+      "stage_x_target": 2793995,
+      "stage_y_target": 128198,
+      "stage_x_actual": 2794012,
+      "stage_y_actual": 128184,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3129,
+            2411
+          ],
+          "offset_from_image_center_px": [
+            569,
+            -149
+          ],
+          "bbox": [
+            905,
+            478,
+            4032,
+            3751
+          ],
+          "area_px": 8554722.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_025_row04_col02.bmp",
+          "stage_x_actual": 2794012,
+          "stage_y_actual": 128184,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C02",
+          "center_px": [
+            3269,
+            576
+          ],
+          "offset_from_image_center_px": [
+            709,
+            -1984
+          ],
+          "bbox": [
+            2777,
+            152,
+            1024,
+            868
+          ],
+          "area_px": 633736.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_025_row04_col02.bmp",
+          "stage_x_actual": 2794012,
+          "stage_y_actual": 128184,
+          "has_polygon": false
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "row_index": 4,
+      "col_index": 3,
+      "image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_026_row04_col03.bmp",
+      "overlay_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\detect_overlays\\C3_026_row04_col03_detect_overlay.png",
+      "stage_x_target": 2793995,
+      "stage_y_target": -93900,
+      "stage_x_actual": 2794012,
+      "stage_y_actual": -93883,
+      "image_width_px": 5120,
+      "image_height_px": 5120,
+      "image_center_px": [
+        2560,
+        2560
+      ],
+      "mm_per_pixel": {
+        "x": 0.00062890625,
+        "y": 0.00062890625
+      },
+      "clone_count": 2,
+      "clones": [
+        {
+          "clone_id": "C02",
+          "center_px": [
+            1667,
+            1632
+          ],
+          "offset_from_image_center_px": [
+            -893,
+            -928
+          ],
+          "bbox": [
+            231,
+            453,
+            2944,
+            2568
+          ],
+          "area_px": 4931731.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_026_row04_col03.bmp",
+          "stage_x_actual": 2794012,
+          "stage_y_actual": -93883,
+          "has_polygon": false
+        },
+        {
+          "clone_id": "C01",
+          "center_px": [
+            3513,
+            3746
+          ],
+          "offset_from_image_center_px": [
+            953,
+            1186
+          ],
+          "bbox": [
+            2211,
+            2492,
+            2636,
+            2582
+          ],
+          "area_px": 3519067.0,
+          "score": null,
+          "source_image_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_001\\C3\\images\\C3_026_row04_col03.bmp",
+          "stage_x_actual": 2794012,
+          "stage_y_actual": -93883,
+          "has_polygon": false
+        }
+      ]
+    }
+  ]
+}

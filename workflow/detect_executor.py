@@ -116,6 +116,15 @@ def _overlay_path_for_image(image_path: str, overlay_dir: Path) -> Path:
     return overlay_dir / f"{src.stem}_detect_overlay.png"
 
 
+def _vision_output_dir_for_image(image_path: str, overlay_dir: Path) -> Path:
+    src = Path(image_path)
+    return overlay_dir / f"{src.stem}_vision"
+
+
+def _vision_overlay_path(output_dir: Path) -> Path:
+    return output_dir / "06_overlay.bmp"
+
+
 def _draw_center_mark(draw: ImageDraw.ImageDraw, center: Tuple[int, int], radius: int = 8) -> None:
     x, y = center
     draw.ellipse((x - radius, y - radius, x + radius, y + radius), outline="red", width=2)
@@ -174,6 +183,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     entrypoint = detect_cfg.get("entrypoint")
 
     save_overlay = bool(detect_cfg.get("save_overlay", True))
+    overlay_source = str(detect_cfg.get("overlay_source", "vision")).strip().lower()
     draw_bbox = bool(detect_cfg.get("draw_bbox", True))
     draw_center = bool(detect_cfg.get("draw_center", True))
     draw_image_center = bool(detect_cfg.get("draw_image_center", True))
@@ -197,7 +207,20 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         }
 
         actual_x, actual_y = _actual_stage_xy(capture)
-        detect_result = run_detect_on_image(image_path, entrypoint=entrypoint)
+        overlay_dir = None
+        vision_output_dir = None
+        detect_kwargs: Dict[str, Any] = {}
+        if save_overlay:
+            overlay_dir = _choose_overlay_dir(params, image_path)
+            if overlay_source == "vision":
+                vision_output_dir = _vision_output_dir_for_image(image_path, overlay_dir)
+                detect_kwargs["out_dir"] = str(vision_output_dir)
+
+        detect_result = run_detect_on_image(
+            image_path,
+            entrypoint=entrypoint,
+            detect_kwargs=detect_kwargs,
+        )
 
         raw_clones = detect_result.get("clones", []) or []
         clones: List[Dict[str, Any]] = []
@@ -222,17 +245,20 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
 
         overlay_image_path = None
         if save_overlay:
-            overlay_dir = _choose_overlay_dir(params, image_path)
-            overlay_path = _overlay_path_for_image(image_path, overlay_dir)
-            overlay_image_path = _render_overlay_image(
-                image_path=image_path,
-                image_center_px=image_center,
-                raw_clones=raw_clones,
-                overlay_path=overlay_path,
-                draw_bbox=draw_bbox,
-                draw_center=draw_center,
-                draw_image_center=draw_image_center,
-            )
+            vision_overlay = _vision_overlay_path(vision_output_dir) if vision_output_dir else None
+            if vision_overlay and vision_overlay.exists():
+                overlay_image_path = str(vision_overlay)
+            else:
+                overlay_path = _overlay_path_for_image(image_path, overlay_dir or _choose_overlay_dir(params, image_path))
+                overlay_image_path = _render_overlay_image(
+                    image_path=image_path,
+                    image_center_px=image_center,
+                    raw_clones=raw_clones,
+                    overlay_path=overlay_path,
+                    draw_bbox=draw_bbox,
+                    draw_center=draw_center,
+                    draw_image_center=draw_image_center,
+                )
 
         images.append(
             {
