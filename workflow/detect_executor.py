@@ -236,6 +236,8 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "bbox": clone.get("bbox"),
                 "area_px": clone.get("area_px"),
                 "score": clone.get("score"),
+                "confidence": clone.get("confidence"),
+                "is_valid_for_compensation": clone.get("is_valid_for_compensation"),
                 "source_image_path": image_path,
                 "stage_x_actual": actual_x,
                 "stage_y_actual": actual_y,

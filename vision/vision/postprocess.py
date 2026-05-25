@@ -250,6 +250,8 @@ def save_outputs(src_path, out_dir, gray, refined, debug):
         },
         'component_count': len(refined),
         'coarse_seed_thresh': int(debug.get('coarse_seed_thresh', -1)),
+        'coarse_density_thresh': debug.get('coarse_density_thresh'),
+        'coarse_candidate_count': int(debug.get('coarse_candidate_count', len(refined))),
         'component_ids': [d['id'] for d in refined],
         'components': refined,
     }

@@ -101,7 +101,7 @@ def _coerce_bbox(value: Any) -> List[int] | None:
 
 
 def _extract_center(item: Dict[str, Any]) -> tuple[int, int] | None:
-    for key in ("center_px", "center_pixel", "center", "centroid", "clone_center_px", "safe_point"):
+    for key in ("safe_point", "dark_core_center_pixel", "center_px", "center_pixel", "center", "centroid", "clone_center_px"):
         if key in item:
             pair = _to_int_pair(item[key])
             if pair is not None:
@@ -136,6 +136,23 @@ def _extract_area(item: Dict[str, Any]) -> float | None:
                 return float(item[key])
             except Exception:
                 return None
+    return None
+
+
+def _extract_bool(item: Dict[str, Any], key: str) -> bool | None:
+    if key not in item:
+        return None
+    value = item[key]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("1", "true", "yes", "y"):
+            return True
+        if lowered in ("0", "false", "no", "n"):
+            return False
     return None
 
 
@@ -191,6 +208,8 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
                 "bbox": bbox,
                 "area_px": _extract_area(item),
                 "score": _extract_score(item),
+                "confidence": _extract_score(item),
+                "is_valid_for_compensation": _extract_bool(item, "is_valid_for_compensation"),
                 "raw": item,
             }
         )

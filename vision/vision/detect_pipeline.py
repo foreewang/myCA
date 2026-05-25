@@ -17,6 +17,16 @@ def detect_and_refine(
     recenter_iterations=1,
     seed_thresh=None,
     border_keep_min_area=50000,
+    seed_quantile=0.12,
+    seed_hard_floor=35,
+    seed_hard_ceil=105,
+    core_density_min=80,
+    min_foreground_ratio=0.025,
+    max_foreground_ratio=0.80,
+    min_dark_core_area_ratio=0.00001,
+    max_dark_core_area_ratio=0.12,
+    max_bbox_area_ratio=0.30,
+    reject_border_touch=True,
 ):
     """
     执行“粗检测 + 局部细化”的两阶段目标检测流程。
@@ -67,6 +77,16 @@ def detect_and_refine(
         max_keep=max_keep,
         seed_thresh=seed_thresh,
         border_keep_min_area=border_keep_min_area,
+        seed_quantile=seed_quantile,
+        seed_hard_floor=seed_hard_floor,
+        seed_hard_ceil=seed_hard_ceil,
+        core_density_min=core_density_min,
+        min_foreground_ratio=min_foreground_ratio,
+        max_foreground_ratio=max_foreground_ratio,
+        min_dark_core_area_ratio=min_dark_core_area_ratio,
+        max_dark_core_area_ratio=max_dark_core_area_ratio,
+        max_bbox_area_ratio=max_bbox_area_ratio,
+        reject_border_touch=reject_border_touch,
     )
 
     H, W = gray.shape
@@ -85,7 +105,7 @@ def detect_and_refine(
     for idx, item in enumerate(coarse, start=1):
         # coarse_bbox 和 coarse_center_pixel 已经是全图坐标
         x, y, w, h = item['coarse_bbox']
-        cx, cy = item['coarse_center_pixel']
+        cx, cy = item.get('safe_point') or item.get('dark_core_center_pixel') or item['coarse_center_pixel']
 
         # 对粗框进行二次扩边，给 refine 留出缓冲区：
         # 若粗框偏紧，直接 refine 容易把目标边界截断，导致轮廓不完整。
@@ -123,7 +143,7 @@ def detect_and_refine(
 
             refined.append(
                 build_failed_component(
-                    idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug
+                    idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
                 )
             )
             continue
@@ -176,7 +196,7 @@ def detect_and_refine(
         # 构建成功细化后的标准组件结构
         refined.append(
             build_refined_component(
-                idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global
+                idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global, item
             )
         )
 
@@ -189,6 +209,8 @@ def detect_and_refine(
         'coarse_binary': coarse_debug['binary_small'],
         'coarse_scale': coarse_debug['scale'],
         'coarse_seed_thresh': coarse_debug['seed_thresh'],
+        'coarse_density_thresh': coarse_debug.get('density_thresh'),
+        'coarse_candidate_count': coarse_debug.get('coarse_candidate_count', len(coarse)),
         'full_refine_density': full_refine_density,
         'overlay': overlay,
         'contour_mask': full_contour_mask,
@@ -207,6 +229,16 @@ def detect_from_gray(
     recenter_iterations=1,
     seed_thresh=None,
     border_keep_min_area=50000,
+    seed_quantile=0.12,
+    seed_hard_floor=35,
+    seed_hard_ceil=105,
+    core_density_min=80,
+    min_foreground_ratio=0.025,
+    max_foreground_ratio=0.80,
+    min_dark_core_area_ratio=0.00001,
+    max_dark_core_area_ratio=0.12,
+    max_bbox_area_ratio=0.30,
+    reject_border_touch=True,
 ):
     """
     从内存中的图像数组执行检测流程，并按需要返回结果或落盘输出。
@@ -245,6 +277,16 @@ def detect_from_gray(
         recenter_iterations=recenter_iterations,
         seed_thresh=seed_thresh,
         border_keep_min_area=border_keep_min_area,
+        seed_quantile=seed_quantile,
+        seed_hard_floor=seed_hard_floor,
+        seed_hard_ceil=seed_hard_ceil,
+        core_density_min=core_density_min,
+        min_foreground_ratio=min_foreground_ratio,
+        max_foreground_ratio=max_foreground_ratio,
+        min_dark_core_area_ratio=min_dark_core_area_ratio,
+        max_dark_core_area_ratio=max_dark_core_area_ratio,
+        max_bbox_area_ratio=max_bbox_area_ratio,
+        reject_border_touch=reject_border_touch,
     )
 
     # 不写盘时，直接返回结构化结果
@@ -257,6 +299,8 @@ def detect_from_gray(
             },
             'component_count': len(refined),
             'coarse_seed_thresh': int(debug.get('coarse_seed_thresh', -1)),
+            'coarse_density_thresh': debug.get('coarse_density_thresh'),
+            'coarse_candidate_count': int(debug.get('coarse_candidate_count', len(refined))),
             'component_ids': [d['id'] for d in refined],
             'components': refined,
         }

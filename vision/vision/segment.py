@@ -1,91 +1,155 @@
 import cv2
 import numpy as np
 
-from .preprocess import resize_keep_ratio, auto_seed_threshold, roi_density_signal
-from .postprocess import nms_xywh, circular_smooth
 from .center_locator import contour_centroid_from_mask
+from .postprocess import circular_smooth, nms_xywh
+from .preprocess import auto_seed_threshold, resize_keep_ratio, roi_density_signal
 
 
-def detect_coarse_rois(gray, work_max=1024, flat_sigma=41, seed_thresh=None,
-                       density_sigma=25, close_kernel=35, open_kernel=9,
-                       min_area=10000, max_keep=None, pad_ratio=0.15,
-                       nms_iou_thr=0.30, border_margin=2,
-                       border_keep_min_area=50000):
-    """
-    在全图上做“粗检测”，输出候选 ROI 与粗中心点。
-
-    核心思路:
-    1) 缩放 + 平坦化，削弱光照不均；
-    2) 提取暗种子并做密度平滑；
-    3) 二值化 + 形态学，得到稳定连通域；
-    4) 连通域筛选 + NMS，回映射到原图坐标。
-    """
+def detect_coarse_rois(
+    gray,
+    work_max=1024,
+    flat_sigma=41,
+    seed_thresh=None,
+    density_sigma=25,
+    close_kernel=35,
+    open_kernel=9,
+    min_area=10000,
+    max_keep=None,
+    pad_ratio=0.15,
+    nms_iou_thr=0.30,
+    border_margin=2,
+    border_keep_min_area=50000,
+    seed_quantile=0.12,
+    seed_hard_floor=35,
+    seed_hard_ceil=105,
+    core_density_min=80,
+    min_foreground_ratio=0.025,
+    max_foreground_ratio=0.80,
+    min_dark_core_area_ratio=0.00001,
+    max_dark_core_area_ratio=0.12,
+    max_bbox_area_ratio=0.30,
+    reject_border_touch=True,
+):
+    """Detect coarse candidates from a strict dark core."""
     small, scale = resize_keep_ratio(gray, work_max=work_max)
 
-    # 背景平坦化: 让“相对更暗”的区域更突出。
     bg = cv2.GaussianBlur(small, (0, 0), flat_sigma)
     flat = cv2.normalize(
         cv2.divide(small.astype(np.float32), bg.astype(np.float32) + 1.0, scale=128.0),
-        None, 0, 255, cv2.NORM_MINMAX
+        None,
+        0,
+        255,
+        cv2.NORM_MINMAX,
     ).astype(np.uint8)
 
     if seed_thresh is None:
-        seed_thresh = auto_seed_threshold(flat)
+        seed_thresh = auto_seed_threshold(
+            flat,
+            q=seed_quantile,
+            hard_floor=seed_hard_floor,
+            hard_ceil=seed_hard_ceil,
+        )
 
-    # 暗种子 -> 密度图: 把零散暗像素变成连续响应区域。
     dark_seed = (flat < seed_thresh).astype(np.uint8) * 255
-
     density = cv2.GaussianBlur((dark_seed > 0).astype(np.float32), (0, 0), density_sigma)
     density_u8 = cv2.normalize(density, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-    _, binary = cv2.threshold(density_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
+    otsu_thr, _ = cv2.threshold(density_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    density_thr = max(float(otsu_thr), float(core_density_min))
+    binary = (density_u8 >= density_thr).astype(np.uint8) * 255
     binary = cv2.morphologyEx(
-        binary, cv2.MORPH_CLOSE,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_kernel, close_kernel))
+        binary,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_kernel, close_kernel)),
     )
     binary = cv2.morphologyEx(
-        binary, cv2.MORPH_OPEN,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_kernel, open_kernel))
+        binary,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_kernel, open_kernel)),
     )
 
     n, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
     Hs, Ws = small.shape
+    image_area = float(max(1, Hs * Ws))
     comps = []
     for i in range(1, n):
         x, y, w, h, area = stats[i]
         if area < min_area:
             continue
 
+        bbox_area = float(max(1, int(w) * int(h)))
+        bbox_area_ratio = bbox_area / image_area
+        if bbox_area_ratio > max_bbox_area_ratio:
+            continue
+
         touch_border = (
-            x <= border_margin or y <= border_margin or
-            x + w >= Ws - border_margin or y + h >= Hs - border_margin
+            x <= border_margin
+            or y <= border_margin
+            or x + w >= Ws - border_margin
+            or y + h >= Hs - border_margin
         )
+        if touch_border and reject_border_touch:
+            continue
         if touch_border and area < border_keep_min_area:
             continue
 
+        comp_mask = labels[y:y + h, x:x + w] == i
+        core_roi = dark_seed[y:y + h, x:x + w] > 0
+        dark_core_mask = comp_mask & core_roi
+        dark_core_area = int(np.count_nonzero(dark_core_mask))
+        if dark_core_area <= 0:
+            continue
+
+        foreground_ratio = float(dark_core_area) / bbox_area
+        dark_core_area_ratio = float(dark_core_area) / image_area
+        if foreground_ratio < min_foreground_ratio or foreground_ratio > max_foreground_ratio:
+            continue
+        if dark_core_area_ratio < min_dark_core_area_ratio:
+            continue
+        if dark_core_area_ratio > max_dark_core_area_ratio:
+            continue
+
+        ys, xs = np.nonzero(dark_core_mask)
+        if xs.size:
+            core_cx = float(xs.mean() + x)
+            core_cy = float(ys.mean() + y)
+        else:
+            core_cx, core_cy = centroids[i]
+
         cx, cy = centroids[i]
+        confidence = min(1.0, max(0.0, foreground_ratio / 0.18))
+        confidence *= min(1.0, max(0.0, 1.0 - bbox_area_ratio / max_bbox_area_ratio))
+        if touch_border:
+            confidence *= 0.5
+
         comps.append({
-            'label': int(i),
-            'bbox_small': [int(x), int(y), int(w), int(h)],
-            'area_small': int(area),
-            'center_small': [float(cx), float(cy)],
-            'score': float(area),
-            'bbox': [int(x), int(y), int(w), int(h)],
-            'touch_border': bool(touch_border),
+            "label": int(i),
+            "bbox_small": [int(x), int(y), int(w), int(h)],
+            "area_small": int(area),
+            "dark_core_area_small": int(dark_core_area),
+            "foreground_ratio": float(foreground_ratio),
+            "bbox_area_ratio": float(bbox_area_ratio),
+            "dark_core_area_ratio": float(dark_core_area_ratio),
+            "center_small": [float(cx), float(cy)],
+            "dark_core_center_small": [float(core_cx), float(core_cy)],
+            "score": float(dark_core_area) * max(0.05, float(confidence)),
+            "confidence": float(confidence),
+            "bbox": [int(x), int(y), int(w), int(h)],
+            "touch_border": bool(touch_border),
         })
 
-    # NMS 去重，避免多个候选框指向同一目标。
-    comps = nms_xywh(comps, key_score='score', key_bbox='bbox', iou_thr=nms_iou_thr)
-    comps.sort(key=lambda d: d['area_small'], reverse=True)
+    comps = nms_xywh(comps, key_score="score", key_bbox="bbox", iou_thr=nms_iou_thr)
+    comps.sort(key=lambda d: d["score"], reverse=True)
     if max_keep is not None and max_keep > 0:
         comps = comps[:max_keep]
 
     H, W = gray.shape
     results = []
     for comp in comps:
-        x, y, w, h = comp['bbox_small']
-        cx, cy = comp['center_small']
+        x, y, w, h = comp["bbox_small"]
+        cx, cy = comp["center_small"]
+        core_cx, core_cy = comp["dark_core_center_small"]
 
         X = int(round(x * scale))
         Y = int(round(y * scale))
@@ -93,6 +157,8 @@ def detect_coarse_rois(gray, work_max=1024, flat_sigma=41, seed_thresh=None,
         Bh = int(round(h * scale))
         Cx = int(round(cx * scale))
         Cy = int(round(cy * scale))
+        CoreCx = int(round(core_cx * scale))
+        CoreCy = int(round(core_cy * scale))
 
         pad_x = int(round(Bw * pad_ratio))
         pad_y = int(round(Bh * pad_ratio))
@@ -103,37 +169,46 @@ def detect_coarse_rois(gray, work_max=1024, flat_sigma=41, seed_thresh=None,
         y1 = min(H, Y + Bh + pad_y)
 
         results.append({
-            'coarse_bbox': [int(x0), int(y0), int(x1 - x0), int(y1 - y0)],
-            'coarse_center_pixel': [int(Cx), int(Cy)],
-            'area_small': int(comp['area_small']),
+            "coarse_bbox": [int(x0), int(y0), int(x1 - x0), int(y1 - y0)],
+            "coarse_center_pixel": [int(Cx), int(Cy)],
+            "dark_core_center_pixel": [int(CoreCx), int(CoreCy)],
+            "safe_point": [int(CoreCx), int(CoreCy)],
+            "area_small": int(comp["area_small"]),
+            "dark_core_area_small": int(comp["dark_core_area_small"]),
+            "foreground_ratio": float(comp["foreground_ratio"]),
+            "bbox_area_ratio": float(comp["bbox_area_ratio"]),
+            "dark_core_area_ratio": float(comp["dark_core_area_ratio"]),
+            "touch_border": bool(comp["touch_border"]),
+            "confidence": float(comp["confidence"]),
+            "is_valid_for_compensation": bool(comp["confidence"] >= 0.25 and not comp["touch_border"]),
         })
 
     debug = {
-        'small_gray': small,
-        'flat': flat,
-        'dark_seed': dark_seed,
-        'density_u8': density_u8,
-        'binary_small': binary,
-        'scale': scale,
-        'seed_thresh': int(seed_thresh),
+        "small_gray": small,
+        "flat": flat,
+        "dark_seed": dark_seed,
+        "density_u8": density_u8,
+        "binary_small": binary,
+        "scale": scale,
+        "seed_thresh": int(seed_thresh),
+        "density_thresh": float(density_thr),
+        "coarse_candidate_count": len(results),
     }
     return results, debug
 
 
-
-def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
-                                          inner_ratio=0.12, border_strip=20,
-                                          target_alpha=0.52, min_radius=10,
-                                          mode='hybrid', grad_refine_window=18,
-                                          fallback_radius_ratio=0.18):
-    """
-    在密度图上做向量化径向采样，估计闭合轮廓。
-
-    mode:
-    - threshold: 使用阈值穿越位置
-    - gradient: 使用梯度最小(边界最陡下降)位置
-    - hybrid: 先阈值定位，再局部梯度微调
-    """
+def radial_contour_from_signal_vectorized(
+    signal_u8,
+    center_xy,
+    n_angles=180,
+    inner_ratio=0.12,
+    border_strip=20,
+    target_alpha=0.52,
+    min_radius=10,
+    mode="hybrid",
+    grad_refine_window=18,
+    fallback_radius_ratio=0.18,
+):
     H, W = signal_u8.shape
     cx, cy = float(center_xy[0]), float(center_xy[1])
 
@@ -152,7 +227,6 @@ def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
         signal_u8[:, -strip:].ravel(),
     ])
     outside_level = float(border_vals.mean())
-    # 目标阈值位于“内部强度”和“外部强度”之间。
     target = outside_level + target_alpha * (inside_level - outside_level)
 
     max_r = int(min(cx - 2, cy - 2, W - cx - 3, H - cy - 3))
@@ -170,14 +244,13 @@ def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
     ys = np.clip(np.round(cy + sin_t * rs[None, :]).astype(np.int32), 0, H - 1)
 
     profiles = signal_u8[ys, xs].astype(np.float32)
-
-    # 对每条径向 profile 做 1D 平滑，减小噪声锯齿。
     kx = cv2.getGaussianKernel(ksize=9, sigma=2.0).astype(np.float32).reshape(-1)
     profiles = cv2.sepFilter2D(
-        profiles, ddepth=-1,
+        profiles,
+        ddepth=-1,
         kernelX=kx,
         kernelY=np.array([1.0], dtype=np.float32),
-        borderType=cv2.BORDER_REPLICATE
+        borderType=cv2.BORDER_REPLICATE,
     )
 
     cond = profiles > target
@@ -192,7 +265,7 @@ def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
     radii_thr = np.full((n_angles,), fallback_r, dtype=np.float32)
     radii_thr[any_hit] = rs[last_idx[any_hit]]
 
-    if mode == 'threshold':
+    if mode == "threshold":
         radii = radii_thr
     else:
         grad = np.diff(profiles, axis=1)
@@ -200,13 +273,13 @@ def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
 
         for i in range(n_angles):
             if not any_hit[i]:
-                if mode == 'gradient':
+                if mode == "gradient":
                     j = int(np.argmin(grad[i]))
                     radii[i] = rs[min(j, rs.size - 1)]
                 continue
 
             base_j = int(last_idx[i])
-            if mode == 'gradient':
+            if mode == "gradient":
                 j0 = max(0, int(rs.size * 0.15))
                 j1 = grad.shape[1]
             else:
@@ -227,25 +300,26 @@ def radial_contour_from_signal_vectorized(signal_u8, center_xy, n_angles=180,
     return pts, target, radii
 
 
+def _dark_core_center_in_mask(dark_seed_u8, mask_u8, fallback_center, scale):
+    core = (dark_seed_u8 > 0) & (mask_u8 > 0)
+    ys, xs = np.nonzero(core)
+    if xs.size == 0:
+        return [int(round(fallback_center[0] * scale)), int(round(fallback_center[1] * scale))]
+    return [int(round(float(xs.mean()) * scale)), int(round(float(ys.mean()) * scale))]
 
-def refine_contour_in_roi(roi_gray, center_hint_local,
-                          max_work=1200,
-                          dark_percentile=42,
-                          density_sigma=12,
-                          radial_target_alpha=0.52,
-                          n_angles=180,
-                          radial_mode='hybrid',
-                          recenter_iterations=1,
-                          recenter_min_shift_px=6.0):
-    """
-    在单个 ROI 中细化轮廓。
 
-    流程:
-    1) 构建密度信号；
-    2) 径向估计轮廓；
-    3) 根据 mask 质心迭代重定位中心；
-    4) 回到全分辨率并输出 contour/bbox/center。
-    """
+def refine_contour_in_roi(
+    roi_gray,
+    center_hint_local,
+    max_work=1200,
+    dark_percentile=42,
+    density_sigma=12,
+    radial_target_alpha=0.52,
+    n_angles=180,
+    radial_mode="hybrid",
+    recenter_iterations=1,
+    recenter_min_shift_px=6.0,
+):
     small, flat, dark_seed_u8, density_u8, scale = roi_density_signal(
         roi_gray,
         max_work=max_work,
@@ -262,12 +336,10 @@ def refine_contour_in_roi(roi_gray, center_hint_local,
 
     pts = None
     target = None
-    radii = None
     mask_small = None
 
     for _ in range(max(1, recenter_iterations + 1)):
-        # 以当前中心做径向轮廓估计。
-        pts, target, radii = radial_contour_from_signal_vectorized(
+        pts, target, _ = radial_contour_from_signal_vectorized(
             density_u8,
             (cx, cy),
             n_angles=n_angles,
@@ -278,15 +350,16 @@ def refine_contour_in_roi(roi_gray, center_hint_local,
         mask_small = np.zeros_like(density_u8, dtype=np.uint8)
         cv2.fillPoly(mask_small, [pts.reshape(-1, 1, 2)], 255)
         mask_small = cv2.morphologyEx(
-            mask_small, cv2.MORPH_CLOSE,
-            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+            mask_small,
+            cv2.MORPH_CLOSE,
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11)),
         )
         mask_small = cv2.morphologyEx(
-            mask_small, cv2.MORPH_OPEN,
-            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+            mask_small,
+            cv2.MORPH_OPEN,
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
         )
 
-        # 用当前 mask 质心更新中心，提升中心偏移情况下的稳定性。
         new_center = contour_centroid_from_mask(mask_small, [cx, cy])
         shift = float(np.hypot(new_center[0] - cx, new_center[1] - cy))
         cx, cy = float(new_center[0]), float(new_center[1])
@@ -297,8 +370,10 @@ def refine_contour_in_roi(roi_gray, center_hint_local,
         if shift < recenter_min_shift_px:
             break
 
+    if mask_small is None:
+        mask_small = np.zeros_like(density_u8, dtype=np.uint8)
+
     if scale > 1.0:
-        # 小图推理时，将 mask 回放到 ROI 原尺寸。
         mask_full = cv2.resize(mask_small, (roi_gray.shape[1], roi_gray.shape[0]), interpolation=cv2.INTER_NEAREST)
     else:
         mask_full = mask_small.copy()
@@ -306,13 +381,13 @@ def refine_contour_in_roi(roi_gray, center_hint_local,
     cnts, _ = cv2.findContours(mask_full, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not cnts:
         return None, {
-            'flat': flat,
-            'dark_seed': dark_seed_u8,
-            'density': density_u8,
-            'mask_small': mask_small,
-            'scale': scale,
-            'target': float(target) if target is not None else None,
-            'center_history_small': center_history,
+            "flat": flat,
+            "dark_seed": dark_seed_u8,
+            "density": density_u8,
+            "mask_small": mask_small,
+            "scale": scale,
+            "target": float(target) if target is not None else None,
+            "center_history_small": center_history,
         }
 
     cnt = max(cnts, key=cv2.contourArea)
@@ -320,26 +395,29 @@ def refine_contour_in_roi(roi_gray, center_hint_local,
     cnt = cv2.approxPolyDP(cnt, eps, True)
 
     M = cv2.moments(cnt)
-    if M['m00'] > 1e-6:
-        center_refined = [int(M['m10'] / M['m00']), int(M['m01'] / M['m00'])]
+    if M["m00"] > 1e-6:
+        contour_center = [int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])]
     else:
-        center_refined = [int(center_hint_local[0]), int(center_hint_local[1])]
+        contour_center = [int(center_hint_local[0]), int(center_hint_local[1])]
 
+    safe_point = _dark_core_center_in_mask(dark_seed_u8, mask_small, [cx, cy], scale)
     x, y, w, h = cv2.boundingRect(cnt)
 
     return {
-        'contour_local': cnt[:, 0, :].astype(int).tolist(),
-        'center_local': center_refined,
-        'bbox_local': [int(x), int(y), int(w), int(h)],
-        'area_px': int(cv2.contourArea(cnt)),
-        'mask_full': mask_full,
-        'center_history_small': center_history,
+        "contour_local": cnt[:, 0, :].astype(int).tolist(),
+        "center_local": safe_point,
+        "contour_center_local": contour_center,
+        "safe_point_local": safe_point,
+        "bbox_local": [int(x), int(y), int(w), int(h)],
+        "area_px": int(cv2.contourArea(cnt)),
+        "mask_full": mask_full,
+        "center_history_small": center_history,
     }, {
-        'flat': flat,
-        'dark_seed': dark_seed_u8,
-        'density': density_u8,
-        'mask_small': mask_small,
-        'scale': scale,
-        'target': float(target),
-        'center_history_small': center_history,
+        "flat": flat,
+        "dark_seed": dark_seed_u8,
+        "density": density_u8,
+        "mask_small": mask_small,
+        "scale": scale,
+        "target": float(target),
+        "center_history_small": center_history,
     }

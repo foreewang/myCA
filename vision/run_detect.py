@@ -24,6 +24,10 @@ def main():
     parser.add_argument('--radial_mode', choices=['threshold', 'gradient', 'hybrid'], default='hybrid')
     # 首次径向扫描后，允许质心重定位并重复细化的次数。
     parser.add_argument('--recenter_iterations', type=int, default=1, help='number of center update iterations after first radial scan')
+    parser.add_argument('--seed_quantile', type=float, default=0.12, help='strict dark-core quantile for coarse detection')
+    parser.add_argument('--core_density_min', type=float, default=80, help='minimum density threshold for coarse dark-core candidates')
+    parser.add_argument('--min_foreground_ratio', type=float, default=0.025, help='minimum dark-core pixels / bbox area')
+    parser.add_argument('--max_bbox_area_ratio', type=float, default=0.30, help='maximum coarse bbox area / image area')
     args = parser.parse_args()
 
     # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)。
@@ -35,6 +39,10 @@ def main():
         max_keep=(None if args.max_keep == 0 else args.max_keep),
         radial_mode=args.radial_mode,
         recenter_iterations=args.recenter_iterations,
+        seed_quantile=args.seed_quantile,
+        core_density_min=args.core_density_min,
+        min_foreground_ratio=args.min_foreground_ratio,
+        max_bbox_area_ratio=args.max_bbox_area_ratio,
     )
     # 打印最终 JSON，便于命令行直接查看或重定向保存。
     print(json.dumps(result_json, ensure_ascii=False, indent=2))
