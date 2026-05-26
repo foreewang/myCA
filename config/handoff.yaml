@@ -1,55 +1,102 @@
+# C:/colony_system/config/handoff.yaml
+# 机械臂交接点配置文件。
+# handoff 任务会读取这里的点位和电机参数，把 XY 位移台移动到机械臂可放板/取板的位置。
+
+# handoff 顶层配置，workflow/handoff_executor.py 会优先读取此字段。
 handoff:
+  # 交接动作使用的硬件连接配置。
   hardware:
+    # XY 位移台 Modbus 串口配置。
     modbus:
+      # 串口号，需要与 XY 位移台控制器实际连接的串口一致。
       port: "COM3"
+      # 串口波特率，需要与控制器参数一致。
       baudrate: 115200
 
+    # X 轴电机配置。
     x_axis:
+      # X 轴电机的 Modbus 从站地址。
       slave: 1
 
+    # Y 轴电机配置。
     y_axis:
+      # Y 轴电机的 Modbus 从站地址。
       slave: 2
 
+  # 通用交接点位定义。
+  # actions 中通过 point 字段引用这里的点位名称。
   points:
+    # 机械臂与显微平台交接培养板的标准点位。
     robot_exchange:
+      # 交接点 X 轴绝对坐标，单位：pulse。
       x: 0
+      # 交接点 Y 轴绝对坐标，单位：pulse。
       y: 7500000
+      # 点位含义说明，会写入 handoff 执行结果。
       meaning: "exchange point for robot"
 
+      # 移动到交接点时使用的速度参数。
       profile_vel: 500000
+      # 移动到交接点时使用的加速度参数。
       profile_acc: 100000
+      # 移动到交接点时使用的减速度参数。
       profile_dec: 100000
+      # 单轴移动超时时间，单位：秒。
       timeout_s: 120.0
+      # 到达点位后预留的稳定等待时间，单位：秒。
       settle_s: 0.5
 
+  # 不同板型的交接点覆盖配置。
+  # 如果某种板型需要不同交接坐标，会覆盖 points.robot_exchange 中的 x/y。
   plate_overrides:
+    # 6 孔板使用的机械臂交接点覆盖值。
     "6-well":
       robot_exchange:
+        # 6 孔板交接点 X 轴绝对坐标，单位：pulse。
         x: 0
+        # 6 孔板交接点 Y 轴绝对坐标，单位：pulse。
         y: 7500000
 
+    # 12 孔板使用的机械臂交接点覆盖值。
     "12-well":
       robot_exchange:
+        # 12 孔板交接点 X 轴绝对坐标，单位：pulse。
         x: 0
+        # 12 孔板交接点 Y 轴绝对坐标，单位：pulse。
         y: 7500000
 
+    # 24 孔板使用的机械臂交接点覆盖值。
     "24-well":
       robot_exchange:
+        # 24 孔板交接点 X 轴绝对坐标，单位：pulse。
         x: 0
+        # 24 孔板交接点 Y 轴绝对坐标，单位：pulse。
         y: 7500000
 
+    # 48 孔板使用的机械臂交接点覆盖值。
     "48-well":
       robot_exchange:
+        # 48 孔板交接点 X 轴绝对坐标，单位：pulse。
         x: 0
+        # 48 孔板交接点 Y 轴绝对坐标，单位：pulse。
         y: 7500000
 
+  # handoff 支持的动作定义。
   actions:
+    # 上料动作：平台移动到交接点，等待机械臂放入培养板。
     load_in:
+      # 本动作要移动到的点位名称，对应 points.robot_exchange。
       point: "robot_exchange"
+      # 执行完成后返回给上层系统的状态名。
       ready_state: "ready_for_robot_place"
+      # 执行完成后返回给上层系统的简短消息。
       message: "ready"
 
+    # 下料动作：平台移动到交接点，等待机械臂取走培养板。
     unload_out:
+      # 本动作要移动到的点位名称，对应 points.robot_exchange。
       point: "robot_exchange"
+      # 执行完成后返回给上层系统的状态名。
       ready_state: "ready_for_robot_pick"
+      # 执行完成后返回给上层系统的简短消息。
       message: "ready"

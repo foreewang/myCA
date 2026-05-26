@@ -1,57 +1,112 @@
+# C:/colony_system/config/objectives.yaml
+# 物镜配置文件。
+# workflow/config_loader.py 会根据 task.objective 读取对应物镜的视野大小；
+# workflow/objective_executor.py 会根据 switch 配置执行真实物镜切换和调焦轴预定位。
+
+# 物镜列表，键名需要与任务中的 task.objective 保持一致，例如 "4x"、"10x"。
 objectives:
+  # 4 倍物镜配置。
   "4x":
+    # 物镜倍率，仅作为配置说明和结果记录使用。
     magnification: 4
+
+    # 该物镜下单张图像对应的实际视野范围，单位：mm。
+    # 扫描规划会用它计算相邻视野之间的步长。
     fov_mm:
+      # 视野宽度，单位：mm。
       width: 3.22
+      # 视野高度，单位：mm。
       height: 3.22
 
+    # 物镜切换配置。
     switch:
+      # 是否允许该物镜执行自动切换。
       enabled: true
+      # 切换模式；当前 objective_executor 只支持 motor_manager。
       mode: motor_manager
+      # 物镜转盘/物镜轴目标位置，单位：pulse。
       objective_target_pos: 166347
-      focus_target_pos: -1923201 #对应细准焦螺旋，粗准焦螺旋不应移动
+      # 调焦轴预定位目标位置，单位：pulse。
+      # 对应细准焦螺旋；粗准焦螺旋不应由这里移动。
+      focus_target_pos: -1923201
 
-      # 物镜/调焦电机运动参数
+      # 物镜轴移动速度参数。
       objective_profile_vel: 100000
+      # 物镜轴移动加速度参数。
       objective_profile_acc: 100000
+      # 物镜轴移动减速度参数。
       objective_profile_dec: 100000
 
+      # 调焦轴预定位速度参数。
       focus_profile_vel: 100000
+      # 调焦轴预定位加速度参数。
       focus_profile_acc: 100000
+      # 调焦轴预定位减速度参数。
       focus_profile_dec: 100000
 
+  # 10 倍物镜配置。
   "10x":
+    # 物镜倍率，仅作为配置说明和结果记录使用。
     magnification: 10
+
+    # 该物镜下单张图像对应的实际视野范围，单位：mm。
+    # 倍率越高，通常视野越小。
     fov_mm:
+      # 视野宽度，单位：mm。
       width: 1.31
+      # 视野高度，单位：mm。
       height: 1.31
 
+    # 物镜切换配置。
     switch:
+      # 是否允许该物镜执行自动切换。
       enabled: true
+      # 切换模式；当前 objective_executor 只支持 motor_manager。
       mode: motor_manager
+      # 物镜转盘/物镜轴目标位置，单位：pulse。
       objective_target_pos: -165903
+      # 调焦轴预定位目标位置，单位：pulse。
       focus_target_pos: -2074313
 
+      # 物镜轴移动速度参数。
       objective_profile_vel: 100000
+      # 物镜轴移动加速度参数。
       objective_profile_acc: 100000
+      # 物镜轴移动减速度参数。
       objective_profile_dec: 100000
 
+      # 调焦轴预定位速度参数。
       focus_profile_vel: 100000
+      # 调焦轴预定位加速度参数。
       focus_profile_acc: 100000
+      # 调焦轴预定位减速度参数。
       focus_profile_dec: 100000
 
+# 当前物镜状态记录配置。
+# 用于避免重复切换：如果 state_file 记录的 current_objective 已经是目标物镜，就跳过切换。
 state:
+  # 是否启用物镜状态文件。
   enabled: true
+  # 物镜状态文件路径，程序会在切换成功后写入当前物镜。
   state_file: "C:/colony_system/data/objective_state.json"
+  # 当状态文件不存在或没有 current_objective 时，假定初始物镜为该值。
   assume_initial: "4x"
 
+# 物镜切换相关硬件配置。
 hardware:
+  # Modbus 串口配置，物镜轴和调焦轴共用该串口客户端。
   modbus:
+    # 串口号，需要与物镜/调焦控制器实际连接的串口一致。
     port: "COM3"
+    # 串口波特率，需要与控制器参数一致。
     baudrate: 115200
 
+  # 物镜轴配置。
   objective_axis:
+    # 物镜轴电机的 Modbus 从站地址。
     slave: 4
 
+  # 调焦轴配置。
   focus_axis:
+    # 调焦轴电机的 Modbus 从站地址。
     slave: 3

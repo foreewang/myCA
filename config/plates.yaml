@@ -1,168 +1,293 @@
+# C:/colony_system/config/plates.yaml
+# 培养板几何配置文件。
+# workflow/config_loader.py 会根据 task.plate_type 选择对应板型；
+# workflow/plate_geometry.py 和 workflow/scan_planner.py 会用这些参数把孔位名转换成位移台坐标。
+
+# 板型配置顶层字段，不能删除；配置加载器会检查该字段是否存在。
 plates:
+  # 6 孔板配置。
   "6-well":
-    rows: 2                     # 培养板行数。6孔板通常为 2 行（A~B）
-    cols: 3                     # 培养板列数。6孔板通常为 3 列（1~3）
+    # 培养板行数；6 孔板通常为 2 行，孔位行为 A~B。
+    rows: 2
+    # 培养板列数；6 孔板通常为 3 列，孔位列为 1~3。
+    cols: 3
 
+    # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
-      x: 7750000                # A1 孔左侧观测起始点的 X 轴脉冲坐标
-      y: 6550000               # A1 孔左侧观测起始点的 Y 轴脉冲坐标
-      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
+      # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
+      x: 7750000
+      # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
+      y: 6550000
+      # 基准点含义说明，仅用于记录和排查。
+      meaning: "A1孔左侧观测起始点"
 
-    well_diameter_mm: 31      # 单个培养孔直径，单位：mm
-    well_gap_mm:   4          # 相邻培养孔边缘之间的间距，单位：mm
-    pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
+    # 单个培养孔直径，单位：mm。
+    well_diameter_mm: 31
+    # 相邻培养孔边缘之间的距离，单位：mm。
+    well_gap_mm:   4
+    # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
+    pulses_per_mm: 147500
 
-    # 与你实测换孔逻辑一致：
-    # A1 -> A2: Y 轴减小
-    # A1 -> B1: X 轴减小
-    row_stage_sign: -1          # 行方向符号。沿行方向移动（A→B→C）时，位移台 X 轴变化方向为负
-    col_stage_sign: -1          # 列方向符号。沿列方向移动（1→2→3→4）时，位移台 Y 轴变化方向为负
+    # 换孔方向符号。
+    # A1 -> B1 属于行方向变化，当前对应 X 轴减小。
+    row_stage_sign: -1
+    # A1 -> A2 属于列方向变化，当前对应 Y 轴减小。
+    col_stage_sign: -1
 
-    # 孔内扫描方向。当前沿用原脚本默认方向，显式写入，避免隐式默认。
-    x_stage_sign_for_view_down: -1   # 图像中“向下”对应的位移台 X 轴运动方向符号
-    y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
+    # 孔内扫描方向符号。
+    # 图像视野向下移动时，位移台 X 轴的运动方向。
+    x_stage_sign_for_view_down: -1
+    # 图像视野向右移动时，位移台 Y 轴的运动方向。
+    y_stage_sign_for_view_right: -1
 
+    # 扫描前的位移台安全限位检查。
     stage_limits:
+      # 是否启用扫描路径越界预检查。
       enabled: true
-      x_min: -800000        # pulse，X轴最小允许绝对坐标
-      x_max: 10400000      # pulse，X轴最大允许绝对坐标
-      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
-      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      # X 轴最小允许绝对坐标，单位：pulse。
+      x_min: -800000
+      # X 轴最大允许绝对坐标，单位：pulse。
+      x_max: 10400000
+      # Y 轴最小允许绝对坐标，单位：pulse。
+      y_min: -8900000
+      # Y 轴最大允许绝对坐标，单位：pulse。
+      y_max: 7700000
+      # 安全边界，单位：pulse；147500 约等于 1 mm。
+      safety_margin: 147500
 
+  # 运行时运动保护配置。
+  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "6-well" 板型配置。
   runtime_guard:
+    # 是否启用移动后检查，检查实际运动是否符合预期。
     enabled: true
-    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
-    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
-    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+    stuck_min_expected_move_pulse: 20000
+    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+    stuck_max_actual_move_pulse: 1000
+    # 到位误差超过该值时判定移动失败，单位：pulse。
+    max_err_to_target_pulse: 3000
+    # 运动保护触发时是否中止任务。
     abort_on_motion_failure: true
 
-
+  # 12 孔板配置。
   "12-well":
-    rows: 3                     # 培养板行数。12孔板通常为 3 行（A~C）
-    cols: 4                     # 培养板列数。12孔板通常为 4 列（1~4）
+    # 培养板行数；12 孔板通常为 3 行，孔位行为 A~C。
+    rows: 3
+    # 培养板列数；12 孔板通常为 4 列，孔位列为 1~4。
+    cols: 4
 
+    # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
-      x: 8563500                # A1 孔左侧观测起始点的 X 轴脉冲坐标
-      y: 5755000                # A1 孔左侧观测起始点的 Y 轴脉冲坐标
-      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
+      # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
+      x: 8563500
+      # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
+      y: 5755000
+      # 基准点含义说明，仅用于记录和排查。
+      meaning: "A1孔左侧观测起始点"
 
-    well_diameter_mm: 19.5      # 单个培养孔直径，单位：mm
-    well_gap_mm: 3.6            # 相邻培养孔边缘之间的间距，单位：mm
-    pulses_per_mm: 147500       # 电机脉冲与实际位移的换算系数，表示 1 mm 对应多少脉冲
+    # 单个培养孔直径，单位：mm。
+    well_diameter_mm: 19.5
+    # 相邻培养孔边缘之间的距离，单位：mm。
+    well_gap_mm: 3.6
+    # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
+    pulses_per_mm: 147500
 
-    # 与你实测换孔逻辑一致：
-    # A1 -> A2: Y 轴减小
-    # A1 -> B1: X 轴减小
-    row_stage_sign: -1          # 行方向符号。沿行方向移动（A→B→C）时，位移台 X 轴变化方向为负
-    col_stage_sign: -1          # 列方向符号。沿列方向移动（1→2→3→4）时，位移台 Y 轴变化方向为负
+    # 换孔方向符号。
+    # A1 -> B1 属于行方向变化，当前对应 X 轴减小。
+    row_stage_sign: -1
+    # A1 -> A2 属于列方向变化，当前对应 Y 轴减小。
+    col_stage_sign: -1
 
-    # 孔内扫描方向。当前沿用原脚本默认方向，显式写入，避免隐式默认。
-    x_stage_sign_for_view_down: -1   # 图像中“向下”对应的位移台 X 轴运动方向符号
-    y_stage_sign_for_view_right: -1  # 图像中“向右”对应的位移台 Y 轴运动方向符号
+    # 孔内扫描方向符号。
+    # 图像视野向下移动时，位移台 X 轴的运动方向。
+    x_stage_sign_for_view_down: -1
+    # 图像视野向右移动时，位移台 Y 轴的运动方向。
+    y_stage_sign_for_view_right: -1
 
+    # 扫描前的位移台安全限位检查。
     stage_limits:
+      # 是否启用扫描路径越界预检查。
       enabled: true
-      x_min: -800000        # pulse，X轴最小允许绝对坐标
-      x_max: 10400000      # pulse，X轴最大允许绝对坐标
-      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
-      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      # X 轴最小允许绝对坐标，单位：pulse。
+      x_min: -800000
+      # X 轴最大允许绝对坐标，单位：pulse。
+      x_max: 10400000
+      # Y 轴最小允许绝对坐标，单位：pulse。
+      y_min: -8900000
+      # Y 轴最大允许绝对坐标，单位：pulse。
+      y_max: 7700000
+      # 安全边界，单位：pulse；147500 约等于 1 mm。
+      safety_margin: 147500
 
+  # 运行时运动保护配置。
+  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "12-well" 板型配置。
   runtime_guard:
+    # 是否启用移动后检查，检查实际运动是否符合预期。
     enabled: true
-    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
-    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
-    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+    stuck_min_expected_move_pulse: 20000
+    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+    stuck_max_actual_move_pulse: 1000
+    # 到位误差超过该值时判定移动失败，单位：pulse。
+    max_err_to_target_pulse: 3000
+    # 运动保护触发时是否中止任务。
     abort_on_motion_failure: true
 
-    # 兼容旧字段（可保留）
-    point_12: [8563500, 5755000] # 旧版 12 孔板 A1 起始点坐标，单位：脉冲
-    point_12_d: 195              # 旧版孔径参数，单位通常为 0.1 mm，即 195 表示 19.5 mm
-    point_12_gap: 36             # 旧版孔间距参数，单位通常为 0.1 mm，即 36 表示 3.6 mm
-    rpm_mm: 14750                # 旧版单位换算参数，表示 0.1 mm 对应脉冲数
+    # 兼容旧版 12 孔板字段，保留给旧脚本或旧接口读取。
+    # 旧版 12 孔板 A1 起始点坐标，单位：pulse。
+    point_12: [8563500, 5755000]
+    # 旧版孔径参数，单位通常是 0.1 mm；195 表示 19.5 mm。
+    point_12_d: 195
+    # 旧版孔间距参数，单位通常是 0.1 mm；36 表示 3.6 mm。
+    point_12_gap: 36
+    # 旧版单位换算参数，表示 0.1 mm 对应多少脉冲。
+    rpm_mm: 14750
 
+    # 旧版图像方向与位移台轴映射配置。
     axis_mapping:
-      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
-      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
-      stage_and_view_reverse: true  # 位移台运动方向与图像视野移动方向是否相反。true 表示相反
+      # 图像上下方向对应位移台 X 轴。
+      image_up_down_axis: x
+      # 图像左右方向对应位移台 Y 轴。
+      image_left_right_axis: y
+      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
+      stage_and_view_reverse: true
 
+  # 24 孔板配置。
   "24-well":
-    rows: 4                     # 培养板行数。24孔板通常为 4 行（A~D）
-    cols: 6                     # 培养板列数。24孔板通常为 6 列（1~6）
+    # 培养板行数；24 孔板通常为 4 行，孔位行为 A~D。
+    rows: 4
+    # 培养板列数；24 孔板通常为 6 列，孔位列为 1~6。
+    cols: 6
 
+    # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
-      x: 8722905                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
-      y: 6528979                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
-      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
+      # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
+      x: 8722905
+      # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
+      y: 6528979
+      # 基准点含义说明，仅用于记录和排查。
+      meaning: "A1孔左侧观测起始点"
 
-    well_diameter_mm: 13.7      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: 3.5           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
-    pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
+    # 单个培养孔直径，单位：mm。
+    well_diameter_mm: 13.7
+    # 相邻培养孔边缘之间的距离，单位：mm。
+    well_gap_mm: 3.5
+    # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
+    pulses_per_mm: 147500
 
-    # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: -1        # 行方向的位移台运动符号，使用前需根据实测结果填写
-    col_stage_sign: -1        # 列方向的位移台运动符号，使用前需根据实测结果填写
-    x_stage_sign_for_view_down: -1   # 图像向下对应的 X 轴方向符号，需实测确认
-    y_stage_sign_for_view_right: -1  # 图像向右对应的 Y 轴方向符号，需实测确认
+    # 换孔方向符号，使用前应按现场实测确认。
+    row_stage_sign: -1
+    # 换列方向符号，使用前应按现场实测确认。
+    col_stage_sign: -1
+    # 图像视野向下移动时，位移台 X 轴的运动方向。
+    x_stage_sign_for_view_down: -1
+    # 图像视野向右移动时，位移台 Y 轴的运动方向。
+    y_stage_sign_for_view_right: -1
 
+    # 扫描前的位移台安全限位检查。
     stage_limits:
+      # 是否启用扫描路径越界预检查。
       enabled: true
-      x_min: -800000        # pulse，X轴最小允许绝对坐标
-      x_max: 10400000      # pulse，X轴最大允许绝对坐标
-      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
-      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      # X 轴最小允许绝对坐标，单位：pulse。
+      x_min: -800000
+      # X 轴最大允许绝对坐标，单位：pulse。
+      x_max: 10400000
+      # Y 轴最小允许绝对坐标，单位：pulse。
+      y_min: -8900000
+      # Y 轴最大允许绝对坐标，单位：pulse。
+      y_max: 7700000
+      # 安全边界，单位：pulse；147500 约等于 1 mm。
+      safety_margin: 147500
 
+  # 运行时运动保护配置。
+  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "24-well" 板型配置。
   runtime_guard:
+    # 是否启用移动后检查，检查实际运动是否符合预期。
     enabled: true
-    stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
-    stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
-    max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+    stuck_min_expected_move_pulse: 20000
+    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+    stuck_max_actual_move_pulse: 1000
+    # 到位误差超过该值时判定移动失败，单位：pulse。
+    max_err_to_target_pulse: 3000
+    # 运动保护触发时是否中止任务。
     abort_on_motion_failure: true
 
-    # 兼容旧字段（可保留）
+    # 兼容旧版图像方向与位移台轴映射配置。
     axis_mapping:
-      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
-      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
-      stage_and_view_reverse: true  # 位移台运动方向与图像视野方向相反
+      # 图像上下方向对应位移台 X 轴。
+      image_up_down_axis: x
+      # 图像左右方向对应位移台 Y 轴。
+      image_left_right_axis: y
+      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
+      stage_and_view_reverse: true
 
+  # 48 孔板配置。
   "48-well":
-    rows: 6                     # 培养板行数。48孔板通常为 6 行（A~F）
-    cols: 8                     # 培养板列数。48孔板通常为 8 列（1~8）
+    # 培养板行数；48 孔板通常为 6 行，孔位行为 A~F。
+    rows: 6
+    # 培养板列数；48 孔板通常为 8 列，孔位列为 1~8。
+    cols: 8
 
+    # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
-      x: 9412400                   # A1 孔左侧观测起始点的 X 坐标。null 表示尚未标定
-      y: 5841900                   # A1 孔左侧观测起始点的 Y 坐标。null 表示尚未标定
-      meaning: "A1孔左侧观测起始点"   # 对该基准点含义的文字说明
+      # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
+      x: 9412400
+      # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
+      y: 5841900
+      # 基准点含义说明，仅用于记录和排查。
+      meaning: "A1孔左侧观测起始点"
 
-    well_diameter_mm: 9.3      # 单个培养孔直径，单位：mm。null 表示尚未测定
-    well_gap_mm: 2.4           # 相邻培养孔边缘间距，单位：mm。null 表示尚未测定
-    pulses_per_mm: 147500       # 电机脉冲与实际位移换算系数，默认沿用当前设备标定值
+    # 单个培养孔直径，单位：mm。
+    well_diameter_mm: 9.3
+    # 相邻培养孔边缘之间的距离，单位：mm。
+    well_gap_mm: 2.4
+    # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
+    pulses_per_mm: 147500
 
-    # 使用前请按实测值补全，避免沿用错误默认方向
-    row_stage_sign: -1        # 行方向的位移台运动符号，使用前需根据实测结果填写
-    col_stage_sign: -1        # 列方向的位移台运动符号，使用前需根据实测结果填写
-    x_stage_sign_for_view_down: -1    # 图像向下对应的 X 轴方向符号，需实测确认
-    y_stage_sign_for_view_right: -1   # 图像向右对应的 Y 轴方向符号，需实测确认
+    # 换孔方向符号，使用前应按现场实测确认。
+    row_stage_sign: -1
+    # 换列方向符号，使用前应按现场实测确认。
+    col_stage_sign: -1
+    # 图像视野向下移动时，位移台 X 轴的运动方向。
+    x_stage_sign_for_view_down: -1
+    # 图像视野向右移动时，位移台 Y 轴的运动方向。
+    y_stage_sign_for_view_right: -1
 
+    # 扫描前的位移台安全限位检查。
     stage_limits:
+      # 是否启用扫描路径越界预检查。
       enabled: true
-      x_min: -800000        # pulse，X轴最小允许绝对坐标
-      x_max: 10400000      # pulse，X轴最大允许绝对坐标
-      y_min: -8900000      # pulse，Y轴最小允许绝对坐标
-      y_max: 7700000       # pulse，Y轴最大允许绝对坐标
-      safety_margin: 147500  # pulse，约等于 1 mm 安全边界
+      # X 轴最小允许绝对坐标，单位：pulse。
+      x_min: -800000
+      # X 轴最大允许绝对坐标，单位：pulse。
+      x_max: 10400000
+      # Y 轴最小允许绝对坐标，单位：pulse。
+      y_min: -8900000
+      # Y 轴最大允许绝对坐标，单位：pulse。
+      y_max: 7700000
+      # 安全边界，单位：pulse；147500 约等于 1 mm。
+      safety_margin: 147500
 
+    # 48 孔板运行时运动保护配置。
+    # 当前该段缩进在 "48-well" 内，因此属于 48 孔板配置。
     runtime_guard:
+      # 是否启用移动后检查，检查实际运动是否符合预期。
       enabled: true
-      stuck_min_expected_move_pulse: 20000   # 计划移动超过这个值才判定“应该明显动”
-      stuck_max_actual_move_pulse: 1000      # 实际移动小于这个值，判定疑似卡死/撞限位
-      max_err_to_target_pulse: 3000          # 到位误差超过这个值，判定失败
+      # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+      stuck_min_expected_move_pulse: 20000
+      # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+      stuck_max_actual_move_pulse: 1000
+      # 到位误差超过该值时判定移动失败，单位：pulse。
+      max_err_to_target_pulse: 3000
+      # 运动保护触发时是否中止任务。
       abort_on_motion_failure: true
 
-    # 兼容旧字段（可保留）
+    # 兼容旧版图像方向与位移台轴映射配置。
     axis_mapping:
-      image_up_down_axis: x      # 图像上下方向对应位移台的 X 轴
-      image_left_right_axis: y   # 图像左右方向对应位移台的 Y 轴
-      stage_and_view_reverse: true  # 位移台运动方向与图像视野方向相反
+      # 图像上下方向对应位移台 X 轴。
+      image_up_down_axis: x
+      # 图像左右方向对应位移台 Y 轴。
+      image_left_right_axis: y
+      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
+      stage_and_view_reverse: true

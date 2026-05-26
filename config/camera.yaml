@@ -1,37 +1,87 @@
+# C:/colony_system/config/camera.yaml
+# 主拍照相机配置文件。
+# workflow/config_loader.py 会读取顶层 camera 字段，workflow/run_task.py 会把其中的相机参数
+# 传给 workflow/camera_executor.py，用于打开海康相机、设置曝光/增益并保存采集图像。
+
+# 相机配置顶层字段，不能删除；配置加载器会检查该字段是否存在。
 camera:
+  # 相机设备索引。
+  # 当 serial_number 为 null 时，程序按这个索引从已发现的相机列表中选择设备；0 通常表示第一台。
   device_index: 0
+
+  # 相机序列号。
+  # null 表示不按序列号指定相机；如果现场有多台相机，建议填写具体序列号以避免选错设备。
   serial_number: null
 
+  # 图像分辨率配置，主要用于扫描参数计算和相机采集尺寸管理。
   resolution:
+    # 采集图像宽度，单位：像素。
     width: 5120
+
+    # 采集图像高度，单位：像素。
     height: 5120
+
+    # 当相机或当前模式不支持目标分辨率时，是否允许降级到更小分辨率。
     allow_downscale: true
+
+    # 常用分辨率预设，方便在代码或配置中引用不同尺寸。
     presets:
+      # 最大分辨率预设。
       max:
+        # max 预设的图像宽度，单位：像素。
         width: 5120
+        # max 预设的图像高度，单位：像素。
         height: 5120
+
+      # 半尺寸分辨率预设。
       half:
+        # half 预设的图像宽度，单位：像素。
         width: 2560
+        # half 预设的图像高度，单位：像素。
         height: 2560
 
-  # 默认值：如果某个物镜没有单独配置，就用这里
+  # 默认曝光时间，单位：微秒。
+  # 如果当前物镜没有在 objective_settings 中单独配置 exposure_us，就使用这里的值。
   exposure_us: 5000
+
+  # 默认相机增益。
+  # 如果当前物镜没有在 objective_settings 中单独配置 gain，就使用这里的值。
   gain: 0.0
 
-  # 新增：不同物镜对应不同相机参数，需要同步到third_party/camera_manager/config/camera.yaml
+  # 不同物镜对应的相机参数。
+  # run_task.py 会根据 task.objective 选择对应物镜下的 exposure_us/gain。
+  # 如果这里有调整，也需要同步到 third_party/camera_manager/config/camera.yaml，保持两套相机配置一致。
   objective_settings:
+    # 4x 物镜拍照参数。
     4x:
+      # 4x 物镜曝光时间，单位：微秒。
       exposure_us: 5000
+      # 4x 物镜相机增益。
       gain: 0.0
 
+    # 10x 物镜拍照参数。
     10x:
+      # 10x 物镜曝光时间，单位：微秒；高倍镜通常需要更长曝光。
       exposure_us: 20000
+      # 10x 物镜相机增益。
       gain: 0.0
 
+  # 触发模式。
+  # software 表示软件触发采集；该字段可能由相机管理模块使用，主流程当前主要通过 camera_executor 直接拍照。
   trigger_mode: software
+
+  # 像素格式。
+  # mono8 表示 8 位灰度图，适合黑白工业相机和后续视觉算法处理。
   pixel_format: mono8
+
+  # 图像保存格式。
+  # bmp 表示保存为无压缩位图，文件较大但不会引入压缩损失。
   save_format: bmp
 
+  # 保存图片时的文件/目录策略。
   save_options:
+    # 保存目录不存在时，是否自动创建目录。
     create_dir_if_missing: true
+
+    # 目标文件已存在时，是否允许覆盖。
     overwrite: true
