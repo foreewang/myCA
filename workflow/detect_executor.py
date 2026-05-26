@@ -125,6 +125,28 @@ def _vision_overlay_path(output_dir: Path) -> Path:
     return output_dir / "06_overlay.bmp"
 
 
+def _build_scale_bar_config(detect_cfg: Dict[str, Any], mm_per_pixel: Dict[str, float]) -> Dict[str, Any] | None:
+    cfg = detect_cfg.get("scale_bar")
+    if cfg is None:
+        return None
+    if isinstance(cfg, bool):
+        if not cfg:
+            return None
+        out: Dict[str, Any] = {"enabled": True}
+    elif isinstance(cfg, dict):
+        if not bool(cfg.get("enabled", True)):
+            return None
+        out = dict(cfg)
+        out["enabled"] = True
+    else:
+        return None
+
+    out["mm_per_pixel"] = float(mm_per_pixel["x"])
+    out["mm_per_pixel_x"] = float(mm_per_pixel["x"])
+    out["mm_per_pixel_y"] = float(mm_per_pixel["y"])
+    return out
+
+
 def _draw_center_mark(draw: ImageDraw.ImageDraw, center: Tuple[int, int], radius: int = 8) -> None:
     x, y = center
     draw.ellipse((x - radius, y - radius, x + radius, y + radius), outline="red", width=2)
@@ -215,6 +237,9 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
             if overlay_source == "vision":
                 vision_output_dir = _vision_output_dir_for_image(image_path, overlay_dir)
                 detect_kwargs["out_dir"] = str(vision_output_dir)
+                scale_bar = _build_scale_bar_config(detect_cfg, mm_per_pixel)
+                if scale_bar is not None:
+                    detect_kwargs["scale_bar"] = scale_bar
 
         detect_result = run_detect_on_image(
             image_path,

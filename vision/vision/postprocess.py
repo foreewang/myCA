@@ -32,6 +32,107 @@ def draw_cross(img, center, color=(0, 255, 0), size=50, thickness=8):
     cv2.line(img, (cx, cy - size), (cx, cy + size), color, thickness)
 
 
+def _nice_scale_length_mm(target_mm):
+    if target_mm <= 0:
+        return None
+    candidates = [
+        0.01, 0.02, 0.05,
+        0.1, 0.2, 0.5,
+        1.0, 2.0, 5.0,
+        10.0, 20.0, 50.0,
+    ]
+    best = candidates[0]
+    for value in candidates:
+        if value <= target_mm:
+            best = value
+        else:
+            break
+    return best
+
+
+def _format_scale_label(length_mm):
+    if length_mm < 1.0:
+        return f"{int(round(length_mm * 1000.0))} um"
+    if abs(length_mm - round(length_mm)) < 1e-6:
+        return f"{int(round(length_mm))} mm"
+    return f"{length_mm:g} mm"
+
+
+def draw_scale_bar(img, scale_bar=None):
+    if not scale_bar:
+        return None
+    if isinstance(scale_bar, dict) and not scale_bar.get("enabled", True):
+        return None
+
+    cfg = scale_bar if isinstance(scale_bar, dict) else {}
+    mm_per_pixel = cfg.get("mm_per_pixel")
+    if mm_per_pixel is None:
+        return None
+    try:
+        mm_per_pixel = float(mm_per_pixel)
+    except Exception:
+        return None
+    if mm_per_pixel <= 0:
+        return None
+
+    height, width = img.shape[:2]
+    target_px = float(cfg.get("target_px") or width * 0.16)
+    length_mm = cfg.get("length_mm")
+    if length_mm is None:
+        length_mm = _nice_scale_length_mm(target_px * mm_per_pixel)
+    if length_mm is None:
+        return None
+    length_mm = float(length_mm)
+    length_px = int(round(length_mm / mm_per_pixel))
+    if length_px < 10:
+        return None
+
+    margin_px = int(cfg.get("margin_px") or max(40, round(min(width, height) * 0.025)))
+    thickness = int(cfg.get("thickness") or max(4, round(min(width, height) * 0.0025)))
+    font_scale = float(cfg.get("font_scale") or max(0.8, min(width, height) / 4200.0))
+    font_thickness = int(cfg.get("font_thickness") or max(2, round(thickness * 0.45)))
+    label = str(cfg.get("label") or _format_scale_label(length_mm))
+    position = str(cfg.get("position") or "bottom_right")
+
+    if position == "bottom_left":
+        x0 = margin_px
+        x1 = x0 + length_px
+    else:
+        x1 = width - margin_px
+        x0 = x1 - length_px
+    y = height - margin_px
+
+    x0 = max(margin_px, int(x0))
+    x1 = min(width - margin_px, int(x1))
+    if x1 <= x0:
+        return None
+
+    color = tuple(int(v) for v in cfg.get("color_bgr", (255, 255, 255)))
+    outline = tuple(int(v) for v in cfg.get("outline_bgr", (0, 0, 0)))
+
+    cv2.line(img, (x0, y), (x1, y), outline, thickness + 4, cv2.LINE_AA)
+    cv2.line(img, (x0, y), (x1, y), color, thickness, cv2.LINE_AA)
+    tick_h = max(thickness * 3, 16)
+    for x in (x0, x1):
+        cv2.line(img, (x, y - tick_h // 2), (x, y + tick_h // 2), outline, thickness + 4, cv2.LINE_AA)
+        cv2.line(img, (x, y - tick_h // 2), (x, y + tick_h // 2), color, thickness, cv2.LINE_AA)
+
+    text_size, baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+    text_w, text_h = text_size
+    tx = int(round((x0 + x1 - text_w) / 2))
+    ty = int(y - tick_h - max(10, baseline))
+    cv2.putText(img, label, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, outline, font_thickness + 4, cv2.LINE_AA)
+    cv2.putText(img, label, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, font_thickness, cv2.LINE_AA)
+
+    return {
+        "length_mm": float(length_mm),
+        "length_px": int(x1 - x0),
+        "label": label,
+        "mm_per_pixel": float(mm_per_pixel),
+        "position": position,
+    }
+
+
 def bbox_iou_xywh(a, b):
     """
     计算两个边界框的 IoU（Intersection over Union，交并比）。
@@ -195,7 +296,7 @@ def upscale_to_original(im_small, target_shape):
     return cv2.resize(im_small, (W, H), interpolation=cv2.INTER_NEAREST)
 
 
-def save_outputs(src_path, out_dir, gray, refined, debug):
+def save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=None):
     """
     保存中间处理结果、可视化结果和最终 JSON 输出。
 
@@ -239,7 +340,9 @@ def save_outputs(src_path, out_dir, gray, refined, debug):
     cv2.imwrite(str(out_dir / '03_coarse_binary.bmp'), upscale_to_original(debug['coarse_binary'], gray.shape))
     cv2.imwrite(str(out_dir / '04_refine_density.bmp'), debug['full_refine_density'])
     cv2.imwrite(str(out_dir / '05_contour_mask.bmp'), debug['contour_mask'])
-    cv2.imwrite(str(out_dir / '06_overlay.bmp'), debug['overlay'])
+    overlay = debug['overlay'].copy()
+    scale_bar_info = draw_scale_bar(overlay, scale_bar)
+    cv2.imwrite(str(out_dir / '06_overlay.bmp'), overlay)
 
     # 构建统一 JSON 输出结构，供上层流程、评估脚本或前端可视化直接读取
     result_json = {
@@ -252,6 +355,7 @@ def save_outputs(src_path, out_dir, gray, refined, debug):
         'coarse_seed_thresh': int(debug.get('coarse_seed_thresh', -1)),
         'coarse_density_thresh': debug.get('coarse_density_thresh'),
         'coarse_candidate_count': int(debug.get('coarse_candidate_count', len(refined))),
+        'scale_bar': scale_bar_info,
         'component_ids': [d['id'] for d in refined],
         'components': refined,
     }

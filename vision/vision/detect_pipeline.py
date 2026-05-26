@@ -239,6 +239,7 @@ def detect_from_gray(
     max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
     reject_border_touch=True,
+    scale_bar=None,
 ):
     """
     从内存中的图像数组执行检测流程，并按需要返回结果或落盘输出。
@@ -301,12 +302,13 @@ def detect_from_gray(
             'coarse_seed_thresh': int(debug.get('coarse_seed_thresh', -1)),
             'coarse_density_thresh': debug.get('coarse_density_thresh'),
             'coarse_candidate_count': int(debug.get('coarse_candidate_count', len(refined))),
+            'scale_bar': None,
             'component_ids': [d['id'] for d in refined],
             'components': refined,
         }
 
     # 需要写盘时，统一交给 save_outputs 落地中间结果和 JSON
-    return save_outputs(src_path, out_dir, gray, refined, debug)
+    return save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=scale_bar)
 
 
 def detect_from_path(image_path, out_dir='outputs_5120_contour_refined_opt', **kwargs):
