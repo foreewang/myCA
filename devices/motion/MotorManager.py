@@ -312,8 +312,14 @@ if __name__ == "__main__":
         # x.pp_absolute_move(4206434+(2331-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # y.pp_absolute_move(109746+(2110-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         
-        x.pp_absolute_move(8865800, profile_vel=500000, profile_acc=500000, profile_dec=500000)
-        y.pp_absolute_move(6185500, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        x.pp_absolute_move(5722392, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        y.pp_absolute_move(-19586, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        
+        # x.pp_absolute_move(0, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        # y.pp_absolute_move(7500000, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        
+        # x.pp_absolute_move(8865800, profile_vel=500000, profile_acc=500000, profile_dec=500000)
+        # y.pp_absolute_move(6185500, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # x 轴正向移动 3 毫米
         # y.pp_relative_move(-(3850-2560)*86, 500000,500000,500000)
         # x 轴逆向移动 3 毫米8563500,5755000
