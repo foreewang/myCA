@@ -1,0 +1,142 @@
+{
+  "input_path": "C:\\colony_system\\data\\http_tests\\pipeline_C3_detect_http_003\\C3\\images\\C3_017_row02_col04.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 1,
+  "coarse_seed_thresh": 94,
+  "coarse_density_thresh": 80.0,
+  "coarse_candidate_count": 1,
+  "scale_bar": null,
+  "component_ids": [
+    "C01"
+  ],
+  "components": [
+    {
+      "id": "C01",
+      "coarse_bbox": [
+        482,
+        3455,
+        936,
+        865
+      ],
+      "refine_roi_bbox": [
+        295,
+        3282,
+        1310,
+        1211
+      ],
+      "center_pixel": [
+        904,
+        3920
+      ],
+      "contour_center_pixel": [
+        904,
+        3920
+      ],
+      "dark_core_center_pixel": [
+        916,
+        3910
+      ],
+      "safe_point": [
+        904,
+        3920
+      ],
+      "bbox": [
+        352,
+        3369,
+        1096,
+        1109
+      ],
+      "area_px": 926536,
+      "contour_points": [
+        [
+          909,
+          3369
+        ],
+        [
+          675,
+          3438
+        ],
+        [
+          494,
+          3548
+        ],
+        [
+          375,
+          3766
+        ],
+        [
+          352,
+          3941
+        ],
+        [
+          413,
+          4174
+        ],
+        [
+          542,
+          4339
+        ],
+        [
+          703,
+          4428
+        ],
+        [
+          971,
+          4477
+        ],
+        [
+          1109,
+          4422
+        ],
+        [
+          1303,
+          4293
+        ],
+        [
+          1446,
+          4071
+        ],
+        [
+          1447,
+          3879
+        ],
+        [
+          1383,
+          3644
+        ],
+        [
+          1297,
+          3512
+        ],
+        [
+          1022,
+          3383
+        ]
+      ],
+      "center_history_small": [
+        [
+          568.8549618320611,
+          575.2671755725191
+        ],
+        [
+          563.0,
+          582.0
+        ],
+        [
+          556.0,
+          586.0
+        ]
+      ],
+      "is_valid_for_compensation": true,
+      "confidence": 0.5301223318634132,
+      "foreground_ratio": 0.10160818713450293,
+      "bbox_area_ratio": 0.0182647705078125,
+      "dark_core_area_ratio": 0.0018558502197265625,
+      "dark_core_area_small": 1946,
+      "touch_border": false
+    }
+  ]
+}
