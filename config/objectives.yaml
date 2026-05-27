@@ -27,7 +27,7 @@ objectives:
       # 物镜转盘/物镜轴目标位置，单位：pulse。
       objective_target_pos: 166347
       # 调焦轴预定位目标位置，单位：pulse。
-      # 对应细准焦螺旋；粗准焦螺旋不应由这里移动。
+      # 切换物镜动作对应的细准焦螺旋；粗准焦螺旋不应由这里移动。
       focus_target_pos: -1923201
 
       # 物镜轴移动速度参数。
@@ -65,7 +65,7 @@ objectives:
       mode: motor_manager
       # 物镜转盘/物镜轴目标位置，单位：pulse。
       objective_target_pos: -165903
-      # 调焦轴预定位目标位置，单位：pulse。
+      # 切换物镜动作对应的调焦轴预定位目标位置，单位：pulse。
       focus_target_pos: -2074313
 
       # 物镜轴移动速度参数。
