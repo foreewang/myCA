@@ -11,7 +11,7 @@ camera:
 
   # 相机序列号。
   # null 表示不按序列号指定相机；如果现场有多台相机，建议填写具体序列号以避免选错设备。
-  serial_number: null
+  serial_number: DA8583237
 
   # 图像分辨率配置，主要用于扫描参数计算和相机采集尺寸管理。
   resolution:
