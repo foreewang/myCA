@@ -28,7 +28,7 @@ objectives:
       objective_target_pos: 166347
       # 调焦轴预定位目标位置，单位：pulse。
       # 对应细准焦螺旋；粗准焦螺旋不应由这里移动。
-      focus_target_pos: -1923201
+      focus_target_pos: -526611
 
       # 物镜轴移动速度参数。
       objective_profile_vel: 100000
@@ -66,7 +66,7 @@ objectives:
       # 物镜转盘/物镜轴目标位置，单位：pulse。
       objective_target_pos: -165903
       # 调焦轴预定位目标位置，单位：pulse。
-      focus_target_pos: -2074313
+      focus_target_pos: -743784
 
       # 物镜轴移动速度参数。
       objective_profile_vel: 100000
