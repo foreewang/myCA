@@ -1,7 +1,15 @@
+"""把算法中间结果整理成统一 JSON 结构。
+
+segment.py 更关注“怎么找到目标”，本文件更关注“怎么把找到的目标
+转换成上层流程稳定可读的数据结构”。补偿流程、前端展示、调试脚本
+都依赖这些字段名，所以这里尽量只做字段整理，不做复杂图像算法。
+"""
+
 import numpy as np
 
 
 def _coarse_quality(coarse_item):
+    """提取粗检测阶段的质量字段，并做最小限度的兜底。"""
     coarse_item = coarse_item or {}
     confidence = float(coarse_item.get("confidence", 0.0) or 0.0)
     confidence = max(0.0, min(1.0, confidence))
@@ -19,6 +27,12 @@ def _coarse_quality(coarse_item):
 
 
 def build_failed_component(idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, coarse_item=None):
+    """生成“粗检测成功但轮廓细化失败”的结果结构。
+
+    失败结果仍然保留 coarse_bbox、safe_point、质量字段等信息，
+    方便人工复核和调试；但 is_valid_for_compensation 固定为 False，
+    防止补偿流程使用不可靠目标。
+    """
     quality = _coarse_quality(coarse_item)
     safe_point = quality.get("safe_point") or [int(cx), int(cy)]
     return {
@@ -44,6 +58,11 @@ def build_failed_component(idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug
 
 
 def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global, coarse_item=None):
+    """生成轮廓细化成功后的标准目标结构。
+
+    refined_item 中的坐标是 ROI 局部坐标，本函数会加上 ROI 左上角
+    偏移量 (x0, y0)，把它们转换回整张原图坐标。
+    """
     bx, by, bw, bh = refined_item["bbox_local"]
     cxl = refined_item["center_local"][0]
     cyl = refined_item["center_local"][1]
@@ -81,6 +100,7 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
 
 
 def to_global_contour(contour_local, x0, y0):
+    """把 ROI 内的局部轮廓点转换为原图全局轮廓点。"""
     cnt_local = np.array(contour_local, dtype=np.int32).reshape(-1, 1, 2)
     cnt_global = cnt_local + np.array([[[x0, y0]]], dtype=np.int32)
     return cnt_local, cnt_global
