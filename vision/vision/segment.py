@@ -95,6 +95,7 @@ def detect_coarse_rois(
     comps = []
     for i in range(1, n):
         x, y, w, h, area = stats[i]
+        # 连通域面积不能太小
         if area < min_area:
             continue
 
