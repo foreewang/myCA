@@ -20,7 +20,13 @@ def _coarse_quality(coarse_item):
         "bbox_area_ratio": coarse_item.get("bbox_area_ratio"),
         "dark_core_area_ratio": coarse_item.get("dark_core_area_ratio"),
         "dark_core_area_small": coarse_item.get("dark_core_area_small"),
-        "touch_border": bool(coarse_item.get("touch_border", False)),
+        "raw_black_area_small": coarse_item.get("raw_black_area_small"),
+        "largest_dark_core_component_area_small": coarse_item.get("largest_dark_core_component_area_small"),
+        "largest_dark_core_component_ratio": coarse_item.get("largest_dark_core_component_ratio"),
+        "dark_core_fragment_count": coarse_item.get("dark_core_fragment_count"),
+        "touch_image_border": bool(coarse_item.get("touch_image_border", False)),
+        "image_border_sides": list(coarse_item.get("image_border_sides") or []),
+        "image_edge_clipped": bool(coarse_item.get("image_edge_clipped", coarse_item.get("touch_image_border", False))),
         "dark_core_center_pixel": coarse_item.get("dark_core_center_pixel"),
         "safe_point": coarse_item.get("safe_point") or coarse_item.get("dark_core_center_pixel"),
     }
@@ -53,7 +59,13 @@ def build_failed_component(idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug
         "bbox_area_ratio": quality.get("bbox_area_ratio"),
         "dark_core_area_ratio": quality.get("dark_core_area_ratio"),
         "dark_core_area_small": quality.get("dark_core_area_small"),
-        "touch_border": quality.get("touch_border"),
+        "raw_black_area_small": quality.get("raw_black_area_small"),
+        "largest_dark_core_component_area_small": quality.get("largest_dark_core_component_area_small"),
+        "largest_dark_core_component_ratio": quality.get("largest_dark_core_component_ratio"),
+        "dark_core_fragment_count": quality.get("dark_core_fragment_count"),
+        "touch_image_border": quality.get("touch_image_border"),
+        "image_border_sides": quality.get("image_border_sides"),
+        "image_edge_clipped": quality.get("image_edge_clipped"),
     }
 
 
@@ -95,7 +107,13 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
         "bbox_area_ratio": quality.get("bbox_area_ratio"),
         "dark_core_area_ratio": quality.get("dark_core_area_ratio"),
         "dark_core_area_small": quality.get("dark_core_area_small"),
-        "touch_border": quality.get("touch_border"),
+        "raw_black_area_small": quality.get("raw_black_area_small"),
+        "largest_dark_core_component_area_small": quality.get("largest_dark_core_component_area_small"),
+        "largest_dark_core_component_ratio": quality.get("largest_dark_core_component_ratio"),
+        "dark_core_fragment_count": quality.get("dark_core_fragment_count"),
+        "touch_image_border": quality.get("touch_image_border"),
+        "image_border_sides": quality.get("image_border_sides"),
+        "image_edge_clipped": quality.get("image_edge_clipped"),
     }
 
 
