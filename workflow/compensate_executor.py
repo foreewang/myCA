@@ -21,7 +21,7 @@ def _all_clone_refs(detect_result: Dict[str, Any]) -> List[Tuple[Dict[str, Any],
     refs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
     for image_item in detect_result.get("images", []):
         for clone_item in image_item.get("clones", []):
-            if clone_item.get("is_valid_for_compensation") is False:
+            if clone_item.get("is_pickable") is not True:
                 continue
             refs.append((image_item, clone_item))
     return refs
@@ -44,7 +44,7 @@ def select_clone_for_compensation(
     mode = str((selector_cfg or {}).get("mode") or "first").strip().lower()
     refs = _all_clone_refs(detect_result)
     if not refs:
-        raise ValueError("detect_result 中没有可补偿的克隆")
+        raise ValueError("detect_result 中没有 is_pickable=true 的可挑取克隆")
 
     if mode == "first":
         return refs[0]
@@ -64,7 +64,7 @@ def select_clone_for_compensation(
             if image_index is not None and int(image_item.get("index")) != int(image_index):
                 continue
             return image_item, clone_item
-        raise ValueError(f"未找到 clone_id={clone_id!r} 对应的克隆")
+        raise ValueError(f"未找到 clone_id={clone_id!r} 对应的可挑取克隆")
 
     if mode == "image_and_clone":
         image_index = int(selector_cfg["image_index"])
@@ -72,7 +72,7 @@ def select_clone_for_compensation(
         for image_item, clone_item in refs:
             if int(image_item.get("index")) == image_index and clone_item.get("clone_id") == clone_id:
                 return image_item, clone_item
-        raise ValueError(f"未找到 image_index={image_index}, clone_id={clone_id!r} 对应的克隆")
+        raise ValueError(f"未找到 image_index={image_index}, clone_id={clone_id!r} 对应的可挑取克隆")
 
     raise ValueError(f"不支持的 compensate.selector.mode: {mode}")
 
@@ -187,20 +187,39 @@ def _build_image_item_from_capture(
         "y": float(fov_cfg["height"]) / float(height),
     }
 
-    detect_result = run_detect_on_image(image_path, entrypoint=detect_entrypoint)
+    detect_result = run_detect_on_image(
+        image_path,
+        entrypoint=detect_entrypoint,
+        detect_kwargs={
+            "mm_per_pixel": mm_per_pixel,
+            "well_border_margin_mm": float((params.get("compensate_selector") or {}).get("well_border_margin_mm", 0.0) or 0.0),
+            "well_border_margin_px": float((params.get("compensate_selector") or {}).get("well_border_margin_px", 30.0) or 30.0),
+            "detect_well_border": bool((params.get("compensate_selector") or {}).get("detect_well_border", True)),
+        },
+    )
     clones: List[Dict[str, Any]] = []
     for clone in detect_result.get("clones", []) or []:
         center_px = clone["center_px"]
+        offset_px = _offset_from_center(center_px, image_center)
+        is_valid = clone.get("is_valid_for_compensation")
         clones.append(
             {
                 "clone_id": clone["clone_id"],
                 "center_px": center_px,
-                "offset_from_image_center_px": _offset_from_center(center_px, image_center),
+                "offset_from_image_center_px": offset_px,
                 "bbox": clone.get("bbox"),
                 "area_px": clone.get("area_px"),
                 "score": clone.get("score"),
                 "confidence": clone.get("confidence"),
-                "is_valid_for_compensation": clone.get("is_valid_for_compensation"),
+                "is_valid_for_compensation": is_valid,
+                "touch_image_border": clone.get("touch_image_border"),
+                "image_border_sides": list(clone.get("image_border_sides") or []),
+                "image_edge_clipped": clone.get("image_edge_clipped"),
+                "well_border_detected": clone.get("well_border_detected"),
+                "near_well_border": clone.get("near_well_border"),
+                "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
+                "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
+                "is_pickable": clone.get("is_pickable") if clone.get("is_pickable") is not None else is_valid is not False,
                 "source_image_path": image_path,
                 "stage_x_actual": stage_x_actual,
                 "stage_y_actual": stage_y_actual,
