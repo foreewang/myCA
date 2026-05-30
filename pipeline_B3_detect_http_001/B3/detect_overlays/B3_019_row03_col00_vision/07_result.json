@@ -1,0 +1,14 @@
+{
+  "input_path": "D:\\colony_system\\data\\http_tests\\pipeline_B3_detect_http_001\\B3\\images\\B3_019_row03_col00.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 0,
+  "coarse_seed_thresh": 35,
+  "coarse_density_thresh": 86.0,
+  "coarse_candidate_count": 0,
+  "scale_bar": null,
+  "component_ids": [],
+  "components": []
+}

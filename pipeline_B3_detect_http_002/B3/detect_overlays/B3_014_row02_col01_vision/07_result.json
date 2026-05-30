@@ -1,0 +1,170 @@
+{
+  "input_path": "D:\\colony_system\\data\\http_tests\\pipeline_B3_detect_http_002\\B3\\images\\B3_014_row02_col01.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 1,
+  "coarse_seed_thresh": 67,
+  "coarse_density_thresh": 115.0,
+  "coarse_candidate_count": 1,
+  "scale_bar": null,
+  "component_ids": [
+    "C01"
+  ],
+  "components": [
+    {
+      "id": "C01",
+      "coarse_bbox": [
+        2145,
+        201,
+        2165,
+        2503
+      ],
+      "refine_roi_bbox": [
+        1712,
+        0,
+        3031,
+        3205
+      ],
+      "center_pixel": [
+        3189,
+        1463
+      ],
+      "contour_center_pixel": [
+        3109,
+        1449
+      ],
+      "dark_core_center_pixel": [
+        3248,
+        1475
+      ],
+      "safe_point": [
+        3189,
+        1463
+      ],
+      "bbox": [
+        1948,
+        329,
+        2147,
+        2300
+      ],
+      "area_px": 3142233,
+      "contour_points": [
+        [
+          2695,
+          329
+        ],
+        [
+          2538,
+          598
+        ],
+        [
+          2490,
+          612
+        ],
+        [
+          2458,
+          782
+        ],
+        [
+          1948,
+          1808
+        ],
+        [
+          2188,
+          1968
+        ],
+        [
+          2457,
+          1981
+        ],
+        [
+          2463,
+          2056
+        ],
+        [
+          2717,
+          2228
+        ],
+        [
+          2743,
+          2382
+        ],
+        [
+          2895,
+          2475
+        ],
+        [
+          2996,
+          2628
+        ],
+        [
+          3112,
+          2523
+        ],
+        [
+          3303,
+          2550
+        ],
+        [
+          3395,
+          2427
+        ],
+        [
+          3867,
+          2147
+        ],
+        [
+          4024,
+          1805
+        ],
+        [
+          4094,
+          1184
+        ],
+        [
+          4062,
+          1047
+        ],
+        [
+          3840,
+          772
+        ],
+        [
+          3491,
+          559
+        ],
+        [
+          3407,
+          449
+        ],
+        [
+          3082,
+          444
+        ]
+      ],
+      "center_history_small": [
+        [
+          575.1014040561622,
+          552.2620904836193
+        ],
+        [
+          525.0,
+          550.0
+        ],
+        [
+          522.0,
+          542.0
+        ]
+      ],
+      "is_valid_for_compensation": true,
+      "confidence": 0.5924472808837891,
+      "foreground_ratio": 0.7526305526305527,
+      "bbox_area_ratio": 0.12226581573486328,
+      "dark_core_area_ratio": 0.09202098846435547,
+      "dark_core_area_small": 96491,
+      "touch_border": false
+    }
+  ]
+}

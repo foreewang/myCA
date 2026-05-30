@@ -244,7 +244,13 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         detect_result = run_detect_on_image(
             image_path,
             entrypoint=entrypoint,
-            detect_kwargs=detect_kwargs,
+            detect_kwargs={
+                **detect_kwargs,
+                "mm_per_pixel": mm_per_pixel,
+                "well_border_margin_mm": float(detect_cfg.get("well_border_margin_mm", 0.0) or 0.0),
+                "well_border_margin_px": float(detect_cfg.get("well_border_margin_px", 30.0) or 30.0),
+                "detect_well_border": bool(detect_cfg.get("detect_well_border", True)),
+            },
         )
 
         raw_clones = detect_result.get("clones", []) or []
@@ -267,6 +273,14 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "stage_x_actual": actual_x,
                 "stage_y_actual": actual_y,
                 "has_polygon": bool(polygon),
+                "touch_image_border": clone.get("touch_image_border"),
+                "image_border_sides": list(clone.get("image_border_sides") or []),
+                "image_edge_clipped": clone.get("image_edge_clipped"),
+                "well_border_detected": clone.get("well_border_detected"),
+                "near_well_border": clone.get("near_well_border"),
+                "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
+                "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
+                "is_pickable": clone.get("is_pickable") if clone.get("is_pickable") is not None else clone.get("is_valid_for_compensation") is not False,
             }
             clones.append(clone_out)
 

@@ -1,0 +1,27 @@
+{
+  "input_path": "pipeline_B3_detect_http_001\\B3\\images\\B3_012_row01_col05.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 0,
+  "coarse_seed_thresh": 35,
+  "coarse_density_thresh": 93.0,
+  "coarse_candidate_count": 0,
+  "well_border_detection": {
+    "detected": true,
+    "method": "hough_circle",
+    "confidence": 0.6712018140589568,
+    "circle": {
+      "center_px": [
+        3550,
+        3388
+      ],
+      "radius_px": 1579
+    },
+    "edge_support": 0.06349206349206349
+  },
+  "scale_bar": null,
+  "component_ids": [],
+  "components": []
+}

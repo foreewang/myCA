@@ -210,6 +210,14 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
                 "score": _extract_score(item),
                 "confidence": _extract_score(item),
                 "is_valid_for_compensation": _extract_bool(item, "is_valid_for_compensation"),
+                "touch_image_border": _extract_bool(item, "touch_image_border"),
+                "image_border_sides": list(item.get("image_border_sides") or []),
+                "image_edge_clipped": _extract_bool(item, "image_edge_clipped"),
+                "well_border_detected": _extract_bool(item, "well_border_detected"),
+                "near_well_border": _extract_bool(item, "near_well_border"),
+                "distance_to_well_edge_px": item.get("distance_to_well_edge_px"),
+                "distance_to_well_edge_mm": item.get("distance_to_well_edge_mm"),
+                "is_pickable": _extract_bool(item, "is_pickable"),
                 "raw": item,
             }
         )
