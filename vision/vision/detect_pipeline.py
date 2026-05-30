@@ -18,6 +18,7 @@ from .image_loader import load_gray_image, to_gray_u8
 from .postprocess import draw_cross, save_outputs
 from .scorer import score_components_by_area
 from .segment import detect_coarse_rois, refine_contour_in_roi
+from .well_boundary import annotate_pickability_from_visual_well_border
 
 
 def detect_and_refine(
@@ -33,12 +34,16 @@ def detect_and_refine(
     seed_hard_floor=35,
     seed_hard_ceil=105,
     core_density_min=80,
-    min_foreground_ratio=0.025,
+    min_foreground_ratio=0.065,
     max_foreground_ratio=0.80,
     min_dark_core_area_ratio=0.00001,
     max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
-    reject_border_touch=True,
+    reject_border_touch=False,
+    mm_per_pixel=None,
+    detect_well_border=True,
+    well_border_margin_mm=0.0,
+    well_border_margin_px=30.0,
 ):
     """执行“粗检测 + 局部轮廓细化”的核心流程。
 
@@ -152,6 +157,14 @@ def detect_and_refine(
         )
 
     refined = score_components_by_area(refined)
+    well_border_detection = annotate_pickability_from_visual_well_border(
+        gray,
+        refined,
+        mm_per_pixel=mm_per_pixel,
+        well_border_margin_mm=float(well_border_margin_mm or 0.0),
+        well_border_margin_px=float(well_border_margin_px or 30.0),
+        enabled=bool(detect_well_border),
+    )
 
     debug = {
         "coarse_flat": coarse_debug["flat"],
@@ -163,6 +176,7 @@ def detect_and_refine(
         "full_refine_density": full_refine_density,
         "overlay": overlay,
         "contour_mask": full_contour_mask,
+        "well_border_detection": well_border_detection,
     }
     return refined, debug
 
@@ -182,13 +196,17 @@ def detect_from_gray(
     seed_hard_floor=35,
     seed_hard_ceil=105,
     core_density_min=80,
-    min_foreground_ratio=0.025,
+    min_foreground_ratio=0.065,
     max_foreground_ratio=0.80,
     min_dark_core_area_ratio=0.00001,
     max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
-    reject_border_touch=True,
+    reject_border_touch=False,
     scale_bar=None,
+    mm_per_pixel=None,
+    detect_well_border=True,
+    well_border_margin_mm=0.0,
+    well_border_margin_px=30.0,
 ):
     """从内存图片执行检测。
 
@@ -216,6 +234,10 @@ def detect_from_gray(
         max_dark_core_area_ratio=max_dark_core_area_ratio,
         max_bbox_area_ratio=max_bbox_area_ratio,
         reject_border_touch=reject_border_touch,
+        mm_per_pixel=mm_per_pixel if mm_per_pixel is not None else (scale_bar or {}).get("mm_per_pixel") if isinstance(scale_bar, dict) else None,
+        detect_well_border=detect_well_border,
+        well_border_margin_mm=well_border_margin_mm,
+        well_border_margin_px=well_border_margin_px,
     )
 
     if out_dir is None:
@@ -229,6 +251,7 @@ def detect_from_gray(
             "coarse_seed_thresh": int(debug.get("coarse_seed_thresh", -1)),
             "coarse_density_thresh": debug.get("coarse_density_thresh"),
             "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
+            "well_border_detection": debug.get("well_border_detection"),
             "scale_bar": None,
             "component_ids": [d["id"] for d in refined],
             "components": refined,
