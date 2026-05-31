@@ -7,6 +7,7 @@ import mimetypes
 import os
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
@@ -23,6 +24,37 @@ IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 
 app = FastAPI(title="Colony Workflow API", version="0.3.0")
 logger = logging.getLogger(__name__)
+access_logger = logging.getLogger("uvicorn.error")
+_TASK_RECORD_IO_LOCK = threading.RLock()
+_TASK_RECORD_REPLACE_ATTEMPTS = 200
+_TASK_RECORD_REPLACE_SLEEP_SEC = 0.05
+
+
+@app.middleware("http")
+async def log_request_timing(request, call_next):
+    started = time.perf_counter()
+    access_logger.info("request start: %s %s", request.method, request.url.path)
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        access_logger.exception(
+            "request failed: %s %s elapsed_ms=%.1f",
+            request.method,
+            request.url.path,
+            elapsed_ms,
+        )
+        raise
+
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    access_logger.info(
+        "request end: %s %s status=%s elapsed_ms=%.1f",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
 
 
 class ExecuteTaskRequest(BaseModel):
@@ -45,6 +77,35 @@ class CameraRecordStartRequest(BaseModel):
     fps: float | None = Field(default=10.0)
     bitrate_kbps: int = Field(default=1000)
     timeout_ms: int | None = None
+
+
+class StageReciprocationStartRequest(BaseModel):
+    port: str = Field(default="COM3", description="XY 位移台 Modbus 串口号")
+    baudrate: int = Field(default=115200, description="Modbus 串口波特率")
+    x_slave: int = Field(default=1, description="X 轴 Modbus 从站地址")
+    y_slave: int = Field(default=2, description="Y 轴 Modbus 从站地址")
+    point_a_x: int = Field(default=0, description="往复点 A 的 X 坐标，单位 pulse")
+    point_a_y: int = Field(default=7500000, description="往复点 A 的 Y 坐标，单位 pulse")
+    point_b_x: int = Field(default=8865800, description="往复点 B 的 X 坐标，单位 pulse")
+    point_b_y: int = Field(default=-550000, description="往复点 B 的 Y 坐标，单位 pulse")
+    profile_vel: int = Field(default=800000, description="PP 位置模式轮廓速度")
+    profile_acc: int = Field(default=800000, description="PP 位置模式轮廓加速度")
+    profile_dec: int = Field(default=800000, description="PP 位置模式轮廓减速度")
+    arrival_tolerance: int = Field(default=80, description="到位容差，单位 pulse")
+    poll_s: float = Field(default=0.05, description="运动中当前位置轮询间隔，单位秒")
+    settle_s: float = Field(default=0.2, description="到达点位后的稳定等待时间，单位秒")
+    move_timeout_s: float = Field(default=120.0, description="单次点到点移动超时时间，单位秒")
+    max_cycles: int | None = Field(default=None, description="最大往复周期数；不传表示持续运行直到 stop")
+    limit_check_enabled: bool = Field(default=True, description="是否启用位置安全限位检查")
+    x_min: int = Field(default=-800000, description="X 轴机械最小限位，单位 pulse")
+    x_max: int = Field(default=10400000, description="X 轴机械最大限位，单位 pulse")
+    y_min: int = Field(default=-8900000, description="Y 轴机械最小限位，单位 pulse")
+    y_max: int = Field(default=7700000, description="Y 轴机械最大限位，单位 pulse")
+    safety_margin: int = Field(default=147500, description="限位安全边界，单位 pulse")
+
+
+class StageReciprocationStopRequest(BaseModel):
+    join_timeout_s: float = Field(default=5.0, description="等待后台线程停止的最长时间，单位秒")
 
 
 def _task_index_dir() -> Path:
@@ -94,14 +155,56 @@ def _safe_str_path(value: Any) -> str | None:
 
 
 def _write_task_record(record: Dict[str, Any]) -> None:
+    with _TASK_RECORD_IO_LOCK:
+        _write_task_record_unlocked(record)
+
+
+def _write_task_record_unlocked(record: Dict[str, Any]) -> None:
     path = _task_record_path(record["task_id"])
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    payload = json.dumps(record, ensure_ascii=False, indent=2)
+    tmp = path.with_name(
+        f".{path.name}.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.tmp"
+    )
+
+    with tmp.open("w", encoding="utf-8") as fh:
+        fh.write(payload)
+        fh.flush()
+        os.fsync(fh.fileno())
+
+    last_exc: OSError | None = None
+    for _ in range(_TASK_RECORD_REPLACE_ATTEMPTS):
+        try:
+            os.replace(str(tmp), str(path))
+            return
+        except OSError as exc:
+            last_exc = exc
+            time.sleep(_TASK_RECORD_REPLACE_SLEEP_SEC)
+    for _ in range(_TASK_RECORD_REPLACE_ATTEMPTS):
+        try:
+            with path.open("w", encoding="utf-8") as fh:
+                fh.write(payload)
+                fh.flush()
+                os.fsync(fh.fileno())
+            tmp.unlink(missing_ok=True)
+            return
+        except OSError as exc:
+            last_exc = exc
+            time.sleep(_TASK_RECORD_REPLACE_SLEEP_SEC)
+    if last_exc is not None:
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            logger.debug("failed to cleanup task record tmp file: %s", tmp, exc_info=True)
+        raise last_exc
 
 
 def _read_task_record(task_id: str) -> Dict[str, Any]:
+    with _TASK_RECORD_IO_LOCK:
+        return _read_task_record_unlocked(task_id)
+
+
+def _read_task_record_unlocked(task_id: str) -> Dict[str, Any]:
     path = _task_record_path(task_id)
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"未找到任务记录: {task_id}")
@@ -113,11 +216,12 @@ def _task_exists(task_id: str) -> bool:
 
 
 def _update_task_record(task_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
-    record = _read_task_record(task_id)
-    record.update(patch)
-    record["updated_at"] = _utc_now()
-    _write_task_record(record)
-    return record
+    with _TASK_RECORD_IO_LOCK:
+        record = _read_task_record_unlocked(task_id)
+        record.update(patch)
+        record["updated_at"] = _utc_now()
+        _write_task_record_unlocked(record)
+        return record
 
 
 def _first_saved_image_dir(capture_result: Dict[str, Any] | None) -> str | None:
@@ -425,13 +529,21 @@ def _monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
         stop_event.wait(1.0)
 
 
+def _stop_monitor_thread(monitor: threading.Thread, stop_event: threading.Event, monitor_started: bool) -> None:
+    stop_event.set()
+    if monitor_started:
+        monitor.join(timeout=1.0)
+
+
 def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
     task_id = str(task.get("task_id") or "").strip()
     stop_event = threading.Event()
     monitor = threading.Thread(target=_monitor_running_task, args=(task_id, stop_event), daemon=True)
+    monitor_started = False
     try:
         _update_task_record(task_id, {"status": "running", "started_at": _utc_now(), "message": "task started", "progress": 1})
         monitor.start()
+        monitor_started = True
         result = execute_task_request(
             raw_task_cfg={"task": task},
             camera_path=req.camera_path or os.getenv("CAMERA_CONFIG_PATH"),
@@ -440,15 +552,18 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
             dump_json=req.dump_json,
             persist_result=req.persist_result,
         )
+        _stop_monitor_thread(monitor, stop_event, monitor_started)
+        monitor_started = False
         record = _build_task_record(task, result, req.dump_json, req.persist_result)
         _write_task_record(record)
     except Exception as exc:
         logger.exception("task execution failed: %s", task_id)
+        _stop_monitor_thread(monitor, stop_event, monitor_started)
+        monitor_started = False
         record = _build_failed_record(task, str(exc), req.dump_json, req.persist_result)
         _write_task_record(record)
     finally:
-        stop_event.set()
-        monitor.join(timeout=1.0)
+        _stop_monitor_thread(monitor, stop_event, monitor_started)
 
 
 @app.get("/health")
@@ -496,10 +611,41 @@ def stop_camera_record() -> Dict[str, Any]:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.post("/api/stage/reciprocation/start", status_code=202)
+def start_stage_reciprocation(req: StageReciprocationStartRequest | None = None) -> Dict[str, Any]:
+    from workflow.stage_reciprocation import stage_reciprocation_controller
+
+    req = req or StageReciprocationStartRequest()
+    cfg = req.dict()
+    try:
+        return stage_reciprocation_controller.start(cfg)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/stage/reciprocation/stop")
+def stop_stage_reciprocation(req: StageReciprocationStopRequest | None = None) -> Dict[str, Any]:
+    from workflow.stage_reciprocation import stage_reciprocation_controller
+
+    try:
+        join_timeout_s = 5.0 if req is None else req.join_timeout_s
+        return stage_reciprocation_controller.stop(join_timeout_s=join_timeout_s)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/stage/reciprocation/status")
+def get_stage_reciprocation_status() -> Dict[str, Any]:
+    from workflow.stage_reciprocation import stage_reciprocation_controller
+
+    return stage_reciprocation_controller.status()
+
+
 @app.post("/api/tasks/execute", status_code=202)
 def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
     task = req.task or {}
     task_id = str(task.get("task_id") or "").strip()
+    access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
     if not task_id:
         raise HTTPException(status_code=400, detail="task.task_id 不能为空")
 
@@ -509,10 +655,12 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
             raise HTTPException(status_code=409, detail=f"任务正在执行中: {task_id}")
 
     record = _build_accepted_record(task, req.dump_json, req.persist_result)
+    access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
     _write_task_record(record)
 
     worker = threading.Thread(target=_run_task_async, args=(copy.deepcopy(task), req), daemon=True)
     worker.start()
+    access_logger.info("execute_task worker started: task_id=%s thread=%s", task_id, worker.name)
 
     return {
         "task_id": task_id,
