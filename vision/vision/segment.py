@@ -46,7 +46,7 @@ def detect_coarse_rois(
     min_dark_core_fragment_area=5,
     raw_black_thresh=50,
     min_raw_black_area_small=10000,
-    min_raw_black_foreground_ratio=0.010,
+    min_raw_black_foreground_ratio=0.30,
     max_raw_black_bbox_aspect=2.80,
     reject_border_touch=False,
 ):
@@ -283,7 +283,6 @@ def detect_coarse_rois(
         })
 
     # NMS 去掉高度重叠的候选，保留分数更高的那个。
-    comps = nms_xywh(comps, key_score="score", key_bbox="bbox", iou_thr=nms_iou_thr)
     comps = [comp for comp in comps if float(comp.get("confidence", 0.0) or 0.0) >= 0.25]
     comps = nms_xywh(comps, key_score="score", key_bbox="bbox", iou_thr=nms_iou_thr)
     comps.sort(key=lambda d: d["score"], reverse=True)
