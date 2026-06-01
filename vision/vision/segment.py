@@ -31,23 +31,15 @@ def detect_coarse_rois(
     pad_ratio=0.15,
     nms_iou_thr=0.30,
     border_margin=2,
-    border_keep_min_area=50000,
     seed_quantile=0.12,
     seed_hard_floor=35,
     seed_hard_ceil=105,
     core_density_min=80,
-    min_foreground_ratio=0.065,
+    min_foreground_ratio=0.025,
     max_foreground_ratio=0.80,
     min_dark_core_area_ratio=0.00001,
     max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
-    min_largest_dark_core_component_ratio=0.12,
-    max_dark_core_fragment_count=80,
-    min_dark_core_fragment_area=5,
-    raw_black_thresh=50,
-    min_raw_black_area_small=10000,
-    min_raw_black_foreground_ratio=0.30,
-    max_raw_black_bbox_aspect=2.80,
     reject_border_touch=False,
 ):
     """从严格 dark core 中寻找粗候选 ROI。
@@ -78,17 +70,6 @@ def detect_coarse_rois(
 
     # dark_seed 是最严格的一层暗区判断，后续所有候选都必须来自它。
     dark_seed = (flat < seed_thresh).astype(np.uint8) * 255
-    raw_black = (small <= int(raw_black_thresh)).astype(np.uint8) * 255
-    raw_black_clean = cv2.morphologyEx(
-        raw_black,
-        cv2.MORPH_CLOSE,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
-    )
-    raw_black_clean = cv2.morphologyEx(
-        raw_black_clean,
-        cv2.MORPH_OPEN,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
-    )
     density = cv2.GaussianBlur((dark_seed > 0).astype(np.float32), (0, 0), density_sigma)
     density_u8 = cv2.normalize(density, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
@@ -124,16 +105,6 @@ def detect_coarse_rois(
             sides.append("bottom")
         return sides
 
-    def _shape_ok_for_black_marker(x, y, w, h, black_area):
-        bbox_area = float(max(1, int(w) * int(h)))
-        aspect = float(max(w, h)) / float(max(1, min(w, h)))
-        black_ratio = float(black_area) / bbox_area
-        return (
-            int(black_area) >= int(min_raw_black_area_small)
-            and black_ratio >= float(min_raw_black_foreground_ratio)
-            and aspect <= float(max_raw_black_bbox_aspect)
-        )
-
     for i in range(1, n):
         x, y, w, h, area = stats[i]
         # 连通域面积不能太小
@@ -150,6 +121,8 @@ def detect_coarse_rois(
         touch_image_border = bool(image_border_sides)
         if len(image_border_sides) >= 2:
             continue
+        if reject_border_touch and touch_image_border:
+            continue
         # 触边候选容易是不完整目标或孔边缘结构，默认拒识。
         comp_mask = labels[y:y + h, x:x + w] == i
         core_roi = dark_seed[y:y + h, x:x + w] > 0
@@ -158,28 +131,6 @@ def detect_coarse_rois(
         dark_core_area = int(np.count_nonzero(dark_core_mask))
         if dark_core_area <= 0:
             continue
-        raw_black_area = int(np.count_nonzero(comp_mask & (raw_black[y:y + h, x:x + w] > 0)))
-        if not _shape_ok_for_black_marker(x, y, w, h, raw_black_area):
-            continue
-
-        core_n, _, core_stats, _ = cv2.connectedComponentsWithStats(
-            dark_core_mask.astype(np.uint8),
-            connectivity=8,
-        )
-        if core_n > 1:
-            core_areas = core_stats[1:, cv2.CC_STAT_AREA]
-            largest_dark_core_component_area = int(core_areas.max())
-            dark_core_fragment_count = int(np.count_nonzero(core_areas >= int(min_dark_core_fragment_area)))
-        else:
-            largest_dark_core_component_area = 0
-            dark_core_fragment_count = 0
-
-        largest_dark_core_component_ratio = float(largest_dark_core_component_area) / float(max(1, dark_core_area))
-        if largest_dark_core_component_ratio < min_largest_dark_core_component_ratio:
-            continue
-        if dark_core_fragment_count > max_dark_core_fragment_count and largest_dark_core_component_ratio < 0.30:
-            continue
-
         foreground_ratio = float(dark_core_area) / bbox_area
         dark_core_area_ratio = float(dark_core_area) / image_area
         if foreground_ratio < min_foreground_ratio or foreground_ratio > max_foreground_ratio:
@@ -208,10 +159,6 @@ def detect_coarse_rois(
             "bbox_small": [int(x), int(y), int(w), int(h)],
             "area_small": int(area),
             "dark_core_area_small": int(dark_core_area),
-            "raw_black_area_small": int(raw_black_area),
-            "largest_dark_core_component_area_small": int(largest_dark_core_component_area),
-            "largest_dark_core_component_ratio": float(largest_dark_core_component_ratio),
-            "dark_core_fragment_count": int(dark_core_fragment_count),
             "foreground_ratio": float(foreground_ratio),
             "bbox_area_ratio": float(bbox_area_ratio),
             "dark_core_area_ratio": float(dark_core_area_ratio),
@@ -225,65 +172,7 @@ def detect_coarse_rois(
             "image_edge_clipped": bool(touch_image_border),
         })
 
-    # A marker can occupy a large edge-cropped region. In those cases the
-    # relative-dark density pass may reject it as too broad, so add compact
-    # absolute-black connected components as first-class coarse candidates.
-    black_n, black_labels, black_stats, black_centroids = cv2.connectedComponentsWithStats(
-        raw_black_clean,
-        connectivity=8,
-    )
-    for i in range(1, black_n):
-        x, y, w, h, area = black_stats[i]
-        black_area = int(area)
-        if not _shape_ok_for_black_marker(x, y, w, h, black_area):
-            continue
-
-        bbox_area = float(max(1, int(w) * int(h)))
-        bbox_area_ratio = bbox_area / image_area
-        if bbox_area_ratio > max_bbox_area_ratio:
-            continue
-
-        image_border_sides = _border_sides(x, y, w, h)
-        touch_image_border = bool(image_border_sides)
-        if len(image_border_sides) >= 2:
-            continue
-        if reject_border_touch and touch_image_border and black_area < border_keep_min_area:
-            continue
-
-        core_cx, core_cy = black_centroids[i]
-        foreground_ratio = float(black_area) / bbox_area
-        dark_core_area_ratio = float(black_area) / image_area
-        if dark_core_area_ratio < min_dark_core_area_ratio:
-            continue
-
-        aspect = float(max(w, h)) / float(max(1, min(w, h)))
-        confidence = min(1.0, foreground_ratio / 0.18)
-        confidence *= min(1.0, max(0.0, 1.0 - (aspect - 1.0) / max(1e-6, max_raw_black_bbox_aspect - 1.0)))
-
-        comps.append({
-            "label": int(i),
-            "bbox_small": [int(x), int(y), int(w), int(h)],
-            "area_small": int(black_area),
-            "dark_core_area_small": int(black_area),
-            "raw_black_area_small": int(black_area),
-            "largest_dark_core_component_area_small": int(black_area),
-            "largest_dark_core_component_ratio": 1.0,
-            "dark_core_fragment_count": 1,
-            "foreground_ratio": float(foreground_ratio),
-            "bbox_area_ratio": float(bbox_area_ratio),
-            "dark_core_area_ratio": float(dark_core_area_ratio),
-            "center_small": [float(core_cx), float(core_cy)],
-            "dark_core_center_small": [float(core_cx), float(core_cy)],
-            "score": float(black_area) * max(0.05, float(confidence)),
-            "confidence": float(confidence),
-            "bbox": [int(x), int(y), int(w), int(h)],
-            "touch_image_border": bool(touch_image_border),
-            "image_border_sides": image_border_sides,
-            "image_edge_clipped": bool(touch_image_border),
-        })
-
     # NMS 去掉高度重叠的候选，保留分数更高的那个。
-    comps = [comp for comp in comps if float(comp.get("confidence", 0.0) or 0.0) >= 0.25]
     comps = nms_xywh(comps, key_score="score", key_bbox="bbox", iou_thr=nms_iou_thr)
     comps.sort(key=lambda d: d["score"], reverse=True)
     if max_keep is not None and max_keep > 0:
@@ -321,10 +210,6 @@ def detect_coarse_rois(
             "safe_point": [int(CoreCx), int(CoreCy)],
             "area_small": int(comp["area_small"]),
             "dark_core_area_small": int(comp["dark_core_area_small"]),
-            "raw_black_area_small": int(comp.get("raw_black_area_small", 0)),
-            "largest_dark_core_component_area_small": int(comp.get("largest_dark_core_component_area_small", 0)),
-            "largest_dark_core_component_ratio": float(comp.get("largest_dark_core_component_ratio", 0.0)),
-            "dark_core_fragment_count": int(comp.get("dark_core_fragment_count", 0)),
             "foreground_ratio": float(comp["foreground_ratio"]),
             "bbox_area_ratio": float(comp["bbox_area_ratio"]),
             "dark_core_area_ratio": float(comp["dark_core_area_ratio"]),
@@ -481,6 +366,8 @@ def refine_contour_in_roi(
     radial_mode="hybrid",
     recenter_iterations=1,
     recenter_min_shift_px=6.0,
+    clip_bbox_local=None,
+    clip_pad_ratio=0.05,
 ):
     """在单个 ROI 内细化轮廓，并返回 ROI 局部坐标结果。
 
@@ -547,6 +434,19 @@ def refine_contour_in_roi(
         mask_full = cv2.resize(mask_small, (roi_gray.shape[1], roi_gray.shape[0]), interpolation=cv2.INTER_NEAREST)
     else:
         mask_full = mask_small.copy()
+
+    if clip_bbox_local is not None:
+        bx, by, bw, bh = [int(round(v)) for v in clip_bbox_local]
+        pad_x = int(round(max(0, bw) * float(clip_pad_ratio)))
+        pad_y = int(round(max(0, bh) * float(clip_pad_ratio)))
+        allowed = np.zeros_like(mask_full, dtype=np.uint8)
+        center = (int(round(bx + bw / 2.0)), int(round(by + bh / 2.0)))
+        axes = (
+            max(1, int(round(bw / 2.0 + pad_x))),
+            max(1, int(round(bh / 2.0 + pad_y))),
+        )
+        cv2.ellipse(allowed, center, axes, 0, 0, 360, 255, thickness=-1)
+        mask_full = cv2.bitwise_and(mask_full, allowed)
 
     cnts, _ = cv2.findContours(mask_full, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not cnts:
