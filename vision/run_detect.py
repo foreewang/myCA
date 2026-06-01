@@ -28,8 +28,21 @@ def main():
     parser.add_argument('--core_density_min', type=float, default=80, help='minimum density threshold for coarse dark-core candidates')
     parser.add_argument('--min_foreground_ratio', type=float, default=0.025, help='minimum dark-core pixels / bbox area')
     parser.add_argument('--max_bbox_area_ratio', type=float, default=0.30, help='maximum coarse bbox area / image area')
+    parser.add_argument('--mm_per_pixel', type=float, default=None, help='millimeters per pixel for scale bar')
+    parser.add_argument('--scale_bar_length_mm', type=float, default=None, help='fixed scale bar length in mm')
+    parser.add_argument('--scale_bar_position', choices=['bottom_right', 'bottom_left'], default='bottom_right')
     args = parser.parse_args()
 
+    scale_bar = None
+    if args.mm_per_pixel is not None:
+        scale_bar = {
+            "enabled": True,
+            "mm_per_pixel": args.mm_per_pixel,
+            "position": args.scale_bar_position,
+        }
+        if args.scale_bar_length_mm is not None:
+            scale_bar["length_mm"] = args.scale_bar_length_mm
+            
     # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)。
     result_json = detect_from_path(
         image_path=args.image_path,
@@ -43,6 +56,8 @@ def main():
         core_density_min=args.core_density_min,
         min_foreground_ratio=args.min_foreground_ratio,
         max_bbox_area_ratio=args.max_bbox_area_ratio,
+        scale_bar=scale_bar,
+        mm_per_pixel=args.mm_per_pixel
     )
     # 打印最终 JSON，便于命令行直接查看或重定向保存。
     print(json.dumps(result_json, ensure_ascii=False, indent=2))
