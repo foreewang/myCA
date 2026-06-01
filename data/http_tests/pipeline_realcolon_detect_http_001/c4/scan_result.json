@@ -1,0 +1,1686 @@
+{
+  "task_id": "pipeline_realcolon_detect_http_001_c4",
+  "status": "success",
+  "task_type": "pipeline",
+  "plate_type": "24-well",
+  "well_name": "c4",
+  "objective_name": "4x",
+  "camera_settings": {
+    "exposure_us": 5000,
+    "gain": 0.0,
+    "device_index": 0,
+    "serial_number": null,
+    "mvs_python_dir": null
+  },
+  "reference": {
+    "meaning": "c4孔左侧观测起始点",
+    "a1_start": {
+      "x": 8865800,
+      "y": 6185500
+    },
+    "well_start": {
+      "x": 3791800,
+      "y": -1425500
+    },
+    "well_diameter_mm": 13.7,
+    "well_gap_mm": 3.5,
+    "pitch_mm": 17.2,
+    "pulses_per_mm": 147500.0,
+    "x_stage_sign_for_view_down": -1,
+    "y_stage_sign_for_view_right": -1
+  },
+  "scan_config": {
+    "fov_mm": {
+      "width": 3.22,
+      "height": 3.22
+    },
+    "overlap": 0.1,
+    "step_mm": {
+      "width": 2.898,
+      "height": 2.898
+    },
+    "point_count": 26
+  },
+  "stage_limit_precheck": {
+    "enabled": true,
+    "checked_point_count": 26,
+    "safe_range": {
+      "x_min_safe": -652500,
+      "x_max_safe": 10252500,
+      "y_min_safe": -8752500,
+      "y_max_safe": 7552500
+    },
+    "violations": []
+  },
+  "autofocus_decision": {
+    "enabled": true,
+    "should_run": false,
+    "reason": "no_trigger_matched",
+    "config_path": "C:\\colony_system\\config\\autofocus.yaml",
+    "trigger": {
+      "after_objective_switch": true,
+      "always_before_capture": false,
+      "always_before_capture_objectives": [],
+      "run_at": "before_first_capture_after_stage_move",
+      "scope": "once_per_well"
+    },
+    "objective_switched": false,
+    "run_at": "before_first_capture_after_stage_move"
+  },
+  "before_first_capture_autofocus_result": null,
+  "image_count": 26,
+  "captures": [
+    {
+      "index": 1,
+      "row_index": 0,
+      "col_index": 0,
+      "view_down_mm": 0.0,
+      "view_right_mm": 0.0,
+      "stage_x_target": 3791800,
+      "stage_y_target": -1425500,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -1425500
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936879,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -437385,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1425474,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -15,
+          "y": 26
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_001_row00_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_001_row00_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 53,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 2,
+      "row_index": 0,
+      "col_index": 1,
+      "view_down_mm": 0.0,
+      "view_right_mm": 2.898,
+      "stage_x_target": 3791800,
+      "stage_y_target": -1852955,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -1852955
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1425474,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1852966,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -15,
+          "y": -11
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_002_row00_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_002_row00_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 54,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 3,
+      "row_index": 0,
+      "col_index": 2,
+      "view_down_mm": 0.0,
+      "view_right_mm": 5.796,
+      "stage_x_target": 3791800,
+      "stage_y_target": -2280410,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -2280410
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1852966,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2280419,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -15,
+          "y": -9
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_003_row00_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_003_row00_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 55,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 4,
+      "row_index": 0,
+      "col_index": 3,
+      "view_down_mm": 0.0,
+      "view_right_mm": 8.694,
+      "stage_x_target": 3791800,
+      "stage_y_target": -2707865,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -2707865
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2280419,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791784,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2707885,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -16,
+          "y": -20
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_004_row00_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_004_row00_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 56,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 5,
+      "row_index": 0,
+      "col_index": 4,
+      "view_down_mm": 0.0,
+      "view_right_mm": 11.592,
+      "stage_x_target": 3791800,
+      "stage_y_target": -3135320,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -3135320
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791784,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2707885,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3135293,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -15,
+          "y": 27
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_005_row00_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_005_row00_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 57,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 6,
+      "row_index": 0,
+      "col_index": 5,
+      "view_down_mm": 0.0,
+      "view_right_mm": 13.7,
+      "stage_x_target": 3791800,
+      "stage_y_target": -3446250,
+      "motion_result": {
+        "target": {
+          "x": 3791800,
+          "y": -3446250
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3135293,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3446117,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -15,
+          "y": 133
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_006_row00_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_006_row00_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 58,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 7,
+      "row_index": 1,
+      "col_index": 0,
+      "view_down_mm": -2.898,
+      "view_right_mm": 13.056778,
+      "stage_x_target": 4219255,
+      "stage_y_target": -3351375,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -3351375
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3791785,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3446117,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3351447,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -38,
+          "y": -72
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_007_row01_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_007_row01_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 59,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 8,
+      "row_index": 1,
+      "col_index": 1,
+      "view_down_mm": -2.898,
+      "view_right_mm": 12.235222,
+      "stage_x_target": 4219255,
+      "stage_y_target": -3230195,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -3230195
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3351447,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3230297,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -38,
+          "y": -102
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_008_row01_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_008_row01_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 60,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 9,
+      "row_index": 1,
+      "col_index": 2,
+      "view_down_mm": -2.898,
+      "view_right_mm": 9.337222,
+      "stage_x_target": 4219255,
+      "stage_y_target": -2802740,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -2802740
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3230297,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2802785,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -38,
+          "y": -45
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_009_row01_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_009_row01_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 61,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 10,
+      "row_index": 1,
+      "col_index": 3,
+      "view_down_mm": -2.898,
+      "view_right_mm": 6.439222,
+      "stage_x_target": 4219255,
+      "stage_y_target": -2375285,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -2375285
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219217,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2802785,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219219,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2375399,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -36,
+          "y": -114
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_010_row01_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_010_row01_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 62,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 11,
+      "row_index": 1,
+      "col_index": 4,
+      "view_down_mm": -2.898,
+      "view_right_mm": 3.541222,
+      "stage_x_target": 4219255,
+      "stage_y_target": -1947830,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -1947830
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219219,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2375399,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219220,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1947857,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -35,
+          "y": -27
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_011_row01_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_011_row01_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 63,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 12,
+      "row_index": 1,
+      "col_index": 5,
+      "view_down_mm": -2.898,
+      "view_right_mm": 0.643222,
+      "stage_x_target": 4219255,
+      "stage_y_target": -1520375,
+      "motion_result": {
+        "target": {
+          "x": 4219255,
+          "y": -1520375
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219220,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1947857,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 1
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219219,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1520510,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -36,
+          "y": -135
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_012_row01_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_012_row01_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 64,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 13,
+      "row_index": 2,
+      "col_index": 0,
+      "view_down_mm": 2.898,
+      "view_right_mm": 0.643222,
+      "stage_x_target": 3364345,
+      "stage_y_target": -1520375,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -1520375
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4219219,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1520510,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364353,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1520547,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 8,
+          "y": -172
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_013_row02_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_013_row02_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 65,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 14,
+      "row_index": 2,
+      "col_index": 1,
+      "view_down_mm": 2.898,
+      "view_right_mm": 3.541222,
+      "stage_x_target": 3364345,
+      "stage_y_target": -1947830,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -1947830
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364353,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1520548,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364354,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1947821,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 9,
+          "y": 9
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_014_row02_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_014_row02_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 66,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 15,
+      "row_index": 2,
+      "col_index": 2,
+      "view_down_mm": 2.898,
+      "view_right_mm": 6.439222,
+      "stage_x_target": 3364345,
+      "stage_y_target": -2375285,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -2375285
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364354,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1947821,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2375268,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 11,
+          "y": 17
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_015_row02_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_015_row02_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 67,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 16,
+      "row_index": 2,
+      "col_index": 3,
+      "view_down_mm": 2.898,
+      "view_right_mm": 9.337222,
+      "stage_x_target": 3364345,
+      "stage_y_target": -2802740,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -2802740
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2375268,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2802659,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 11,
+          "y": 81
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_016_row02_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_016_row02_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 68,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 17,
+      "row_index": 2,
+      "col_index": 4,
+      "view_down_mm": 2.898,
+      "view_right_mm": 12.235222,
+      "stage_x_target": 3364345,
+      "stage_y_target": -3230195,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -3230195
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2802658,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3230154,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 11,
+          "y": 41
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_017_row02_col04.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_017_row02_col04.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 69,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 18,
+      "row_index": 2,
+      "col_index": 5,
+      "view_down_mm": 2.898,
+      "view_right_mm": 13.056778,
+      "stage_x_target": 3364345,
+      "stage_y_target": -3351375,
+      "motion_result": {
+        "target": {
+          "x": 3364345,
+          "y": -3351375
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3230154,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3351300,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": 11,
+          "y": 75
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_018_row02_col05.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_018_row02_col05.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 70,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 19,
+      "row_index": 3,
+      "col_index": 0,
+      "view_down_mm": -5.796,
+      "view_right_mm": 10.500874,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2974379,
+      "motion_result": {
+        "target": {
+          "x": 4646710,
+          "y": -2974379
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 3364356,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -3351300,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2974423,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -51,
+          "y": -44
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_019_row03_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_019_row03_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 71,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 20,
+      "row_index": 3,
+      "col_index": 1,
+      "view_down_mm": -5.796,
+      "view_right_mm": 8.995126,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2752281,
+      "motion_result": {
+        "target": {
+          "x": 4646710,
+          "y": -2752281
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2974423,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2752261,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -51,
+          "y": 20
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_020_row03_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_020_row03_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 72,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 21,
+      "row_index": 3,
+      "col_index": 2,
+      "view_down_mm": -5.796,
+      "view_right_mm": 6.097126,
+      "stage_x_target": 4646710,
+      "stage_y_target": -2324826,
+      "motion_result": {
+        "target": {
+          "x": 4646710,
+          "y": -2324826
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2752261,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2324840,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -51,
+          "y": -14
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_021_row03_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_021_row03_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 73,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 22,
+      "row_index": 3,
+      "col_index": 3,
+      "view_down_mm": -5.796,
+      "view_right_mm": 3.199126,
+      "stage_x_target": 4646710,
+      "stage_y_target": -1897371,
+      "motion_result": {
+        "target": {
+          "x": 4646710,
+          "y": -1897371
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2324840,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1897374,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -51,
+          "y": -3
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_022_row03_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_022_row03_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 74,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 23,
+      "row_index": 4,
+      "col_index": 0,
+      "view_down_mm": 5.796,
+      "view_right_mm": 3.199126,
+      "stage_x_target": 2936890,
+      "stage_y_target": -1897371,
+      "motion_result": {
+        "target": {
+          "x": 2936890,
+          "y": -1897371
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 4646659,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1897374,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936877,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1897373,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -13,
+          "y": -2
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_023_row04_col00.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_023_row04_col00.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 75,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 24,
+      "row_index": 4,
+      "col_index": 1,
+      "view_down_mm": 5.796,
+      "view_right_mm": 6.097126,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2324826,
+      "motion_result": {
+        "target": {
+          "x": 2936890,
+          "y": -2324826
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936877,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -1897373,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936878,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2324860,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -12,
+          "y": -34
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_024_row04_col01.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_024_row04_col01.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 76,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 25,
+      "row_index": 4,
+      "col_index": 2,
+      "view_down_mm": 5.796,
+      "view_right_mm": 8.995126,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2752281,
+      "motion_result": {
+        "target": {
+          "x": 2936890,
+          "y": -2752281
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936878,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2324860,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936878,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2752300,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -12,
+          "y": -19
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_025_row04_col02.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_025_row04_col02.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 77,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    },
+    {
+      "index": 26,
+      "row_index": 4,
+      "col_index": 3,
+      "view_down_mm": 5.796,
+      "view_right_mm": 10.500874,
+      "stage_x_target": 2936890,
+      "stage_y_target": -2974379,
+      "motion_result": {
+        "target": {
+          "x": 2936890,
+          "y": -2974379
+        },
+        "before": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936878,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2752300,
+            "statusword": 545
+          }
+        },
+        "move_result": {
+          "x_diff": 0,
+          "y_diff": 0
+        },
+        "after": {
+          "x": {
+            "axis": "x",
+            "slave": 1,
+            "current_pos": 2936878,
+            "statusword": 545
+          },
+          "y": {
+            "axis": "y",
+            "slave": 2,
+            "current_pos": -2974384,
+            "statusword": 545
+          }
+        },
+        "err_to_target": {
+          "x": -12,
+          "y": -5
+        }
+      },
+      "capture_result": {
+        "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_026_row04_col03.bmp",
+        "frame": {
+          "saved_path": "C:\\colony_system\\data\\http_tests\\pipeline_realcolon_detect_http_001\\c4\\images\\c4_026_row04_col03.bmp",
+          "width": 5120,
+          "height": 5120,
+          "frame_num": 78,
+          "pixel_type": 17301515,
+          "frame_len": 26214400
+        }
+      }
+    }
+  ]
+}
