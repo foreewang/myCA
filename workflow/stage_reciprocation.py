@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict, Iterable
 
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient
+from workflow.config_loader import load_yaml
+from workflow.plate_geometry import compute_well_start
 
 
 class StageReciprocationError(RuntimeError):
@@ -13,10 +16,11 @@ class StageReciprocationError(RuntimeError):
 
 
 class StageReciprocationController:
-    """Run XY stage point-to-point reciprocation in a background thread."""
+    """Run the stage through a fixed 24-well scan path in a background thread."""
 
-    DEFAULT_POINT_A = {"x": 0, "y": 7500000}
-    DEFAULT_POINT_B = {"x": 8865800, "y": 6185500}
+    DEFAULT_PLATE_TYPE = "24-well"
+    DEFAULT_SCAN_WELLS = ["B2", "B3", "B4", "C2", "C3", "C4"]
+    DEFAULT_PLATES_PATH = Path(__file__).resolve().parent.parent / "config" / "plates.yaml"
     DEFAULT_LIMITS = {
         "x_min": -800000,
         "x_max": 10400000,
@@ -37,20 +41,20 @@ class StageReciprocationController:
     def start(self, cfg: Dict[str, Any]) -> Dict[str, Any]:
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
-                raise StageReciprocationError("位移台往复运动已经在运行")
+                raise StageReciprocationError("stage scan is already running")
 
             normalized = self._normalize_cfg(cfg)
             self._stop_event.clear()
             self._status = {
                 "status": "starting",
-                "message": "starting point-to-point reciprocation",
+                "message": "starting 24-well stage scan",
                 "config": normalized,
                 "started_at": time.time(),
             }
             self._thread = threading.Thread(
                 target=self._run,
                 args=(normalized,),
-                name="stage-reciprocation",
+                name="stage-scan",
                 daemon=True,
             )
             self._thread.start()
@@ -92,17 +96,7 @@ class StageReciprocationController:
             return dict(self._status)
 
     def _normalize_cfg(self, cfg: Dict[str, Any]) -> Dict[str, Any]:
-        point_a = {
-            "x": int(cfg.get("point_a_x", self.DEFAULT_POINT_A["x"])),
-            "y": int(cfg.get("point_a_y", self.DEFAULT_POINT_A["y"])),
-        }
-        point_b = {
-            "x": int(cfg.get("point_b_x", self.DEFAULT_POINT_B["x"])),
-            "y": int(cfg.get("point_b_y", self.DEFAULT_POINT_B["y"])),
-        }
-        if point_a == point_b:
-            raise StageReciprocationError("往复运动的两个点位不能相同")
-
+        targets = self._build_scan_targets(cfg)
         limits = {
             "enabled": bool(cfg.get("limit_check_enabled", True)),
             "x_min": int(cfg.get("x_min", self.DEFAULT_LIMITS["x_min"])),
@@ -113,24 +107,25 @@ class StageReciprocationController:
         }
         if limits["enabled"]:
             if limits["x_min"] >= limits["x_max"] or limits["y_min"] >= limits["y_max"]:
-                raise StageReciprocationError("限位配置错误：min 必须小于 max")
+                raise StageReciprocationError("invalid limits: min must be smaller than max")
             if limits["safety_margin"] < 0:
-                raise StageReciprocationError("safety_margin 不能为负数")
-            self._validate_target_in_safe_range(point_a, limits, "point_a")
-            self._validate_target_in_safe_range(point_b, limits, "point_b")
+                raise StageReciprocationError("safety_margin must be non-negative")
+            for target in targets:
+                self._validate_target_in_safe_range(target, limits, str(target["well_name"]))
 
         max_cycles_raw = cfg.get("max_cycles")
         max_cycles = None if max_cycles_raw is None else int(max_cycles_raw)
         if max_cycles is not None and max_cycles <= 0:
-            raise StageReciprocationError("max_cycles 必须大于 0，或不传表示持续运行")
+            raise StageReciprocationError("max_cycles must be positive, or omitted to run until stop")
 
         return {
             "port": str(cfg.get("port", "COM3")),
             "baudrate": int(cfg.get("baudrate", 115200)),
             "x_slave": int(cfg.get("x_slave", 1)),
             "y_slave": int(cfg.get("y_slave", 2)),
-            "point_a": point_a,
-            "point_b": point_b,
+            "plate_type": self.DEFAULT_PLATE_TYPE,
+            "scan_wells": list(self.DEFAULT_SCAN_WELLS),
+            "targets": targets,
             "profile_vel": int(cfg.get("profile_vel", 500000)),
             "profile_acc": int(cfg.get("profile_acc", 100000)),
             "profile_dec": int(cfg.get("profile_dec", 100000)),
@@ -142,10 +137,36 @@ class StageReciprocationController:
             "limits": limits,
         }
 
+    def _build_scan_targets(self, cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
+        plates_path = Path(str(cfg.get("plates_path") or self.DEFAULT_PLATES_PATH))
+        if not plates_path.exists():
+            raise StageReciprocationError(f"plates config not found: {plates_path}")
+
+        plates_cfg = load_yaml(plates_path)
+        plate = (plates_cfg.get("plates") or {}).get(self.DEFAULT_PLATE_TYPE)
+        if not isinstance(plate, dict):
+            raise StageReciprocationError(f"missing plate config: {self.DEFAULT_PLATE_TYPE}")
+
+        targets: list[Dict[str, Any]] = []
+        for index, well_name in enumerate(self.DEFAULT_SCAN_WELLS, start=1):
+            pos = compute_well_start(plate, well_name)
+            targets.append(
+                {
+                    "index": index,
+                    "well_name": well_name,
+                    "x": int(pos["x"]),
+                    "y": int(pos["y"]),
+                }
+            )
+        return targets
+
     def _run(self, cfg: Dict[str, Any]) -> None:
         cycles = 0
         target_index = 0
-        targets = [cfg["point_a"], cfg["point_b"]]
+        targets = list(cfg["targets"])
+        if not targets:
+            raise StageReciprocationError("scan target list is empty")
+
         try:
             with ModbusRTUClient(port=cfg["port"], baudrate=cfg["baudrate"]) as client:
                 motors = {
@@ -159,28 +180,33 @@ class StageReciprocationController:
                     self._status = {
                         **self._status,
                         "status": "running",
-                        "message": "point-to-point reciprocation running",
+                        "message": "24-well stage scan running",
                         "cycle": cycles,
+                        "target_count": len(targets),
+                        "completed_targets": 0,
                         "current_pos": self._snapshot_positions(motors),
                     }
 
                 while not self._stop_event.is_set():
                     target = targets[target_index]
                     move = self._move_xy_interruptible(motors, target, cfg, cycles)
-                    if move.get("stopped_by_request"):
+                    if move.get("stopped_by_request") or self._stop_event.is_set():
                         break
-                    if self._stop_event.is_set():
-                        break
-                    target_index = 1 - target_index
-                    if target_index == 0:
+
+                    target_index += 1
+                    if target_index >= len(targets):
+                        target_index = 0
                         cycles += 1
                         if cfg["max_cycles"] is not None and cycles >= cfg["max_cycles"]:
                             break
+
                     with self._lock:
                         self._status = {
                             **self._status,
                             "last_move": move,
                             "cycle": cycles,
+                            "completed_targets": cycles * len(targets) + target_index,
+                            "next_target": dict(targets[target_index]),
                         }
 
                 self._quick_stop_motors(motors.values())
@@ -188,8 +214,9 @@ class StageReciprocationController:
                     self._status = {
                         **self._status,
                         "status": "stopped",
-                        "message": "reciprocation stopped",
+                        "message": "stage scan stopped",
                         "cycle": cycles,
+                        "completed_targets": cycles * len(targets) + target_index,
                         "current_pos": self._snapshot_positions(motors),
                         "stopped_at": time.time(),
                     }
@@ -206,22 +233,22 @@ class StageReciprocationController:
     def _ensure_xy_ready(self, motors: Dict[str, MotorManager]) -> None:
         for axis in ("x", "y"):
             if not motors[axis]._ensure_mode_and_enable(MotorManager.MODE_PROFILE_POSITION, True):
-                raise StageReciprocationError(f"{axis} 轴无法切换到 PP 模式并使能")
+                raise StageReciprocationError(f"{axis} axis cannot switch to PP mode and enable")
 
     def _move_xy_interruptible(
         self,
         motors: Dict[str, MotorManager],
-        target: Dict[str, int],
+        target: Dict[str, Any],
         cfg: Dict[str, Any],
         cycle: int,
     ) -> Dict[str, Any]:
         before = self._snapshot_positions(motors)
-        self._validate_target_in_safe_range(target, cfg["limits"], "target")
+        self._validate_target_in_safe_range(target, cfg["limits"], str(target.get("well_name") or "target"))
         with self._lock:
             self._status = {
                 **self._status,
                 "status": "moving",
-                "message": "moving stage between reciprocation points",
+                "message": "moving stage to scan well",
                 "cycle": cycle,
                 "target": dict(target),
                 "current_pos": before,
@@ -264,7 +291,7 @@ class StageReciprocationController:
                 break
             if time.monotonic() >= deadline:
                 self._quick_stop_motors(motors.values())
-                raise StageReciprocationError(f"移动到目标点超时: {target}")
+                raise StageReciprocationError(f"move to target timed out: {target}")
             time.sleep(poll_s)
 
         self._finish_axis_pp(motors["x"])
@@ -286,27 +313,27 @@ class StageReciprocationController:
         client = motor.client
         slave = motor.slave
         if not client._write_32bit(slave, client.REG_PROFILE_VEL_HIGH, int(cfg["profile_vel"])):
-            raise StageReciprocationError(f"从站 {slave} 设置轮廓速度失败")
+            raise StageReciprocationError(f"slave {slave} failed to set profile velocity")
         if not client._write_32bit(slave, client.REG_PROFILE_ACC_HIGH, int(cfg["profile_acc"])):
-            raise StageReciprocationError(f"从站 {slave} 设置轮廓加速度失败")
+            raise StageReciprocationError(f"slave {slave} failed to set profile acceleration")
         if not client._write_32bit(slave, client.REG_PROFILE_DEC_HIGH, int(cfg["profile_dec"])):
-            raise StageReciprocationError(f"从站 {slave} 设置轮廓减速度失败")
+            raise StageReciprocationError(f"slave {slave} failed to set profile deceleration")
         if not client._write_32bit(slave, client.REG_TARGET_POS, int(target_pos)):
-            raise StageReciprocationError(f"从站 {slave} 设置目标位置失败")
+            raise StageReciprocationError(f"slave {slave} failed to set target position")
         time.sleep(0.02)
         if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION):
-            raise StageReciprocationError(f"从站 {slave} 清除 PP 触发位失败")
+            raise StageReciprocationError(f"slave {slave} failed to clear PP trigger bit")
         time.sleep(0.02)
         if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10):
-            raise StageReciprocationError(f"从站 {slave} 触发 PP 运动失败")
+            raise StageReciprocationError(f"slave {slave} failed to trigger PP move")
 
     def _finish_axis_pp(self, motor: MotorManager) -> None:
         client = motor.client
         slave = motor.slave
         if not client._restore_enabled_state(slave):
-            raise StageReciprocationError(f"从站 {slave} 到位后恢复使能失败")
+            raise StageReciprocationError(f"slave {slave} failed to restore enabled state")
         if not client.quick_stop(slave):
-            raise StageReciprocationError(f"从站 {slave} 到位后停止失败")
+            raise StageReciprocationError(f"slave {slave} failed to quick stop after arrival")
 
     def _quick_stop_motors(self, motors: Iterable[MotorManager]) -> None:
         for motor in motors:
@@ -323,7 +350,7 @@ class StageReciprocationController:
                 motors[axis].client.REG_CURRENT_POS,
             )
             if pos is None:
-                raise StageReciprocationError(f"无法读取 {axis} 轴当前位置")
+                raise StageReciprocationError(f"cannot read current position for {axis} axis")
             out[axis] = int(pos)
         return out
 
@@ -343,14 +370,14 @@ class StageReciprocationController:
     def _hard_bounds(self, limits: Dict[str, Any], axis: str) -> tuple[int, int]:
         return int(limits[f"{axis}_min"]), int(limits[f"{axis}_max"])
 
-    def _validate_target_in_safe_range(self, target: Dict[str, int], limits: Dict[str, Any], name: str) -> None:
+    def _validate_target_in_safe_range(self, target: Dict[str, Any], limits: Dict[str, Any], name: str) -> None:
         if not limits["enabled"]:
             return
         for axis in ("x", "y"):
             lo, hi = self._safe_bounds(limits, axis)
             value = int(target[axis])
             if value < lo or value > hi:
-                raise StageReciprocationError(f"{name}.{axis}={value} 超出安全范围 [{lo}, {hi}]")
+                raise StageReciprocationError(f"{name}.{axis}={value} is outside safe range [{lo}, {hi}]")
 
     def _validate_current_within_hard_limits(self, positions: Dict[str, int], cfg: Dict[str, Any]) -> None:
         limits = cfg["limits"]
@@ -359,7 +386,7 @@ class StageReciprocationController:
         for axis, pos in positions.items():
             lo, hi = self._hard_bounds(limits, axis)
             if int(pos) < lo or int(pos) > hi:
-                raise StageReciprocationError(f"{axis} 轴当前位置 {pos} 已超出机械限位 [{lo}, {hi}]")
+                raise StageReciprocationError(f"{axis} current position {pos} is outside hard range [{lo}, {hi}]")
 
 
 stage_reciprocation_controller = StageReciprocationController()
