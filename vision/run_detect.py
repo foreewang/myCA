@@ -42,7 +42,7 @@ def main():
         }
         if args.scale_bar_length_mm is not None:
             scale_bar["length_mm"] = args.scale_bar_length_mm
-            
+
     # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)。
     result_json = detect_from_path(
         image_path=args.image_path,
