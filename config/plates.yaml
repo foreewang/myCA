@@ -24,7 +24,7 @@ plates:
     # 单个培养孔直径，单位：mm。
     well_diameter_mm: 31
     # 相邻培养孔边缘之间的距离，单位：mm。
-    well_gap_mm:   4
+    well_gap_mm: 4
     # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
     pulses_per_mm: 147500
 
@@ -55,19 +55,18 @@ plates:
       # 安全边界，单位：pulse；147500 约等于 1 mm。
       safety_margin: 147500
 
-  # 运行时运动保护配置。
-  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "6-well" 板型配置。
-  runtime_guard:
-    # 是否启用移动后检查，检查实际运动是否符合预期。
-    enabled: true
-    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
-    stuck_min_expected_move_pulse: 20000
-    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
-    stuck_max_actual_move_pulse: 1000
-    # 到位误差超过该值时判定移动失败，单位：pulse。
-    max_err_to_target_pulse: 3000
-    # 运动保护触发时是否中止任务。
-    abort_on_motion_failure: true
+    # 运行时运动保护配置。workflow.scan_executor._get_runtime_guard
+    runtime_guard:
+      # 是否启用移动后检查，检查实际运动是否符合预期。
+      enabled: true
+      # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+      stuck_min_expected_move_pulse: 20000
+      # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+      stuck_max_actual_move_pulse: 1000
+      # 到位误差超过该值时判定移动失败，单位：pulse。
+      max_err_to_target_pulse: 3000
+      # 运动保护触发时是否中止任务。
+      abort_on_motion_failure: true
 
   # 12 孔板配置。
   "12-well":
@@ -119,38 +118,18 @@ plates:
       # 安全边界，单位：pulse；147500 约等于 1 mm。
       safety_margin: 147500
 
-  # 运行时运动保护配置。
-  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "12-well" 板型配置。
-  runtime_guard:
-    # 是否启用移动后检查，检查实际运动是否符合预期。
-    enabled: true
-    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
-    stuck_min_expected_move_pulse: 20000
-    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
-    stuck_max_actual_move_pulse: 1000
-    # 到位误差超过该值时判定移动失败，单位：pulse。
-    max_err_to_target_pulse: 3000
-    # 运动保护触发时是否中止任务。
-    abort_on_motion_failure: true
-
-    # 兼容旧版 12 孔板字段，保留给旧脚本或旧接口读取。
-    # 旧版 12 孔板 A1 起始点坐标，单位：pulse。
-    point_12: [8563500, 5755000]
-    # 旧版孔径参数，单位通常是 0.1 mm；195 表示 19.5 mm。
-    point_12_d: 195
-    # 旧版孔间距参数，单位通常是 0.1 mm；36 表示 3.6 mm。
-    point_12_gap: 36
-    # 旧版单位换算参数，表示 0.1 mm 对应多少脉冲。
-    rpm_mm: 14750
-
-    # 旧版图像方向与位移台轴映射配置。
-    axis_mapping:
-      # 图像上下方向对应位移台 X 轴。
-      image_up_down_axis: x
-      # 图像左右方向对应位移台 Y 轴。
-      image_left_right_axis: y
-      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
-      stage_and_view_reverse: true
+    # 运行时运动保护配置。
+    runtime_guard:
+      # 是否启用移动后检查，检查实际运动是否符合预期。
+      enabled: true
+      # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+      stuck_min_expected_move_pulse: 20000
+      # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+      stuck_max_actual_move_pulse: 1000
+      # 到位误差超过该值时判定移动失败，单位：pulse。
+      max_err_to_target_pulse: 3000
+      # 运动保护触发时是否中止任务。
+      abort_on_motion_failure: true
 
   # 24 孔板配置。
   "24-well":
@@ -201,28 +180,18 @@ plates:
       # 安全边界，单位：pulse；147500 约等于 1 mm。
       safety_margin: 147500
 
-  # 运行时运动保护配置。
-  # 注意：当前缩进下它是 plates 下的独立键，不属于上面的 "24-well" 板型配置。
-  runtime_guard:
-    # 是否启用移动后检查，检查实际运动是否符合预期。
-    enabled: true
-    # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
-    stuck_min_expected_move_pulse: 20000
-    # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
-    stuck_max_actual_move_pulse: 1000
-    # 到位误差超过该值时判定移动失败，单位：pulse。
-    max_err_to_target_pulse: 3000
-    # 运动保护触发时是否中止任务。
-    abort_on_motion_failure: true
-
-    # 兼容旧版图像方向与位移台轴映射配置。
-    axis_mapping:
-      # 图像上下方向对应位移台 X 轴。
-      image_up_down_axis: x
-      # 图像左右方向对应位移台 Y 轴。
-      image_left_right_axis: y
-      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
-      stage_and_view_reverse: true
+    # 运行时运动保护配置。
+    runtime_guard:
+      # 是否启用移动后检查，检查实际运动是否符合预期。
+      enabled: true
+      # 计划移动量超过该值时，才认为本次移动“应该明显发生”，单位：pulse。
+      stuck_min_expected_move_pulse: 20000
+      # 如果实际移动量小于该值，则判定疑似卡死或撞限位，单位：pulse。
+      stuck_max_actual_move_pulse: 1000
+      # 到位误差超过该值时判定移动失败，单位：pulse。
+      max_err_to_target_pulse: 3000
+      # 运动保护触发时是否中止任务。
+      abort_on_motion_failure: true
 
   # 48 孔板配置。
   "48-well":
@@ -271,8 +240,7 @@ plates:
       # 安全边界，单位：pulse；147500 约等于 1 mm。
       safety_margin: 147500
 
-    # 48 孔板运行时运动保护配置。
-    # 当前该段缩进在 "48-well" 内，因此属于 48 孔板配置。
+    # 运行时运动保护配置。
     runtime_guard:
       # 是否启用移动后检查，检查实际运动是否符合预期。
       enabled: true
@@ -284,12 +252,3 @@ plates:
       max_err_to_target_pulse: 3000
       # 运动保护触发时是否中止任务。
       abort_on_motion_failure: true
-
-    # 兼容旧版图像方向与位移台轴映射配置。
-    axis_mapping:
-      # 图像上下方向对应位移台 X 轴。
-      image_up_down_axis: x
-      # 图像左右方向对应位移台 Y 轴。
-      image_left_right_axis: y
-      # 位移台运动方向与图像视野移动方向是否相反；true 表示相反。
-      stage_and_view_reverse: true
