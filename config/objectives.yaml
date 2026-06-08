@@ -88,7 +88,7 @@ state:
   # 是否启用物镜状态文件。
   enabled: true
   # 物镜状态文件路径，程序会在切换成功后写入当前物镜。
-  state_file: "C:/colony_system/data/objective_state.json"
+  state_file: "data/objective_state.json"
   # 当状态文件不存在或没有 current_objective 时，假定初始物镜为该值。
   assume_initial: "4x"
 
