@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any, Dict
 
@@ -128,6 +129,8 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
         )
         if y_err is None:
             raise HandoffError(f"Y 轴未能到达 handoff 点位: {target_y}")
+
+    time.sleep(max(0.0, motion_cfg["settle_s"]))
 
     return {
         "task_id": task_id,
