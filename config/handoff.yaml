@@ -45,41 +45,8 @@ handoff:
       timeout_s: 120.0
       # 到达点位后预留的稳定等待时间，单位：秒。
       settle_s: 0.5
-
-  # 不同板型的交接点覆盖配置。
-  # 如果某种板型需要不同交接坐标，会覆盖 points.robot_exchange 中的 x/y。
-  plate_overrides:
-    # 6 孔板使用的机械臂交接点覆盖值。
-    "6-well":
-      robot_exchange:
-        # 6 孔板交接点 X 轴绝对坐标，单位：pulse。
-        x: 0
-        # 6 孔板交接点 Y 轴绝对坐标，单位：pulse。
-        y: 7500000
-
-    # 12 孔板使用的机械臂交接点覆盖值。
-    "12-well":
-      robot_exchange:
-        # 12 孔板交接点 X 轴绝对坐标，单位：pulse。
-        x: 0
-        # 12 孔板交接点 Y 轴绝对坐标，单位：pulse。
-        y: 7500000
-
-    # 24 孔板使用的机械臂交接点覆盖值。
-    "24-well":
-      robot_exchange:
-        # 24 孔板交接点 X 轴绝对坐标，单位：pulse。
-        x: 0
-        # 24 孔板交接点 Y 轴绝对坐标，单位：pulse。
-        y: 7500000
-
-    # 48 孔板使用的机械臂交接点覆盖值。
-    "48-well":
-      robot_exchange:
-        # 48 孔板交接点 X 轴绝对坐标，单位：pulse。
-        x: 0
-        # 48 孔板交接点 Y 轴绝对坐标，单位：pulse。
-        y: 7500000
+      # 单轴到位误差阈值，单位：pulse；超过该值时判定 handoff 移动失败。
+      arrival_tolerance_pulse: 3000
 
   # handoff 支持的动作定义。
   actions:
