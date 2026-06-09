@@ -9,6 +9,10 @@ camera:
   # 当 serial_number 为 null 时，程序按这个索引从已发现的相机列表中选择设备；0 通常表示第一台。
   device_index: 0
 
+  # MVS Python SDK import directory.
+  # Use forward slashes in YAML to avoid Windows backslash escaping issues.
+  mvs_python_dir: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
+
   # 相机序列号。
   # null 表示不按序列号指定相机；如果现场有多台相机，建议填写具体序列号以避免选错设备。
   serial_number: DA8583237
