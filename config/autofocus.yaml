@@ -1,129 +1,69 @@
 # C:/colony_system/config/autofocus.yaml
-# 自动对焦配置文件。
-# workflow/run_task.py 会默认读取此文件，并把路径作为 config_path 传给
-# third_party.XWJJJ260511.run_autofocus；任务 JSON 里通常不需要再传 autofocus 字段。
+# Production autofocus configuration.
+# This file is both the workflow policy file and the hardware/algorithm
+# configuration consumed by third_party.XWJJJ260511.run_autofocus.
 
-# 是否启用自动对焦总开关。
-# true 表示允许系统按 trigger 规则执行 autofocus；false 表示完全跳过自动对焦。
 enabled: true
 
-# 自动对焦触发策略：决定“什么时候需要调焦”。
 trigger:
-  # 物镜发生切换后，是否在下一次采集前自动执行 autofocus。
+  # Run autofocus after an objective switch before the next observation capture.
   after_objective_switch: true
 
-  # 是否每次采集前都强制执行 autofocus。
-  # 正常批量采集时建议保持 false，否则每个视野都会增加调焦耗时。
+  # Keep false in batch scanning. The scan executor still limits autofocus to
+  # the first scan point according to scope.
   always_before_capture: false
-
-  # 指定某些物镜即使没有发生物镜切换，也在每次采集前执行 autofocus。
-  # 空列表 [] 表示没有额外指定物镜；示例见下面被注释掉的写法。
   always_before_capture_objectives: []
-  # always_before_capture_objectives:
-  #   - "10x"
 
-# 自动对焦运行模式。
-mode:
-  # false 表示真实执行完整自动对焦：相机取图、电机移动、寻找最清晰位置。
-  # true 表示只预览相机画面，不移动调焦电机，常用于调试相机连接。
-  preview: false
+  # Supported workflow scopes: once_per_well, once_per_task, disabled.
+  scope: once_per_well
+  run_at: before_first_capture_after_stage_move
 
-# 相机配置：自动对焦取图时使用。
 camera:
-  # 相机后端类型。
-  # mvs 表示使用海康 MVS SDK；不要改成 opencv，opencv 可能打开笔记本摄像头或普通 USB 摄像头。
   backend: mvs
+  ip: "192.168.0.253"
+  net_export_ip: "192.168.0.10"
+  mvs_python_dir: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
 
-  # 海康网口相机 IP 地址。
-  # 如果使用 USB 海康相机，可按实际程序支持情况留空或忽略。
-  ip: 192.168.0.253
+  # Lock exposure during autofocus so focus scores are comparable.
+  exposure_auto: false
+  objective_settings:
+    4x:
+      exposure_auto: false
+      exposure_time_us: 5000
+    10x:
+      exposure_auto: false
+      exposure_time_us: 20000
 
-  # 电脑网卡 IP 地址，需要与网口相机在同一网段。
-  net_export_ip: 192.168.0.10
-
-  # 海康 MVS Python SDK 的 MvImport 目录路径，用于导入相机 SDK 模块。
-  mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
-
-  # 仅 backend=opencv 时使用的摄像头编号。
-  # 当前 backend=mvs，此字段不会用于真实自动对焦。
-  opencv_index: 0
-
-# 调焦电机配置：自动对焦时移动 Z/焦距轴。
 motor:
-  # 电机控制方式。
-  # modbus 表示通过串口 Modbus 控制真实调焦电机。
   type: modbus
-
-  # Modbus 串口号，需与调焦电机控制器连接的实际串口一致。
   port: COM3
-
-  # Modbus 串口波特率，需与电机控制器参数一致。
   baudrate: 115200
-
-  # 调焦电机的 Modbus 从站地址；当前设备中从站 3 是调焦电机。
   focus_slave: 3
 
-  # 默认物镜名称。
-  # 外部调用 run_autofocus 时通常会传入 objective=4x/10x；这里作为兜底默认值。
+  # Standalone fallback. The workflow overwrites this with task.objective.
   objective: 4x
 
-  # 不同物镜对应的自动对焦搜索范围，单位为电机脉冲。
-  # 自动对焦只会在对应物镜的 min_pos 和 max_pos 之间搜索，避免越界。
+  # Software search limits for each objective, in focus-axis pulses.
   objective_ranges:
     4x:
-      # 4x 物镜允许搜索的最小焦点位置，单位：pulse。
       min_pos: -2063120
-      # 4x 物镜允许搜索的最大焦点位置，单位：pulse。
       max_pos: -1769500
     10x:
-      # 10x 物镜允许搜索的最小焦点位置，单位：pulse。
       min_pos: -2095551
-      # 10x 物镜允许搜索的最大焦点位置，单位：pulse。
       max_pos: -2028750
 
-  # 兼容旧版本调用的全局搜索范围。
-  # 如果程序没有使用 objective_ranges，才会回退读取这两个值。
-  min_pos: -2063120
-  max_pos: -1769500
-
-  # 电机运动速度参数，单位通常为控制器内部 pulse/s 或 profile 单位。
   profile_vel: 50000
-
-  # 电机加速度参数，数值越大启动越快，但机械冲击也可能更明显。
   profile_acc: 50000
-
-  # 电机减速度参数，数值越大停止越快，但机械冲击也可能更明显。
   profile_dec: 50000
 
-# 自动对焦算法参数：控制搜索停止条件和清晰度评价。
 focus:
-  # 对焦容差，单位：pulse。
-  # 当搜索区间或位置变化小于该值时，可认为已经接近最佳焦点。
   tol: 100
-
-  # 最大迭代次数，防止自动对焦长时间无法收敛。
   max_iter: 10
-
-  # 每次电机移动后等待稳定的时间，单位：毫秒。
-  # 等待后再拍照计算清晰度，减少机械振动或曝光未稳定带来的误差。
   settle_ms: 300
-
-  # 清晰度评价使用的中心区域比例。
-  # 0.6 表示只取图像中心 60% 宽高的区域，减少边缘、灰尘或无关区域干扰。
   center_roi: 0.6
-
-  # 计算清晰度前的图像缩放比例。
-  # 0.5 表示缩小到一半尺寸再计算 Laplacian 等指标，可降低噪点影响并加快计算。
   downsample: 0.5
 
-# 自动对焦输出配置：保存最佳图像和调焦日志。
 output:
-  # 是否按时间戳创建独立输出文件夹。
-  # true 可以避免多次调焦结果互相覆盖。
   timestamp_folder: true
-
-  # 自动对焦完成后保存的最清晰图像路径。
-  image_path: output/sharpest.png
-
-  # 自动对焦过程日志路径，通常记录每次采样位置和清晰度分数。
-  log_path: output/focus_log.csv
+  image_path: C:/colony_system/data/autofocus/sharpest.png
+  log_path: C:/colony_system/data/autofocus/focus_log.csv
