@@ -4,10 +4,12 @@ camera_controller.py
 
 功能：
 1. 封装海康工业相机 MVS Python SDK 的常用调用流程；
-2. 支持按设备索引或序列号选择相机；
+2. 支持按序列号、IP、枚举索引选择相机；
 3. 支持软件触发单帧采图；
 4. 支持设置曝光、增益；
-5. 支持将 Mono8 图像保存为 bmp/jpg/png。
+5. 打开相机时强制设置并回读校验 Mono8；
+6. 支持将 Mono8 图像保存为 bmp/jpg/png；
+7. 支持 MVS 录像和录像中的快照请求。
 
 适用场景：
 - 放在项目的 devices/camera_controller.py 中，作为工程化相机控制模块使用；
@@ -21,7 +23,6 @@ import logging
 import importlib
 import argparse
 import threading
-# import cv2  # 如后续需要 OpenCV 保存/处理，可再启用
 from PIL import Image
 import numpy as np
 from pathlib import Path
@@ -67,6 +68,11 @@ class FrameInfo:
 
 @dataclass
 class VideoRecordInfo:
+    """
+    录像完成后返回的信息结构体。
+
+    pixel_type 记录启动录像时的相机 PixelFormat 枚举值；当前生产路径期望为 Mono8。
+    """
     saved_path: str
     width: int
     height: int
@@ -85,14 +91,13 @@ class HikCameraController:
 
     设计目标：
     - 让上层代码只关心“打开相机 / 设置参数 / 采图 / 关闭相机”
-    - 将 SDK 的导入、设备枚举、句柄创建、异常处理都收敛在这里
+    - 将 SDK 导入、设备枚举、句柄创建、参数校验、异常清理都收敛在这里
+    - 打开过程中任一步失败都会释放已经创建的 SDK 资源，避免占用相机
 
-    目录建议：
-        project_root/
-        ├── devices/
-        │   └── camera_controller.py
-        ├── config/
-        └── services/
+    相机选择优先级：
+    1. serial_number
+    2. camera_ip
+    3. device_index
 
     MVS Python 模块默认从以下优先级寻找：
     1. 构造参数 mvs_python_dir
@@ -115,9 +120,7 @@ class HikCameraController:
     ) -> None:
         # MVS Python 模块目录
         self.mvs_python_dir = mvs_python_dir or os.getenv("MVS_PYTHON_DIR") or DEFAULT_MVS_PYTHON_DIR
-        # 相机选择方式：
-        # - 若 serial_number 不为空，则优先按序列号匹配
-        # - 否则按 device_index 选择
+        # 相机选择优先级：serial_number > camera_ip > device_index。
         self.device_index = device_index
         self.serial_number = serial_number
         self.camera_ip = str(camera_ip or "").strip() or None
@@ -126,13 +129,13 @@ class HikCameraController:
         self.pixel_format = self._normalize_pixel_format(pixel_format)
         # 获取单帧时的等待超时，单位 ms
         self.grab_timeout_ms = int(grab_timeout_ms)
-        # jpg 保存质量，仅在保存 jpg 时有意义
+        # 兼容旧版 SDK 保存接口的 jpg 质量参数；当前 Pillow 保存路径暂未使用。
         self.jpg_quality = int(jpg_quality)
         # 打开相机后若提供默认曝光 / 增益，则自动设置
         self.default_exposure_us = default_exposure_us
         self.default_gain = default_gain
 
-        # SDK 是否已完成导入
+        # _sdk_loaded 只表示 Python 包已导入；_sdk_initialized 表示已调用 MVS 全局 Initialize。
         self._sdk_loaded = False
         self._sdk_initialized = False
 
@@ -169,6 +172,7 @@ class HikCameraController:
 
     @staticmethod
     def _normalize_pixel_format(pixel_format: str | None) -> str:
+        """归一化配置中的像素格式名称；当前生产流程只允许 Mono8。"""
         text = str(pixel_format or "mono8").strip().lower().replace("-", "").replace("_", "")
         if text in {"mono8", "monochrome8"}:
             return "mono8"
@@ -207,6 +211,7 @@ class HikCameraController:
                 "3) 该目录已通过构造参数或环境变量 MVS_PYTHON_DIR 传入。"
             ) from e
 
+        # 部分 MVS 包把 PixelType_Gvsp_* 放在主模块中，因此同时收集 const/header 以外的常量。
         consts: Dict[str, Any] = {}
         for module in (const_mod, mv_mod):
             for name in dir(module):
@@ -310,6 +315,7 @@ class HikCameraController:
         return ".".join(str((n >> shift) & 0xFF) for shift in (24, 16, 8, 0))
 
     def _get_device_ip(self, dev_info) -> str:
+        """读取 GigE 设备当前 IP；非 GigE 或读取失败时返回空字符串。"""
         try:
             info = dev_info.SpecialInfo.stGigEInfo
             return self._int_to_ipv4(getattr(info, "nCurrentIp", 0))
@@ -317,6 +323,7 @@ class HikCameraController:
             return ""
 
     def _select_device(self, dev_list):
+        """按 serial_number > camera_ip > device_index 的优先级选择设备。"""
         n = int(getattr(dev_list, "nDeviceNum", 0))
         if n <= 0:
             raise CameraSDKError("未枚举到相机设备")
@@ -447,12 +454,14 @@ class HikCameraController:
         return int(getattr(st, "nCurValue", 0))
 
     def _pixel_format_value(self, pixel_format: str | None = None) -> int:
+        """返回 MVS SDK 的 PixelFormat 枚举值；当前只支持 Mono8。"""
         normalized = self._normalize_pixel_format(pixel_format or self.pixel_format)
         if normalized == "mono8":
             return int(self._sdk.get("PixelType_Gvsp_Mono8", MVS_PIXEL_FORMAT_FALLBACKS["mono8"]))
         raise CameraSDKError(f"unsupported pixel_format={pixel_format!r}")
 
     def _set_pixel_format(self) -> None:
+        """设置相机 PixelFormat 并回读校验，避免配置未真正生效。"""
         expected = self._pixel_format_value(self.pixel_format)
         self._set_enum("PixelFormat", expected)
         actual = self._get_enum_value("PixelFormat")
@@ -463,13 +472,16 @@ class HikCameraController:
         logger.info("set PixelFormat=%s (%s)", self.pixel_format, expected)
 
     def _is_expected_pixel_type(self, pixel_type: int) -> bool:
+        """判断采集帧的实际像素格式是否符合当前配置。"""
         return int(pixel_type) == self._pixel_format_value(self.pixel_format)
 
     def _cleanup_after_open_failure(self, step: str) -> None:
+        """open() 中途失败时释放已创建的句柄和 SDK 全局状态。"""
         logger.error("camera open failed during %s; cleaning up partial resources", step)
         self.close()
 
     def _run_open_step(self, step: str, func, *args):
+        """执行 open() 的一个阶段；失败时统一清理，防止相机句柄残留。"""
         try:
             return func(*args)
         except Exception:
@@ -493,6 +505,9 @@ class HikCameraController:
         """
         打开相机并完成基础初始化。
 
+        该方法是原子化打开流程：从 Initialize 到 PayloadSize 的任一步失败，
+        都会调用 close() 清理已创建的句柄、取流状态和 SDK 全局初始化状态。
+
         执行顺序：
         1. 导入 SDK
         2. 创建 MvCamera 实例
@@ -501,10 +516,11 @@ class HikCameraController:
         5. 创建句柄
         6. 打开设备
         7. 配置网络包大小（GigE 可优化）
-        8. 设置触发模式
-        9. 设置默认曝光、增益
-        10. 开始取流
-        11. 读取 PayloadSize
+        8. 设置并回读校验 PixelFormat
+        9. 设置触发模式
+        10. 设置默认曝光、增益
+        11. 开始取流
+        12. 读取 PayloadSize
         """
         if self.opened:
             return
@@ -667,6 +683,12 @@ class HikCameraController:
         save_path: str,
         timeout_ms: Optional[int] = None,
     ) -> FrameInfo:
+        """
+        后台录像过程中请求保存一张快照。
+
+        录像线程在下一帧到达时复用同一帧数据保存图片，避免同时调用
+        MV_CC_GetOneFrameTimeout 导致 SDK 取流竞争。
+        """
         timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
         request: Dict[str, Any] = {
             "save_path": str(Path(save_path)),
@@ -695,6 +717,7 @@ class HikCameraController:
         return request["frame"]
 
     def _fulfill_snapshot_requests(self, data_buf, frame_info) -> None:
+        """用录像线程刚取得的一帧满足所有等待中的快照请求。"""
         with self._snapshot_condition:
             requests = list(self._snapshot_requests)
             self._snapshot_requests.clear()
@@ -725,13 +748,16 @@ class HikCameraController:
         """
         软件触发采一张图并保存。
 
+        若当前正在后台录像，则不会额外抢占 SDK 取流；请求会交给录像线程，
+        由下一帧数据完成快照保存。
+
         流程：
         1. 检查相机是否已打开
         2. 检查 payload_size 是否已获取
         3. 如未开始取流则启动取流
         4. 发送 TriggerSoftware 命令
         5. 调用 MV_CC_GetOneFrameTimeout 获取一帧原始数据
-        6. 调用 _save_frame 保存到磁盘
+        6. 调用 _save_frame 校验 Mono8 并保存到磁盘
         7. 返回本帧信息
         """
         if self.is_background_recording:
@@ -810,6 +836,7 @@ class HikCameraController:
         fps: Optional[float] = None,
         bitrate_kbps: int = 1000,
     ) -> None:
+        """启动 MVS SDK 录像会话；后续每帧需通过 _input_record_frame 写入。"""
         if not self.opened:
             raise CameraSDKError("相机尚未打开，请先调用 open()")
         if self.recording:
@@ -854,6 +881,7 @@ class HikCameraController:
         logger.info("recording started: path=%s fps=%s bitrate=%s", save_path, frame_rate, bitrate_kbps)
 
     def _input_record_frame(self, data_buf, frame_len: int) -> None:
+        """把当前采集帧送入 MVS 录像编码器。"""
         if not self.recording:
             raise CameraSDKError("录像尚未开始")
         if not hasattr(self.cam, "MV_CC_InputOneFrame"):
@@ -873,6 +901,7 @@ class HikCameraController:
         self._record_frame_count += 1
 
     def record_one_frame(self, timeout_ms: Optional[int] = None) -> FrameInfo:
+        """触发并采集一帧，将其写入当前录像，并处理等待中的快照请求。"""
         if not self.opened:
             raise CameraSDKError("相机尚未打开，请先调用 open()")
         if not self.payload_size:
@@ -960,6 +989,7 @@ class HikCameraController:
         bitrate_kbps: int = 1000,
         timeout_ms: Optional[int] = None,
     ) -> VideoRecordInfo:
+        """同步录像指定时长；调用期间会阻塞当前线程。"""
         if float(duration_s) <= 0:
             raise ValueError("duration_s 必须大于 0")
 
@@ -985,6 +1015,7 @@ class HikCameraController:
             raise
 
     def _recording_worker(self, timeout_ms: Optional[int]) -> None:
+        """后台录像线程：按目标帧率取帧、写入录像，并处理快照请求。"""
         frame_interval = 1.0 / max(float(self._record_frame_rate), 0.001)
         next_frame_at = time.monotonic()
         try:
@@ -1014,6 +1045,7 @@ class HikCameraController:
         bitrate_kbps: int = 1000,
         timeout_ms: Optional[int] = None,
     ) -> None:
+        """启动后台录像线程；调用方可继续执行拍照或流程调度。"""
         self._record_error = None
         self._record_stop_event.clear()
         self.start_recording(save_path, fps=fps, bitrate_kbps=bitrate_kbps)
@@ -1026,6 +1058,7 @@ class HikCameraController:
         self._record_thread.start()
 
     def stop_background_recording(self, join_timeout_s: float = 5.0) -> VideoRecordInfo:
+        """请求后台录像线程停止，并返回 MVS 录像结果。"""
         self._record_stop_event.set()
         thread = self._record_thread
         if thread is not None and thread.is_alive():
@@ -1057,11 +1090,14 @@ class HikCameraController:
         """
         关闭相机并释放资源。
 
-        注意：
-        - 先停流
-        - 再关闭设备
-        - 再销毁句柄
-        - 最后全局 Finalize
+        释放顺序：
+        1. 如果正在录像，先尝试停止录像
+        2. 停止取流
+        3. 关闭设备
+        4. 销毁句柄
+        5. 若本实例已完成 MV_CC_Initialize，则调用 MV_CC_Finalize
+
+        该方法允许在 open() 中途失败后调用，因此所有 SDK 释放动作都采用尽力清理。
         """
         if not self._sdk_loaded:
             return
@@ -1102,92 +1138,13 @@ class HikCameraController:
             self.payload_size = None
             self.device_info = None
 
-    # def _save_frame(self, save_path: str, data_buf, frame_info) -> None:
-    #     ext = Path(save_path).suffix.lower()
-    #     image_type = self._infer_image_type(ext)
-
-    #     MV_SAVE_IMAGE_PARAM_EX = self._sdk["MV_SAVE_IMAGE_PARAM_EX"]
-    #     save_param = MV_SAVE_IMAGE_PARAM_EX()
-    #     ctypes.memset(ctypes.byref(save_param), 0, ctypes.sizeof(save_param))
-
-    #     width = int(getattr(frame_info, "nWidth", 0))
-    #     height = int(getattr(frame_info, "nHeight", 0))
-    #     frame_len = int(getattr(frame_info, "nFrameLen", 0))
-    #     pixel_type = int(getattr(frame_info, "enPixelType", 0))
-    #     if width <= 0 or height <= 0 or frame_len <= 0:
-    #         raise CameraSDKError("帧信息异常，无法保存图像")
-
-    #     out_buf_size = max(width * height * 4 + 4096, frame_len * 2 + 4096)
-    #     out_buf = (ctypes.c_ubyte * out_buf_size)()
-
-    #     save_param.enImageType = image_type
-    #     save_param.enPixelType = pixel_type
-    #     save_param.nWidth = width
-    #     save_param.nHeight = height
-    #     save_param.nDataLen = frame_len
-    #     save_param.pData = ctypes.cast(data_buf, ctypes.POINTER(ctypes.c_ubyte))
-    #     save_param.pImageBuffer = ctypes.cast(out_buf, ctypes.POINTER(ctypes.c_ubyte))
-    #     save_param.nBufferSize = out_buf_size
-    #     if hasattr(save_param, "nJpgQuality"):
-    #         save_param.nJpgQuality = int(self.jpg_quality)
-    #     if hasattr(save_param, "iMethodValue"):
-    #         save_param.iMethodValue = 0
-
-    #     ret = self._call_variants(
-    #         self.cam.MV_CC_SaveImageEx2,
-    #         [
-    #             (save_param,),
-    #             (ctypes.byref(save_param),),
-    #         ],
-    #         "MV_CC_SaveImageEx2",
-    #     )
-    #     self._check(ret, "MV_CC_SaveImageEx2")
-
-    #     out_len = int(getattr(save_param, "nImageLen", 0))
-    #     if out_len <= 0:
-    #         raise CameraSDKError("图像转换成功但输出长度为 0")
-
-    #     with open(save_path, "wb") as f:
-    #         f.write(bytes(out_buf[:out_len]))
-    
-    ###cv###
-    # def _save_frame(self, save_path: str, data_buf, frame_info) -> None:
-    #     width = int(getattr(frame_info, "nWidth", 0))
-    #     height = int(getattr(frame_info, "nHeight", 0))
-    #     frame_len = int(getattr(frame_info, "nFrameLen", 0))
-    #     pixel_type = int(getattr(frame_info, "enPixelType", 0))
-
-    #     if width <= 0 or height <= 0 or frame_len <= 0:
-    #         raise CameraSDKError("帧信息异常，无法保存图像")
-
-    #     # 先打印关键信息，便于排查
-    #     logger.info(
-    #         "save frame: width=%s height=%s frame_len=%s pixel_type=%s path=%s",
-    #         width, height, frame_len, pixel_type, save_path
-    #     )
-
-    #     raw = np.ctypeslib.as_array(data_buf, shape=(frame_len,))
-
-    #     ext = Path(save_path).suffix.lower()
-
-    #     # 优先按 Mono8 直接保存：frame_len == width * height
-    #     if frame_len == width * height:
-    #         img = raw[: width * height].reshape((height, width)).copy()
-    #         ok = cv2.imwrite(str(save_path), img)
-    #         if not ok:
-    #             raise CameraSDKError(f"cv2.imwrite 保存失败: {save_path}")
-    #         logger.info("saved mono8 image by OpenCV: %s", save_path)
-    #         return
-
-    #     # 如果不是单通道 8bit，先把原始数据落盘，便于后续分析
-    #     raw_path = str(Path(save_path).with_suffix(".raw"))
-    #     with open(raw_path, "wb") as f:
-    #         f.write(bytes(raw[:frame_len]))
-    #     raise CameraSDKError(
-    #         f"当前帧不是 width*height 的 Mono8 格式，已保存原始数据到: {raw_path} ; "
-    #         f"width={width}, height={height}, frame_len={frame_len}, pixel_type={pixel_type}"
-    #     )
     def _save_frame(self, save_path: str, data_buf, frame_info) -> None:
+        """
+        保存一帧图片。
+
+        当前生产路径只接受 Mono8。若实际帧 PixelFormat 或字节长度不符合预期，
+        会先保存同名 .raw 文件再抛出异常，便于现场排查相机输出格式问题。
+        """
         width = int(getattr(frame_info, "nWidth", 0))
         height = int(getattr(frame_info, "nHeight", 0))
         frame_len = int(getattr(frame_info, "nFrameLen", 0))
@@ -1217,8 +1174,7 @@ class HikCameraController:
                 f"raw frame saved to {raw_path}"
             )
 
-        # 先按 Mono8 处理：如果帧长度正好等于 width * height，
-        # 就认为是一张 8bit 灰度图
+        # 到这里说明帧已经通过 Mono8 和长度校验，可以按 8-bit 灰度图保存。
         img = raw[: width * height].reshape((height, width)).copy()
         im = Image.fromarray(img, mode="L")
         im.save(save_path)
@@ -1232,6 +1188,7 @@ class HikCameraController:
         return raw_path
 
     def _infer_image_type(self, ext: str) -> int:
+        """旧版 SDK SaveImageEx2 路径使用的格式映射；当前 Pillow 保存路径未调用。"""
         if ext in (".jpg", ".jpeg"):
             return int(self._sdk.get("MV_Image_Jpeg", 1))
         if ext == ".png":
