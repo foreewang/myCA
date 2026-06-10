@@ -134,6 +134,7 @@ class HikCameraController:
 
         # SDK 是否已完成导入
         self._sdk_loaded = False
+        self._sdk_initialized = False
 
         # 用字典统一保存导入到的 SDK 类、结构体、常量
         self._sdk: Dict[str, Any] = {}
@@ -464,6 +465,17 @@ class HikCameraController:
     def _is_expected_pixel_type(self, pixel_type: int) -> bool:
         return int(pixel_type) == self._pixel_format_value(self.pixel_format)
 
+    def _cleanup_after_open_failure(self, step: str) -> None:
+        logger.error("camera open failed during %s; cleaning up partial resources", step)
+        self.close()
+
+    def _run_open_step(self, step: str, func, *args):
+        try:
+            return func(*args)
+        except Exception:
+            self._cleanup_after_open_failure(step)
+            raise
+
     def _set_int(self, key: str, value: int) -> None:
         if not hasattr(self.cam, "MV_CC_SetIntValue"):
             raise CameraSDKError("当前 MVS Python 包装中不存在 MV_CC_SetIntValue")
@@ -502,12 +514,15 @@ class HikCameraController:
         self.cam = MvCamera()
 
         ret = MvCamera.MV_CC_Initialize()
-        self._check(ret, "MV_CC_Initialize")
+        self._run_open_step("MV_CC_Initialize.check", self._check, ret, "MV_CC_Initialize")
+        self._sdk_initialized = True
 
-        dev_list = self._enum_devices()
-        self.device_info = self._select_device(dev_list)
+        dev_list = self._run_open_step("MV_CC_EnumDevices", self._enum_devices)
+        self.device_info = self._run_open_step("select_device", self._select_device, dev_list)
 
-        ret = self._call_variants(
+        ret = self._run_open_step(
+            "MV_CC_CreateHandle",
+            self._call_variants,
             self.cam.MV_CC_CreateHandle,
             [
                 (self.device_info,),
@@ -515,10 +530,12 @@ class HikCameraController:
             ],
             "MV_CC_CreateHandle",
         )
-        self._check(ret, "MV_CC_CreateHandle")
+        self._run_open_step("MV_CC_CreateHandle.check", self._check, ret, "MV_CC_CreateHandle")
 
         access_exclusive = int(self._sdk.get("MV_ACCESS_Exclusive", 1))
-        ret = self._call_variants(
+        ret = self._run_open_step(
+            "MV_CC_OpenDevice",
+            self._call_variants,
             self.cam.MV_CC_OpenDevice,
             [
                 (access_exclusive, 0),
@@ -526,20 +543,21 @@ class HikCameraController:
             ],
             "MV_CC_OpenDevice",
         )
-        self._check(ret, "MV_CC_OpenDevice")
+        self._run_open_step("MV_CC_OpenDevice.check", self._check, ret, "MV_CC_OpenDevice")
 
-        self._try_set_optimal_packet_size()
-        self._set_pixel_format()
-        self._set_trigger_mode()
+        self._run_open_step("GevSCPSPacketSize", self._try_set_optimal_packet_size)
+        self._run_open_step("PixelFormat", self._set_pixel_format)
+        self._run_open_step("TriggerMode", self._set_trigger_mode)
 
         if self.default_exposure_us is not None:
-            self.set_exposure_us(self.default_exposure_us)
+            self._run_open_step("ExposureTime", self.set_exposure_us, self.default_exposure_us)
         if self.default_gain is not None:
-            self.set_gain(self.default_gain)
+            self._run_open_step("Gain", self.set_gain, self.default_gain)
 
-        self.start_grabbing()
-        self.payload_size = self._get_int_value("PayloadSize")
+        self._run_open_step("MV_CC_StartGrabbing", self.start_grabbing)
+        self.payload_size = self._run_open_step("PayloadSize", self._get_int_value, "PayloadSize")
         if self.payload_size <= 0:
+            self._cleanup_after_open_failure("PayloadSize")
             raise CameraSDKError("PayloadSize 获取失败")
 
         self.opened = True
@@ -1070,15 +1088,19 @@ class HikCameraController:
                 except Exception:
                     pass
         finally:
-            try:
-                self._sdk["MvCamera"].MV_CC_Finalize()
-            except Exception:
-                pass
+            if self._sdk_initialized:
+                try:
+                    self._sdk["MvCamera"].MV_CC_Finalize()
+                except Exception:
+                    pass
+                finally:
+                    self._sdk_initialized = False
             self.opened = False
             self.grabbing = False
             self.recording = False
             self.cam = None
             self.payload_size = None
+            self.device_info = None
 
     # def _save_frame(self, save_path: str, data_buf, frame_info) -> None:
     #     ext = Path(save_path).suffix.lower()
