@@ -42,6 +42,53 @@ DEFAULT_MVS_PYTHON_DIR = r"C:\Program Files (x86)\MVS\Development\Samples\Python
 MVS_PIXEL_FORMAT_FALLBACKS = {
     "mono8": 0x01080001,
 }
+_MVS_SDK_LIFECYCLE_LOCK = threading.RLock()
+_MVS_SDK_REFCOUNT = 0
+_MVS_SDK_INITIALIZED = False
+
+
+def _check_mvs_ret(ret: int, name: str) -> None:
+    if int(ret) != 0:
+        raise CameraSDKError(f"{name} failed, ret=0x{int(ret):08x}")
+
+
+def _acquire_mvs_sdk(MvCamera) -> None:
+    """获取进程级 MVS SDK 生命周期引用；首个引用负责 Initialize。"""
+    global _MVS_SDK_REFCOUNT, _MVS_SDK_INITIALIZED
+
+    with _MVS_SDK_LIFECYCLE_LOCK:
+        if _MVS_SDK_REFCOUNT == 0:
+            ret = MvCamera.MV_CC_Initialize()
+            _check_mvs_ret(ret, "MV_CC_Initialize")
+            _MVS_SDK_INITIALIZED = True
+            logger.info("MVS SDK initialized")
+        _MVS_SDK_REFCOUNT += 1
+        logger.debug("MVS SDK refcount=%s", _MVS_SDK_REFCOUNT)
+
+
+def _release_mvs_sdk(MvCamera) -> None:
+    """释放进程级 MVS SDK 生命周期引用；最后一个引用负责 Finalize。"""
+    global _MVS_SDK_REFCOUNT, _MVS_SDK_INITIALIZED
+
+    with _MVS_SDK_LIFECYCLE_LOCK:
+        if _MVS_SDK_REFCOUNT <= 0:
+            _MVS_SDK_REFCOUNT = 0
+            _MVS_SDK_INITIALIZED = False
+            return
+
+        _MVS_SDK_REFCOUNT -= 1
+        logger.debug("MVS SDK refcount=%s", _MVS_SDK_REFCOUNT)
+        if _MVS_SDK_REFCOUNT == 0 and _MVS_SDK_INITIALIZED:
+            try:
+                ret = MvCamera.MV_CC_Finalize()
+                if int(ret) != 0:
+                    logger.warning("MV_CC_Finalize failed, ret=0x%08x", int(ret))
+                else:
+                    logger.info("MVS SDK finalized")
+            except Exception:
+                logger.exception("MV_CC_Finalize raised during SDK lifecycle release")
+            finally:
+                _MVS_SDK_INITIALIZED = False
 
 
 @dataclass
@@ -135,7 +182,7 @@ class HikCameraController:
         self.default_exposure_us = default_exposure_us
         self.default_gain = default_gain
 
-        # _sdk_loaded 只表示 Python 包已导入；_sdk_initialized 表示已调用 MVS 全局 Initialize。
+        # _sdk_loaded 只表示 Python 包已导入；_sdk_initialized 表示本实例持有 MVS 全局生命周期引用。
         self._sdk_loaded = False
         self._sdk_initialized = False
 
@@ -505,13 +552,13 @@ class HikCameraController:
         """
         打开相机并完成基础初始化。
 
-        该方法是原子化打开流程：从 Initialize 到 PayloadSize 的任一步失败，
+        该方法是原子化打开流程：从获取 SDK 生命周期引用到 PayloadSize 的任一步失败，
         都会调用 close() 清理已创建的句柄、取流状态和 SDK 全局初始化状态。
 
         执行顺序：
         1. 导入 SDK
         2. 创建 MvCamera 实例
-        3. 初始化 SDK 全局环境
+        3. 获取 SDK 全局生命周期引用（首个引用会执行 MV_CC_Initialize）
         4. 枚举并选择设备
         5. 创建句柄
         6. 打开设备
@@ -529,8 +576,7 @@ class HikCameraController:
         MvCamera = self._sdk["MvCamera"]
         self.cam = MvCamera()
 
-        ret = MvCamera.MV_CC_Initialize()
-        self._run_open_step("MV_CC_Initialize.check", self._check, ret, "MV_CC_Initialize")
+        self._run_open_step("MVS SDK lifecycle acquire", _acquire_mvs_sdk, MvCamera)
         self._sdk_initialized = True
 
         dev_list = self._run_open_step("MV_CC_EnumDevices", self._enum_devices)
@@ -1095,7 +1141,7 @@ class HikCameraController:
         2. 停止取流
         3. 关闭设备
         4. 销毁句柄
-        5. 若本实例已完成 MV_CC_Initialize，则调用 MV_CC_Finalize
+        5. 释放本实例持有的 SDK 生命周期引用；最后一个引用释放时才执行 MV_CC_Finalize
 
         该方法允许在 open() 中途失败后调用，因此所有 SDK 释放动作都采用尽力清理。
         """
@@ -1125,12 +1171,8 @@ class HikCameraController:
                     pass
         finally:
             if self._sdk_initialized:
-                try:
-                    self._sdk["MvCamera"].MV_CC_Finalize()
-                except Exception:
-                    pass
-                finally:
-                    self._sdk_initialized = False
+                _release_mvs_sdk(self._sdk["MvCamera"])
+                self._sdk_initialized = False
             self.opened = False
             self.grabbing = False
             self.recording = False
