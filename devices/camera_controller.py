@@ -102,6 +102,7 @@ class HikCameraController:
         mvs_python_dir: Optional[str] = None,
         device_index: int = 0,
         serial_number: Optional[str] = None,
+        camera_ip: Optional[str] = None,
         trigger_source: str = "software",
         grab_timeout_ms: int = 1500,
         jpg_quality: int = 90,
@@ -115,6 +116,7 @@ class HikCameraController:
         # - 否则按 device_index 选择
         self.device_index = device_index
         self.serial_number = serial_number
+        self.camera_ip = str(camera_ip or "").strip() or None
         # 当前仅实现 software 软件触发
         self.trigger_source = trigger_source.lower().strip()
         # 获取单帧时的等待超时，单位 ms
@@ -285,6 +287,21 @@ class HikCameraController:
             pass
         return ""
 
+    @staticmethod
+    def _int_to_ipv4(value: Any) -> str:
+        try:
+            n = int(value)
+        except Exception:
+            return ""
+        return ".".join(str((n >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+    def _get_device_ip(self, dev_info) -> str:
+        try:
+            info = dev_info.SpecialInfo.stGigEInfo
+            return self._int_to_ipv4(getattr(info, "nCurrentIp", 0))
+        except Exception:
+            return ""
+
     def _select_device(self, dev_list):
         n = int(getattr(dev_list, "nDeviceNum", 0))
         if n <= 0:
@@ -296,8 +313,12 @@ class HikCameraController:
             ptr = dev_list.pDeviceInfo[i]
             dev_info = ctypes.cast(ptr, ctypes.POINTER(MV_CC_DEVICE_INFO)).contents
             serial = self._get_device_serial(dev_info)
-            logger.info("camera device[%s] serial=%s", i, serial or "<unknown>")
+            ip = self._get_device_ip(dev_info)
+            logger.info("camera device[%s] serial=%s ip=%s", i, serial or "<unknown>", ip or "<unknown>")
             if self.serial_number and serial == self.serial_number:
+                matched = dev_info
+                break
+            if not self.serial_number and self.camera_ip and ip == self.camera_ip:
                 matched = dev_info
                 break
 
@@ -305,6 +326,8 @@ class HikCameraController:
             return matched
         if self.serial_number:
             raise CameraSDKError(f"未找到序列号为 {self.serial_number} 的相机")
+        if self.camera_ip:
+            raise CameraSDKError(f"未找到 IP 为 {self.camera_ip} 的相机")
         if not (0 <= self.device_index < n):
             raise CameraSDKError(f"device_index={self.device_index} 超出范围，当前仅有 {n} 台设备")
 
@@ -1156,6 +1179,7 @@ def build_camera(
     mvs_python_dir: Optional[str] = None,
     device_index: int = 0,
     serial_number: Optional[str] = None,
+    camera_ip: Optional[str] = None,
     exposure_us: Optional[float] = None,
     gain: Optional[float] = None,
 ) -> HikCameraController:
@@ -1163,6 +1187,7 @@ def build_camera(
         mvs_python_dir=mvs_python_dir,
         device_index=device_index,
         serial_number=serial_number,
+        camera_ip=camera_ip,
         default_exposure_us=exposure_us,
         default_gain=gain,
     )
@@ -1173,6 +1198,7 @@ if __name__ == "__main__":
     parser.add_argument("--mvs-python-dir", default=DEFAULT_MVS_PYTHON_DIR)
     parser.add_argument("--device-index", type=int, default=0)
     parser.add_argument("--serial-number", default=None)
+    parser.add_argument("--camera-ip", default=None)
     parser.add_argument("--exposure-us", type=float, default=None)
     parser.add_argument("--gain", type=float, default=None)
     parser.add_argument("--save-path", default="test_capture.bmp")
@@ -1188,6 +1214,7 @@ if __name__ == "__main__":
         mvs_python_dir=args.mvs_python_dir,
         device_index=args.device_index,
         serial_number=args.serial_number,
+        camera_ip=args.camera_ip,
         default_exposure_us=args.exposure_us,
         default_gain=args.gain,
     )
