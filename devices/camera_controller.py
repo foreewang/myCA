@@ -38,6 +38,9 @@ class CameraSDKError(RuntimeError):
 
 # DEFAULT_MVS_PYTHON_DIR = r"/opt/MVS/Samples/64/Python/MvImport"
 DEFAULT_MVS_PYTHON_DIR = r"C:\Program Files (x86)\MVS\Development\Samples\Python\MvImport"
+MVS_PIXEL_FORMAT_FALLBACKS = {
+    "mono8": 0x01080001,
+}
 
 
 @dataclass
@@ -104,6 +107,7 @@ class HikCameraController:
         serial_number: Optional[str] = None,
         camera_ip: Optional[str] = None,
         trigger_source: str = "software",
+        pixel_format: str = "mono8",
         grab_timeout_ms: int = 1500,
         jpg_quality: int = 90,
         default_exposure_us: Optional[float] = None,
@@ -119,6 +123,7 @@ class HikCameraController:
         self.camera_ip = str(camera_ip or "").strip() or None
         # 当前仅实现 software 软件触发
         self.trigger_source = trigger_source.lower().strip()
+        self.pixel_format = self._normalize_pixel_format(pixel_format)
         # 获取单帧时的等待超时，单位 ms
         self.grab_timeout_ms = int(grab_timeout_ms)
         # jpg 保存质量，仅在保存 jpg 时有意义
@@ -161,6 +166,13 @@ class HikCameraController:
         self._record_frame_count = 0
         self._record_error: Optional[str] = None
 
+    @staticmethod
+    def _normalize_pixel_format(pixel_format: str | None) -> str:
+        text = str(pixel_format or "mono8").strip().lower().replace("-", "").replace("_", "")
+        if text in {"mono8", "monochrome8"}:
+            return "mono8"
+        raise CameraSDKError(f"unsupported pixel_format={pixel_format!r}; only mono8 is supported")
+
     def _load_sdk(self) -> None:
         """
         动态导入海康 MVS Python SDK。
@@ -195,9 +207,10 @@ class HikCameraController:
             ) from e
 
         consts: Dict[str, Any] = {}
-        for name in dir(const_mod):
-            if name.startswith("MV_"):
-                consts[name] = getattr(const_mod, name)
+        for module in (const_mod, mv_mod):
+            for name in dir(module):
+                if name.startswith(("MV_", "PixelType_Gvsp_")):
+                    consts.setdefault(name, getattr(module, name))
 
         sdk = {
             "MvCamera": getattr(mv_mod, "MvCamera"),
@@ -432,6 +445,25 @@ class HikCameraController:
         self._check(ret, f"MV_CC_GetEnumValue({key})")
         return int(getattr(st, "nCurValue", 0))
 
+    def _pixel_format_value(self, pixel_format: str | None = None) -> int:
+        normalized = self._normalize_pixel_format(pixel_format or self.pixel_format)
+        if normalized == "mono8":
+            return int(self._sdk.get("PixelType_Gvsp_Mono8", MVS_PIXEL_FORMAT_FALLBACKS["mono8"]))
+        raise CameraSDKError(f"unsupported pixel_format={pixel_format!r}")
+
+    def _set_pixel_format(self) -> None:
+        expected = self._pixel_format_value(self.pixel_format)
+        self._set_enum("PixelFormat", expected)
+        actual = self._get_enum_value("PixelFormat")
+        if actual != expected:
+            raise CameraSDKError(
+                f"PixelFormat readback mismatch: expected {self.pixel_format}({expected}), actual={actual}"
+            )
+        logger.info("set PixelFormat=%s (%s)", self.pixel_format, expected)
+
+    def _is_expected_pixel_type(self, pixel_type: int) -> bool:
+        return int(pixel_type) == self._pixel_format_value(self.pixel_format)
+
     def _set_int(self, key: str, value: int) -> None:
         if not hasattr(self.cam, "MV_CC_SetIntValue"):
             raise CameraSDKError("当前 MVS Python 包装中不存在 MV_CC_SetIntValue")
@@ -497,6 +529,7 @@ class HikCameraController:
         self._check(ret, "MV_CC_OpenDevice")
 
         self._try_set_optimal_packet_size()
+        self._set_pixel_format()
         self._set_trigger_mode()
 
         if self.default_exposure_us is not None:
@@ -1148,24 +1181,34 @@ class HikCameraController:
 
         raw = np.ctypeslib.as_array(data_buf, shape=(frame_len,))
 
+        if not self._is_expected_pixel_type(pixel_type):
+            raw_path = self._dump_raw_frame(save_path, raw, frame_len)
+            raise CameraSDKError(
+                f"PixelFormat mismatch: expected {self.pixel_format}, actual pixel_type={pixel_type}. "
+                f"raw frame saved to {raw_path}"
+            )
+
+        if frame_len != width * height:
+            raw_path = self._dump_raw_frame(save_path, raw, frame_len)
+            raise CameraSDKError(
+                f"Mono8 frame length mismatch: expected {width * height}, actual={frame_len}. "
+                f"raw frame saved to {raw_path}"
+            )
+
         # 先按 Mono8 处理：如果帧长度正好等于 width * height，
         # 就认为是一张 8bit 灰度图
-        if frame_len == width * height:
-            img = raw[: width * height].reshape((height, width)).copy()
-            im = Image.fromarray(img, mode="L")
-            im.save(save_path)
-            logger.info("saved mono8 image by Pillow: %s", save_path)
-            return
+        img = raw[: width * height].reshape((height, width)).copy()
+        im = Image.fromarray(img, mode="L")
+        im.save(save_path)
+        logger.info("saved mono8 image by Pillow: %s", save_path)
+        return
 
-        # 否则先把原始数据落盘，便于后续继续分析像素格式
+    def _dump_raw_frame(self, save_path: str, raw: np.ndarray, frame_len: int) -> str:
         raw_path = str(Path(save_path).with_suffix(".raw"))
         with open(raw_path, "wb") as f:
             f.write(bytes(raw[:frame_len]))
+        return raw_path
 
-        raise CameraSDKError(
-            f"当前帧不是 width*height 的 Mono8 格式，已保存原始数据到: {raw_path} ; "
-            f"width={width}, height={height}, frame_len={frame_len}, pixel_type={pixel_type}"
-        )
     def _infer_image_type(self, ext: str) -> int:
         if ext in (".jpg", ".jpeg"):
             return int(self._sdk.get("MV_Image_Jpeg", 1))
@@ -1180,6 +1223,7 @@ def build_camera(
     device_index: int = 0,
     serial_number: Optional[str] = None,
     camera_ip: Optional[str] = None,
+    pixel_format: str = "mono8",
     exposure_us: Optional[float] = None,
     gain: Optional[float] = None,
 ) -> HikCameraController:
@@ -1188,6 +1232,7 @@ def build_camera(
         device_index=device_index,
         serial_number=serial_number,
         camera_ip=camera_ip,
+        pixel_format=pixel_format,
         default_exposure_us=exposure_us,
         default_gain=gain,
     )
@@ -1199,6 +1244,7 @@ if __name__ == "__main__":
     parser.add_argument("--device-index", type=int, default=0)
     parser.add_argument("--serial-number", default=None)
     parser.add_argument("--camera-ip", default=None)
+    parser.add_argument("--pixel-format", default="mono8")
     parser.add_argument("--exposure-us", type=float, default=None)
     parser.add_argument("--gain", type=float, default=None)
     parser.add_argument("--save-path", default="test_capture.bmp")
@@ -1215,6 +1261,7 @@ if __name__ == "__main__":
         device_index=args.device_index,
         serial_number=args.serial_number,
         camera_ip=args.camera_ip,
+        pixel_format=args.pixel_format,
         default_exposure_us=args.exposure_us,
         default_gain=args.gain,
     )
