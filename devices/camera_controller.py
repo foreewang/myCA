@@ -880,25 +880,7 @@ class HikCameraController:
         save_path = str(Path(save_path))
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
-        self._set_command("TriggerSoftware")
-
-        MV_FRAME_OUT_INFO_EX = self._sdk["MV_FRAME_OUT_INFO_EX"]
-        frame_info = MV_FRAME_OUT_INFO_EX()
-        ctypes.memset(ctypes.byref(frame_info), 0, ctypes.sizeof(frame_info))
-
-        data_buf = (ctypes.c_ubyte * int(self.payload_size))()
-        ret = self._call_variants(
-            self.cam.MV_CC_GetOneFrameTimeout,
-            [
-                (data_buf, int(self.payload_size), frame_info, timeout_ms),
-                (ctypes.byref(data_buf), int(self.payload_size), frame_info, timeout_ms),
-                (data_buf, int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
-                (ctypes.byref(data_buf), int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
-            ],
-            "MV_CC_GetOneFrameTimeout",
-        )
-        self._check(ret, "MV_CC_GetOneFrameTimeout")
-
+        data_buf, frame_info = self._grab_one_frame(timeout_ms)
         self._save_frame(save_path, data_buf, frame_info)
 
         return FrameInfo(
@@ -1035,26 +1017,7 @@ class HikCameraController:
             self._start_grabbing_unlocked()
 
         timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
-        if self.trigger_source == "software":
-            self._set_command("TriggerSoftware")
-
-        MV_FRAME_OUT_INFO_EX = self._sdk["MV_FRAME_OUT_INFO_EX"]
-        frame_info = MV_FRAME_OUT_INFO_EX()
-        ctypes.memset(ctypes.byref(frame_info), 0, ctypes.sizeof(frame_info))
-
-        data_buf = (ctypes.c_ubyte * int(self.payload_size))()
-        ret = self._call_variants(
-            self.cam.MV_CC_GetOneFrameTimeout,
-            [
-                (data_buf, int(self.payload_size), frame_info, timeout_ms),
-                (ctypes.byref(data_buf), int(self.payload_size), frame_info, timeout_ms),
-                (data_buf, int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
-                (ctypes.byref(data_buf), int(self.payload_size), ctypes.byref(frame_info), timeout_ms),
-            ],
-            "MV_CC_GetOneFrameTimeout",
-        )
-        self._check(ret, "MV_CC_GetOneFrameTimeout")
-
+        data_buf, frame_info = self._grab_one_frame(timeout_ms)
         _, _, frame_len, _, _ = self._validate_mono8_frame_info(frame_info, context="record frame")
         self._input_record_frame(data_buf, frame_len)
         self._fulfill_snapshot_requests(data_buf, frame_info)
