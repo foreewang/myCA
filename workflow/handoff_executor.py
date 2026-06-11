@@ -73,6 +73,15 @@ def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], poin
     if not port:
         raise HandoffError("未配置 Modbus 串口 port，可在 task.motion.port 或 handoff.hardware.modbus.port 中提供")
 
+    arrival_tolerance = int(
+        task_motion.get(
+            "arrival_tolerance_pulse",
+            point_cfg.get("arrival_tolerance_pulse", 3000),
+        )
+    )
+    if arrival_tolerance < 0:
+        raise HandoffError("arrival_tolerance_pulse 不能为负数")
+
     return {
         "port": port,
         "baudrate": int(task_motion.get("baudrate", modbus_cfg.get("baudrate", 115200))),
@@ -83,7 +92,16 @@ def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], poin
         "profile_dec": int(task_motion.get("profile_dec", point_cfg.get("profile_dec", 100000))),
         "timeout_s": float(task_motion.get("timeout_s", point_cfg.get("timeout_s", 120.0))),
         "settle_s": float(task_motion.get("settle_s", point_cfg.get("settle_s", 0.5))),
+        "arrival_tolerance_pulse": arrival_tolerance,
     }
+
+
+def _check_arrival_tolerance(axis_name: str, err: int, tolerance: int, target: int) -> None:
+    if abs(int(err)) > int(tolerance):
+        raise HandoffError(
+            f"{axis_name} 轴到位误差超过阈值: "
+            f"target={int(target)}, err={int(err)}, tolerance={int(tolerance)}"
+        )
 
 
 def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -119,6 +137,12 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
         )
         if x_err is None:
             raise HandoffError(f"X 轴未能到达 handoff 点位: {target_x}")
+        _check_arrival_tolerance(
+            "X",
+            int(x_err),
+            motion_cfg["arrival_tolerance_pulse"],
+            target_x,
+        )
 
         y_err = y_motor.pp_absolute_move(
             target_pos=target_y,
@@ -129,6 +153,12 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
         )
         if y_err is None:
             raise HandoffError(f"Y 轴未能到达 handoff 点位: {target_y}")
+        _check_arrival_tolerance(
+            "Y",
+            int(y_err),
+            motion_cfg["arrival_tolerance_pulse"],
+            target_y,
+        )
 
     time.sleep(max(0.0, motion_cfg["settle_s"]))
 
