@@ -22,6 +22,8 @@ def main():
     # 径向细化模式:
     # threshold=阈值穿越, gradient=梯度极值, hybrid=二者结合(默认)。
     parser.add_argument('--radial_mode', choices=['threshold', 'gradient', 'hybrid'], default='hybrid')
+    parser.add_argument('--edge_refine_method', choices=['none', 'grabcut', 'hybrid'], default='hybrid')
+    parser.add_argument('--edge_refine_iterations', type=int, default=2)
     # 首次径向扫描后，允许质心重定位并重复细化的次数。
     parser.add_argument('--recenter_iterations', type=int, default=1, help='number of center update iterations after first radial scan')
     parser.add_argument('--seed_quantile', type=float, default=0.12, help='strict dark-core quantile for coarse detection')
@@ -52,6 +54,8 @@ def main():
         max_keep=(None if args.max_keep == 0 else args.max_keep),
         radial_mode=args.radial_mode,
         recenter_iterations=args.recenter_iterations,
+        edge_refine_method=args.edge_refine_method,
+        edge_refine_iterations=args.edge_refine_iterations,
         seed_quantile=args.seed_quantile,
         core_density_min=args.core_density_min,
         min_foreground_ratio=args.min_foreground_ratio,
