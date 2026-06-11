@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from third_party.XWJJJ260511 import run_autofocus
+from workflow.config_validator import validate_autofocus_file
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -60,6 +61,8 @@ def execute_autofocus_for_task(
     if not config_path.exists():
         raise FileNotFoundError(f"未找到 autofocus 配置文件: {config_path}")
 
+    _validate_autofocus_config_path(config_path)
+
     result = _run_autofocus_reusing_recording_camera(config_path, objective_name)
     if result is None:
         result = run_autofocus(
@@ -82,6 +85,15 @@ def execute_autofocus_for_task(
         "triggered_by_objective_switch": bool(objective_result.get("switched", False)),
         "reused_recording_camera": bool(getattr(result, "reused_recording_camera", False)),
     }
+
+
+def _validate_autofocus_config_path(config_path: Path) -> None:
+    config_dir = PROJECT_ROOT / "config"
+    validate_autofocus_file(
+        config_path,
+        objectives_path=config_dir / "objectives.yaml",
+        camera_path=config_dir / "camera.yaml",
+    )
 
 
 def _run_autofocus_reusing_recording_camera(config_path: Path, objective_name: str):
