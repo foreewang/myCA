@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from workflow.run_task import execute_task_request, load_structured_file
+from workflow.config_validator import resolve_mvs_python_dir, validate_camera_config, validate_camera_file
+from workflow.run_task import execute_task_request
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
@@ -71,7 +72,9 @@ class CameraRecordStartRequest(BaseModel):
     camera_path: str | None = None
     device_index: int | None = None
     serial_number: str | None = None
+    ip: str | None = None
     mvs_python_dir: str | None = None
+    pixel_format: str | None = None
     exposure_us: float | None = None
     gain: float | None = None
     fps: float | None = Field(default=10.0)
@@ -133,14 +136,39 @@ def _utc_now() -> str:
 
 def _load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[str, Any]:
     camera_path = req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(PROJECT_ROOT / "config" / "camera.yaml")
-    cfg = load_structured_file(camera_path)
+    cfg = validate_camera_file(camera_path)
     camera_cfg = cfg.get("camera", cfg) if isinstance(cfg, dict) else {}
     if not isinstance(camera_cfg, dict):
         camera_cfg = {}
+    mvs_python_dir = req.mvs_python_dir if req.mvs_python_dir is not None else resolve_mvs_python_dir(camera_cfg)
+    camera_ip = req.ip if req.ip is not None else camera_cfg.get("ip")
+    pixel_format = req.pixel_format if req.pixel_format is not None else camera_cfg.get("pixel_format", "mono8")
+    if (
+        req.mvs_python_dir is not None
+        or req.ip is not None
+        or req.serial_number is not None
+        or req.device_index is not None
+        or req.pixel_format is not None
+    ):
+        effective_camera_cfg = dict(camera_cfg)
+        if req.mvs_python_dir is not None:
+            effective_camera_cfg["mvs_python_dir"] = req.mvs_python_dir
+            effective_camera_cfg.pop("mvs_sdk_path", None)
+        if req.ip is not None:
+            effective_camera_cfg["ip"] = req.ip
+        if req.serial_number is not None:
+            effective_camera_cfg["serial_number"] = req.serial_number
+        if req.device_index is not None:
+            effective_camera_cfg["device_index"] = req.device_index
+        if req.pixel_format is not None:
+            effective_camera_cfg["pixel_format"] = req.pixel_format
+        validate_camera_config({"camera": effective_camera_cfg}, require_top_level=True)
     return {
-        "mvs_python_dir": req.mvs_python_dir if req.mvs_python_dir is not None else camera_cfg.get("mvs_sdk_path") or camera_cfg.get("mvs_python_dir"),
+        "mvs_python_dir": mvs_python_dir,
         "device_index": int(req.device_index if req.device_index is not None else camera_cfg.get("device_index", 0)),
         "serial_number": req.serial_number if req.serial_number is not None else camera_cfg.get("serial_number"),
+        "camera_ip": camera_ip,
+        "pixel_format": pixel_format,
         "exposure_us": req.exposure_us if req.exposure_us is not None else camera_cfg.get("exposure_us"),
         "gain": req.gain if req.gain is not None else camera_cfg.get("gain"),
         "camera_path": camera_path,
@@ -589,6 +617,8 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
             mvs_python_dir=settings.get("mvs_python_dir"),
             device_index=int(settings.get("device_index", 0)),
             serial_number=settings.get("serial_number"),
+            camera_ip=settings.get("camera_ip"),
+            pixel_format=settings.get("pixel_format", "mono8"),
             exposure_us=settings.get("exposure_us"),
             gain=settings.get("gain"),
             fps=req.fps,
