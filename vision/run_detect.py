@@ -5,13 +5,13 @@ from vision.vision.detect_pipeline import detect_from_path
 
 
 def main():
-    """命令行入口: 读取参数并执行菌落检测流程。"""
+    """命令行入口: 读取参数并执行细胞克隆检测流程。"""
     parser = argparse.ArgumentParser(
-        description='Coarse ROI + vectorized radial contour refinement for 5120 BMP colony images'
+        description='Coarse ROI detection + radial/GrabCut contour refinement for microscope colony images'
     )
-    # 必填参数: 输入图像路径。
-    parser.add_argument('image_path', help='input BMP image path')
-    # 可选参数: 输出目录，默认写到项目下固定文件夹。
+    # 必填参数: 输入图像路径。实际支持的格式由 image_loader/OpenCV 决定，不只限 BMP。
+    parser.add_argument('image_path', help='input image path')
+    # 可选参数: 输出目录，默认写到项目下固定调试文件夹。
     parser.add_argument('--out_dir', default='outputs_5120_contour_refined_opt', help='output directory')
     # 粗检测阶段内部最大尺寸(越小越快，过小可能损失细节)。
     parser.add_argument('--coarse_work_max', type=int, default=1024, help='coarse detection internal max size')
@@ -22,6 +22,7 @@ def main():
     # 径向细化模式:
     # threshold=阈值穿越, gradient=梯度极值, hybrid=二者结合(默认)。
     parser.add_argument('--radial_mode', choices=['threshold', 'gradient', 'hybrid'], default='hybrid')
+    # 边缘细化模式: none=只使用径向轮廓, grabcut/hybrid=在径向 mask 基础上做 GrabCut 贴边。
     parser.add_argument('--edge_refine_method', choices=['none', 'grabcut', 'hybrid'], default='hybrid')
     parser.add_argument('--edge_refine_iterations', type=int, default=2)
     # 首次径向扫描后，允许质心重定位并重复细化的次数。
@@ -45,7 +46,7 @@ def main():
         if args.scale_bar_length_mm is not None:
             scale_bar["length_mm"] = args.scale_bar_length_mm
 
-    # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)。
+    # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)，同时按 out_dir 写出调试图。
     result_json = detect_from_path(
         image_path=args.image_path,
         out_dir=args.out_dir,

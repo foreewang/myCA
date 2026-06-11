@@ -66,6 +66,8 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
 
     refined_item 中的坐标是 ROI 局部坐标，本函数会加上 ROI 左上角
     偏移量 (x0, y0)，把它们转换回整张原图坐标。
+    refine_method/edge_refine_* 字段用于记录径向轮廓和 GrabCut 贴边的实际结果，
+    方便现场复核某个克隆为什么贴边成功、失败或回退。
     """
     bx, by, bw, bh = refined_item["bbox_local"]
     cxl = refined_item["center_local"][0]

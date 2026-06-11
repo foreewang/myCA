@@ -2,9 +2,10 @@
 
 本模块把底层算法串成完整流程:
 1. 统一输入图片格式。
-2. 在整图上做粗检测，找到候选 ROI。
-3. 在每个 ROI 内细化轮廓。
-4. 生成 overlay、mask、JSON 等输出。
+2. 在整图上做暗核心/纹理粗检测，找到候选 ROI。
+3. 在每个 ROI 内做径向轮廓搜索，并可选用 GrabCut 细化边缘。
+4. 根据可见孔边界标注 near_well_border/is_pickable。
+5. 生成 overlay、mask、JSON 等输出。
 
 workflow 层如果配置 entrypoint 为 ``vision.detect_pipeline:process_image``，
 最终会走到这里。
@@ -48,11 +49,11 @@ def detect_and_refine(
     well_border_margin_mm=0.0,
     well_border_margin_px=30.0,
 ):
-    """执行“粗检测 + 局部轮廓细化”的核心流程。
+    """执行“粗检测 + 局部轮廓细化 + 孔边界可挑取标注”的核心流程。
 
     返回 refined 和 debug:
     - refined 是最终目标列表，会写入 07_result.json 的 components。
-    - debug 保存中间图，供 save_outputs 生成调试图片和 overlay。
+    - debug 保存中间图和孔边界检测信息，供 save_outputs 生成调试图片和 overlay。
     """
     coarse, coarse_debug = detect_coarse_rois(
         gray,
@@ -84,7 +85,7 @@ def detect_and_refine(
         x, y, w, h = item["coarse_bbox"]
         cx, cy = item.get("safe_point") or item.get("dark_core_center_pixel") or item["coarse_center_pixel"]
 
-        # 对粗框再扩边，避免粗检测框过紧导致后续轮廓被截断。
+        # 对粗框再扩边，避免粗检测框过紧导致后续径向/GrabCut 轮廓被截断。
         pad_x = int(round(w * refine_pad_ratio))
         pad_y = int(round(h * refine_pad_ratio))
         x0 = max(0, x - pad_x)

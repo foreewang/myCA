@@ -1,8 +1,8 @@
 """克隆目标的粗检测和局部轮廓细化。
 
 本文件是 vision 算法的核心:
-- detect_coarse_rois 先在整图上找“可能有克隆”的暗核心区域。
-- refine_contour_in_roi 再在每个候选 ROI 内做更精细的轮廓搜索。
+- detect_coarse_rois 先用 dark-core 主路径找粗候选，再用 texture-density 补充浅色/纹理型候选。
+- refine_contour_in_roi 在每个候选 ROI 内做径向轮廓搜索、中心重定位，并可选用 GrabCut 贴边细化。
 
 代码中的坐标约定:
 - bbox 使用 [x, y, w, h]，x/y 是左上角。
@@ -116,11 +116,11 @@ def detect_coarse_rois(
     max_bbox_area_ratio=0.30,
     reject_border_touch=False,
 ):
-    """从严格 dark core 中寻找粗候选 ROI。
+    """从整图中寻找粗候选 ROI。
 
-    这一步故意偏保守: 先找暗核心，再用面积比例、bbox 比例、触边等
-    规则过滤异常区域。这样可以减少无克隆背景图或大面积阴影造成的
-    误检，为后续补偿流程提供更可靠的候选点。
+    主路径仍然偏保守: 先找暗核心，再用面积比例、bbox 比例、触边等规则过滤异常区域。
+    之后用 texture-density fallback 补充“不够暗但纹理明显”的克隆候选。
+    两类候选会通过 IoU/包含关系去重，并在结果中用 detection_source 标记来源。
     """
     small, scale = resize_keep_ratio(gray, work_max=work_max)
 
@@ -142,7 +142,8 @@ def detect_coarse_rois(
             hard_ceil=seed_hard_ceil,
         )
 
-    # dark_seed 是最严格的一层暗区判断，后续所有候选都必须来自它。
+    # dark_seed 是 dark-core 主路径的严格暗区判断；texture fallback 会把它作为质量参考，
+    # 但允许没有明显暗核心的纹理型候选进入后续筛选。
     dark_seed = (flat < seed_thresh).astype(np.uint8) * 255
     density = cv2.GaussianBlur((dark_seed > 0).astype(np.float32), (0, 0), density_sigma)
     density_u8 = cv2.normalize(density, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
@@ -246,9 +247,7 @@ def detect_coarse_rois(
             "image_edge_clipped": bool(touch_image_border),
         })
 
-    # NMS 去掉高度重叠的候选，保留分数更高的那个。
-    # Texture-density fallback for colonies that are textured but not dark
-    # enough to survive the strict dark-core seed path.
+    # Texture-density fallback 用梯度密度补充浅色/纹理型克隆，避免只靠暗核心造成漏检。
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(small)
     texture_bg = cv2.GaussianBlur(enhanced, (0, 0), 45)
@@ -358,6 +357,7 @@ def detect_coarse_rois(
                 "source": "texture",
             })
 
+    # 对 dark-core 和 texture 两类候选统一去重。除 IoU 外，还处理一类框包含另一类框的情况。
     comps = _nms_coarse_candidates(comps, iou_thr=nms_iou_thr)
     strong_texture = [
         c for c in comps
@@ -395,6 +395,7 @@ def detect_coarse_rois(
         CoreCx = int(round(core_cx * scale))
         CoreCy = int(round(core_cy * scale))
 
+        # texture 候选的边界通常更宽松，少扩边可以降低把周围背景带入 GrabCut 的概率。
         comp_pad_ratio = min(float(pad_ratio), 0.05) if comp.get("source") == "texture" else float(pad_ratio)
         pad_x = int(round(Bw * comp_pad_ratio))
         pad_y = int(round(Bh * comp_pad_ratio))
@@ -560,6 +561,7 @@ def _dark_core_center_in_mask(dark_seed_u8, mask_u8, fallback_center, scale):
 
 
 def _largest_centered_component(mask_u8, center_xy):
+    """保留包含中心点的连通域；中心点不在前景内时退回最大连通域。"""
     n, labels, stats, _ = cv2.connectedComponentsWithStats((mask_u8 > 0).astype(np.uint8), connectivity=8)
     if n <= 1:
         return np.zeros_like(mask_u8, dtype=np.uint8)
@@ -582,7 +584,7 @@ def _edge_refine_mask_grabcut(
     allowed_mask_u8=None,
     iterations=2,
 ):
-    """Refine a coarse mask with GrabCut while keeping strict ROI constraints."""
+    """用 GrabCut 细化径向 mask，同时限制结果不能跑出 allowed ROI。"""
     base_mask_u8 = (base_mask_u8 > 0).astype(np.uint8) * 255
     base_area = int(np.count_nonzero(base_mask_u8))
     if base_area <= 0:
@@ -687,8 +689,9 @@ def refine_contour_in_roi(
     """在单个 ROI 内细化轮廓，并返回 ROI 局部坐标结果。
 
     center_hint_local 通常来自粗检测的 dark core center / safe point。
-    细化过程会先构建暗区密度图，再进行径向轮廓搜索；如果开启
-    recenter_iterations，会用当前 mask 质心更新中心并重复搜索。
+    细化过程先构建暗区密度图，再进行径向轮廓搜索；如果开启 recenter_iterations，
+    会用当前 mask 质心更新中心并重复搜索。edge_refine_method 为 grabcut/hybrid 时，
+    会在径向 mask 基础上做 GrabCut 贴边，并用面积比例、中心点位置做回退保护。
     """
     small, flat, dark_seed_u8, density_u8, scale = roi_density_signal(
         roi_gray,

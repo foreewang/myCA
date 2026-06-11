@@ -1,22 +1,17 @@
 # Structured vision package
 
-This package is a direct structural refactor of `detect_colony_5120_contour_optimized_v2.py`.
+This package contains the OpenCV-based colony detection pipeline used by the
+workflow layer.
 
 Goal:
-- keep algorithm logic unchanged
-- split responsibilities into the existing `vision/` project modules
-- keep a single pipeline entry for CLI or upper-level system calls
+- detect coarse colony ROI candidates from dark-core and texture-density cues
+- refine local contours with radial search and optional GrabCut edge refinement
+- annotate visual well-border distance and pickability fields
+- keep a single pipeline entry for CLI or upper-level workflow calls
 
-## Suggested replacement
-Copy the files under `vision/` into your project path:
+## Main Entry Points
 
-```bash
-~/colony_system/vision/
-```
-
-## Entry points
-
-Programmatic:
+Programmatic usage:
 
 ```python
 from vision.detect_pipeline import detect_from_path, detect_from_gray
@@ -25,5 +20,8 @@ from vision.detect_pipeline import detect_from_path, detect_from_gray
 CLI:
 
 ```bash
-python3 run_detect.py /path/to/image.bmp --out_dir outputs
+python vision/run_detect.py /path/to/image.bmp --out_dir outputs
 ```
+
+The output directory contains normalized gray image, coarse/refine debug images,
+overlay, contour mask, and `07_result.json`.
