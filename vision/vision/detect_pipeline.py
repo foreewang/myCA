@@ -15,7 +15,7 @@ import numpy as np
 
 from .feature_extract import build_failed_component, build_refined_component, to_global_contour
 from .image_loader import load_gray_image, to_gray_u8
-from .postprocess import draw_cross, save_outputs
+from .postprocess import save_outputs
 from .scorer import score_components_by_area
 from .segment import detect_coarse_rois, refine_contour_in_roi
 from .well_boundary import annotate_pickability_from_visual_well_border
@@ -28,6 +28,8 @@ def detect_and_refine(
     max_keep=None,
     radial_mode="hybrid",
     recenter_iterations=1,
+    edge_refine_method="hybrid",
+    edge_refine_iterations=2,
     seed_thresh=None,
     seed_quantile=0.12,
     seed_hard_floor=35,
@@ -98,6 +100,8 @@ def detect_and_refine(
             center_local,
             radial_mode=radial_mode,
             recenter_iterations=recenter_iterations,
+            edge_refine_method=edge_refine_method,
+            edge_refine_iterations=edge_refine_iterations,
             clip_bbox_local=(
                 [x - x0, y - y0, w, h]
                 if refine_clip_to_coarse_bbox
@@ -109,7 +113,7 @@ def detect_and_refine(
         if refined_item is None:
             # 细化失败时仍输出粗检测结果，便于上层知道哪里失败了。
             cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 255), 8)
-            draw_cross(overlay, (cx, cy), size=28, thickness=4)
+            cv2.circle(overlay, (int(cx), int(cy)), 26, (0, 0, 255), -1, cv2.LINE_AA)
             refined.append(
                 build_failed_component(
                     idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
@@ -119,22 +123,34 @@ def detect_and_refine(
 
         # 把 ROI 局部轮廓映射回原图坐标后绘制 overlay。
         _, cnt_global = to_global_contour(refined_item["contour_local"], x0, y0)
-        cv2.drawContours(overlay, [cnt_global], -1, (0, 0, 255), 8)
+        cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
 
         cxl = refined_item["center_local"][0]
         cyl = refined_item["center_local"][1]
         cxg = int(cxl + x0)
         cyg = int(cyl + y0)
 
-        draw_cross(overlay, (cxg, cyg), size=28, thickness=4)
+        cv2.circle(overlay, (cxg, cyg), 26, (0, 0, 255), -1, cv2.LINE_AA)
+        cv2.circle(overlay, (cxg, cyg), 30, (255, 255, 255), 2, cv2.LINE_AA)
+        text_org = (cxg + 36, cyg - 36)
         cv2.putText(
             overlay,
             f"C{idx:02d}",
-            (cxg + 20, cyg - 20),
+            text_org,
             cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
-            (0, 255, 0),
-            2,
+            2.0,
+            (255, 255, 255),
+            9,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            overlay,
+            f"C{idx:02d}",
+            text_org,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            2.0,
+            (0, 0, 255),
+            6,
             cv2.LINE_AA,
         )
 
@@ -196,6 +212,8 @@ def detect_from_gray(
     max_keep=None,
     radial_mode="hybrid",
     recenter_iterations=1,
+    edge_refine_method="hybrid",
+    edge_refine_iterations=2,
     seed_thresh=None,
     seed_quantile=0.12,
     seed_hard_floor=35,
@@ -229,6 +247,8 @@ def detect_from_gray(
         max_keep=max_keep,
         radial_mode=radial_mode,
         recenter_iterations=recenter_iterations,
+        edge_refine_method=edge_refine_method,
+        edge_refine_iterations=edge_refine_iterations,
         seed_thresh=seed_thresh,
         seed_quantile=seed_quantile,
         seed_hard_floor=seed_hard_floor,
