@@ -14,6 +14,8 @@ from typing import Any, Dict
 
 import yaml
 
+from workflow.config_validator import validate_camera_file, validate_plates_file
+
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
     """
@@ -108,9 +110,9 @@ def load_runtime_context(
 
     # 读取所有配置文件
     task_cfg = load_yaml(task_path)
-    camera_cfg = load_yaml(camera_path)
+    camera_cfg = validate_camera_file(camera_path, objectives_path=objectives_path)
     objectives_cfg = load_yaml(objectives_path)
-    plates_cfg = load_yaml(plates_path)
+    plates_cfg = validate_plates_file(plates_path)
 
     # 校验各配置文件是否包含预期顶层字段。
     # 这样可以尽早暴露配置结构错误，而不是等到后续流程中隐式报错。
