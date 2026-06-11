@@ -80,7 +80,7 @@ def estimate_well_circle(gray: np.ndarray, work_max: int = 1200) -> Dict[str, An
     if circles is not None:
         for cx, cy, r in np.round(circles[0]).astype(np.float32):
             support = _edge_support(edges, float(cx), float(cy), float(r))
-            if support < 0.035:
+            if support < 0.10:
                 continue
             score = support * min(1.0, float(r) / max(1.0, min_dim * 0.35))
             if best is None or score > best["score"]:
