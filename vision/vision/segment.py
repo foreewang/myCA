@@ -14,8 +14,82 @@ import cv2
 import numpy as np
 
 from .center_locator import contour_centroid_from_mask
-from .postprocess import circular_smooth, nms_xywh
+from .postprocess import bbox_iou_xywh, circular_smooth
 from .preprocess import auto_seed_threshold, resize_keep_ratio, roi_density_signal
+
+
+def _bbox_intersection_over_min(a, b):
+    ax0, ay0, aw, ah = a
+    bx0, by0, bw, bh = b
+    ax1, ay1 = ax0 + aw, ay0 + ah
+    bx1, by1 = bx0 + bw, by0 + bh
+
+    ix0 = max(ax0, bx0)
+    iy0 = max(ay0, by0)
+    ix1 = min(ax1, bx1)
+    iy1 = min(ay1, by1)
+    iw = max(0, ix1 - ix0)
+    ih = max(0, iy1 - iy0)
+    inter = iw * ih
+    if inter <= 0:
+        return 0.0
+
+    area_a = max(0, aw) * max(0, ah)
+    area_b = max(0, bw) * max(0, bh)
+    min_area = min(area_a, area_b)
+    if min_area <= 0:
+        return 0.0
+    return float(inter) / float(min_area)
+
+
+def _nms_coarse_candidates(items, iou_thr=0.30, containment_thr=0.60):
+    if not items:
+        return []
+
+    order = sorted(items, key=lambda d: float(d.get("score", 0.0)), reverse=True)
+    keep = []
+    for cur in order:
+        cur_bbox = cur["bbox"]
+        cur_source = cur.get("source", "dark")
+        ok = True
+        for kept in keep:
+            kept_bbox = kept["bbox"]
+            if bbox_iou_xywh(cur_bbox, kept_bbox) > iou_thr:
+                ok = False
+                break
+
+            overlap_min = _bbox_intersection_over_min(cur_bbox, kept_bbox)
+            if overlap_min >= containment_thr and (
+                cur_source == "texture" or kept.get("source", "dark") == "texture"
+            ):
+                ok = False
+                break
+        if ok:
+            keep.append(cur)
+    return keep
+
+
+def _dedupe_mapped_coarse_results(results, containment_thr=0.60):
+    keep = []
+    for cur in results:
+        cur_source = cur.get("detection_source", "dark")
+        duplicate = False
+        for kept in keep:
+            overlap_min = _bbox_intersection_over_min(cur["coarse_bbox"], kept["coarse_bbox"])
+            if overlap_min < containment_thr:
+                continue
+
+            kept_source = kept.get("detection_source", "dark")
+            if cur_source == "texture" and kept_source != "texture":
+                duplicate = True
+                break
+            if kept_source == "texture" and cur_source != "texture":
+                kept.update(cur)
+                duplicate = True
+                break
+        if not duplicate:
+            keep.append(cur)
+    return keep
 
 
 def detect_coarse_rois(
@@ -173,7 +247,133 @@ def detect_coarse_rois(
         })
 
     # NMS 去掉高度重叠的候选，保留分数更高的那个。
-    comps = nms_xywh(comps, key_score="score", key_bbox="bbox", iou_thr=nms_iou_thr)
+    # Texture-density fallback for colonies that are textured but not dark
+    # enough to survive the strict dark-core seed path.
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(small)
+    texture_bg = cv2.GaussianBlur(enhanced, (0, 0), 45)
+    texture_flat = cv2.normalize(
+        cv2.divide(enhanced.astype(np.float32), texture_bg.astype(np.float32) + 1.0, scale=128.0),
+        None,
+        0,
+        255,
+        cv2.NORM_MINMAX,
+    ).astype(np.uint8)
+    texture_blur = cv2.GaussianBlur(texture_flat, (0, 0), 1.2)
+    gx = cv2.Sobel(texture_blur, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(texture_blur, cv2.CV_32F, 0, 1, ksize=3)
+    grad = cv2.magnitude(gx, gy)
+    valid_intensity = (small > 20) & (small < 245)
+    valid_grad = grad[valid_intensity]
+    if valid_grad.size:
+        grad_thr = float(np.percentile(valid_grad, 92.0))
+        texture_seed = ((grad > grad_thr) & valid_intensity).astype(np.float32)
+        texture_density = cv2.GaussianBlur(texture_seed, (0, 0), 18)
+        texture_density_u8 = cv2.normalize(texture_density, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        texture_otsu, _ = cv2.threshold(texture_density_u8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        texture_binary = (texture_density_u8 >= max(30.0, float(texture_otsu) * 1.2)).astype(np.uint8) * 255
+        texture_binary = cv2.morphologyEx(
+            texture_binary,
+            cv2.MORPH_CLOSE,
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)),
+        )
+        texture_binary = cv2.morphologyEx(
+            texture_binary,
+            cv2.MORPH_OPEN,
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)),
+        )
+
+        tn, tlabels, tstats, tcentroids = cv2.connectedComponentsWithStats(texture_binary, connectivity=8)
+        texture_min_area = max(int(min_area), int(round(image_area * 0.008)))
+        for ti in range(1, tn):
+            x, y, w, h, area = tstats[ti]
+            if area < texture_min_area:
+                continue
+            bbox_area = float(max(1, int(w) * int(h)))
+            bbox_area_ratio = bbox_area / image_area
+            if bbox_area_ratio > max_bbox_area_ratio:
+                continue
+            aspect = float(w) / float(max(1, h))
+            if aspect < 0.55 or aspect > 1.80:
+                continue
+            image_border_sides = _border_sides(x, y, w, h)
+            if image_border_sides:
+                continue
+
+            comp_u8 = (tlabels[y:y + h, x:x + w] == ti).astype(np.uint8) * 255
+            cnts, _ = cv2.findContours(comp_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not cnts:
+                continue
+            cnt = max(cnts, key=cv2.contourArea)
+            perimeter = cv2.arcLength(cnt, True)
+            contour_area = cv2.contourArea(cnt)
+            circularity = float(4.0 * np.pi * contour_area / (perimeter * perimeter + 1e-6))
+            if circularity < 0.50:
+                continue
+
+            comp_mask_full = tlabels == ti
+            mean_density = float(texture_density_u8[comp_mask_full].mean()) if np.any(comp_mask_full) else 0.0
+            mean_intensity = float(small[comp_mask_full].mean()) if np.any(comp_mask_full) else 0.0
+            if mean_intensity < 35.0 or mean_intensity > 230.0:
+                continue
+
+            comp_mask = tlabels[y:y + h, x:x + w] == ti
+            core_roi = dark_seed[y:y + h, x:x + w] > 0
+            dark_core_mask = comp_mask & core_roi
+            dark_core_area = int(np.count_nonzero(dark_core_mask))
+            foreground_ratio = float(dark_core_area) / bbox_area
+            dark_core_area_ratio = float(dark_core_area) / image_area
+            if foreground_ratio > max_foreground_ratio or dark_core_area_ratio > max_dark_core_area_ratio:
+                continue
+
+            ys, xs = np.nonzero(dark_core_mask)
+            if xs.size:
+                core_cx = float(xs.mean() + x)
+                core_cy = float(ys.mean() + y)
+            else:
+                core_cx, core_cy = tcentroids[ti]
+            cx, cy = tcentroids[ti]
+
+            shape_score = min(1.0, circularity / 0.80)
+            texture_score = min(1.0, mean_density / 135.0)
+            confidence = 0.55 * shape_score * texture_score
+            confidence *= min(1.0, max(0.0, 1.0 - bbox_area_ratio / max_bbox_area_ratio))
+            score = float(area) * max(0.05, confidence) * 1.35
+            comps.append({
+                "label": int(ti),
+                "bbox_small": [int(x), int(y), int(w), int(h)],
+                "area_small": int(area),
+                "dark_core_area_small": int(dark_core_area),
+                "foreground_ratio": float(foreground_ratio),
+                "bbox_area_ratio": float(bbox_area_ratio),
+                "dark_core_area_ratio": float(dark_core_area_ratio),
+                "center_small": [float(cx), float(cy)],
+                "dark_core_center_small": [float(core_cx), float(core_cy)],
+                "score": float(score),
+                "confidence": float(confidence),
+                "bbox": [int(x), int(y), int(w), int(h)],
+                "touch_image_border": False,
+                "image_border_sides": [],
+                "image_edge_clipped": False,
+                "source": "texture",
+            })
+
+    comps = _nms_coarse_candidates(comps, iou_thr=nms_iou_thr)
+    strong_texture = [
+        c for c in comps
+        if c.get("source") == "texture"
+        and not c.get("touch_image_border")
+        and float(c.get("confidence", 0.0)) >= 0.25
+    ]
+    if strong_texture:
+        best_texture_score = max(float(c.get("score", 0.0)) for c in strong_texture)
+        comps = [
+            c for c in comps
+            if not (
+                c.get("touch_image_border")
+                and float(c.get("score", 0.0)) < best_texture_score * 0.75
+            )
+        ]
     comps.sort(key=lambda d: d["score"], reverse=True)
     if max_keep is not None and max_keep > 0:
         comps = comps[:max_keep]
@@ -195,8 +395,9 @@ def detect_coarse_rois(
         CoreCx = int(round(core_cx * scale))
         CoreCy = int(round(core_cy * scale))
 
-        pad_x = int(round(Bw * pad_ratio))
-        pad_y = int(round(Bh * pad_ratio))
+        comp_pad_ratio = min(float(pad_ratio), 0.05) if comp.get("source") == "texture" else float(pad_ratio)
+        pad_x = int(round(Bw * comp_pad_ratio))
+        pad_y = int(round(Bh * comp_pad_ratio))
 
         x0 = max(0, X - pad_x)
         y0 = max(0, Y - pad_y)
@@ -217,8 +418,11 @@ def detect_coarse_rois(
             "image_border_sides": list(comp.get("image_border_sides") or []),
             "image_edge_clipped": bool(comp.get("image_edge_clipped", False)),
             "confidence": float(comp["confidence"]),
+            "detection_source": comp.get("source", "dark"),
             "is_valid_for_compensation": bool(comp["confidence"] >= 0.25),
         })
+
+    results = _dedupe_mapped_coarse_results(results)
 
     debug = {
         "small_gray": small,
@@ -237,7 +441,7 @@ def detect_coarse_rois(
 def radial_contour_from_signal_vectorized(
     signal_u8,
     center_xy,
-    n_angles=180,
+    n_angles=360,
     inner_ratio=0.12,
     border_strip=20,
     target_alpha=0.52,
@@ -355,6 +559,115 @@ def _dark_core_center_in_mask(dark_seed_u8, mask_u8, fallback_center, scale):
     return [int(round(float(xs.mean()) * scale)), int(round(float(ys.mean()) * scale))]
 
 
+def _largest_centered_component(mask_u8, center_xy):
+    n, labels, stats, _ = cv2.connectedComponentsWithStats((mask_u8 > 0).astype(np.uint8), connectivity=8)
+    if n <= 1:
+        return np.zeros_like(mask_u8, dtype=np.uint8)
+
+    cx = int(round(center_xy[0]))
+    cy = int(round(center_xy[1]))
+    if 0 <= cx < mask_u8.shape[1] and 0 <= cy < mask_u8.shape[0]:
+        center_label = int(labels[cy, cx])
+        if center_label > 0:
+            return (labels == center_label).astype(np.uint8) * 255
+
+    best = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    return (labels == best).astype(np.uint8) * 255
+
+
+def _edge_refine_mask_grabcut(
+    roi_gray,
+    base_mask_u8,
+    center_xy,
+    allowed_mask_u8=None,
+    iterations=2,
+):
+    """Refine a coarse mask with GrabCut while keeping strict ROI constraints."""
+    base_mask_u8 = (base_mask_u8 > 0).astype(np.uint8) * 255
+    base_area = int(np.count_nonzero(base_mask_u8))
+    if base_area <= 0:
+        return base_mask_u8, False, {"edge_refine_reason": "empty_base_mask"}
+
+    if allowed_mask_u8 is None:
+        allowed_mask_u8 = np.ones_like(base_mask_u8, dtype=np.uint8) * 255
+    else:
+        allowed_mask_u8 = (allowed_mask_u8 > 0).astype(np.uint8) * 255
+
+    if int(np.count_nonzero(allowed_mask_u8)) <= 0:
+        return base_mask_u8, False, {"edge_refine_reason": "empty_allowed_mask"}
+
+    h, w = roi_gray.shape[:2]
+    image_bgr = cv2.cvtColor(roi_gray, cv2.COLOR_GRAY2BGR)
+    gc_mask = np.full((h, w), cv2.GC_BGD, dtype=np.uint8)
+    gc_mask[allowed_mask_u8 > 0] = cv2.GC_PR_BGD
+
+    k = max(3, int(round(min(h, w) * 0.012)))
+    if k % 2 == 0:
+        k += 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    probable_fg = cv2.dilate(base_mask_u8, kernel, iterations=1)
+    sure_fg = cv2.erode(base_mask_u8, kernel, iterations=1)
+
+    gc_mask[(probable_fg > 0) & (allowed_mask_u8 > 0)] = cv2.GC_PR_FGD
+    gc_mask[(sure_fg > 0) & (allowed_mask_u8 > 0)] = cv2.GC_FGD
+    if not np.any(gc_mask == cv2.GC_FGD):
+        gc_mask[(base_mask_u8 > 0) & (allowed_mask_u8 > 0)] = cv2.GC_FGD
+
+    try:
+        bgd_model = np.zeros((1, 65), np.float64)
+        fgd_model = np.zeros((1, 65), np.float64)
+        cv2.grabCut(
+            image_bgr,
+            gc_mask,
+            None,
+            bgd_model,
+            fgd_model,
+            max(1, int(iterations)),
+            cv2.GC_INIT_WITH_MASK,
+        )
+    except cv2.error as exc:
+        return base_mask_u8, False, {"edge_refine_reason": f"grabcut_error:{exc.code}"}
+
+    refined = np.where(
+        (gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD),
+        255,
+        0,
+    ).astype(np.uint8)
+    refined = cv2.bitwise_and(refined, allowed_mask_u8)
+    refined = cv2.morphologyEx(
+        refined,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
+    )
+    refined = cv2.morphologyEx(
+        refined,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
+    )
+    refined = _largest_centered_component(refined, center_xy)
+
+    refined_area = int(np.count_nonzero(refined))
+    area_ratio = float(refined_area) / float(max(1, base_area))
+    cx = int(round(center_xy[0]))
+    cy = int(round(center_xy[1]))
+    center_inside = 0 <= cx < w and 0 <= cy < h and refined[cy, cx] > 0
+    if not center_inside:
+        return base_mask_u8, False, {
+            "edge_refine_reason": "center_outside",
+            "edge_refine_area_ratio": area_ratio,
+        }
+    if area_ratio < 0.18 or area_ratio > 1.25:
+        return base_mask_u8, False, {
+            "edge_refine_reason": "area_ratio_rejected",
+            "edge_refine_area_ratio": area_ratio,
+        }
+
+    return refined, True, {
+        "edge_refine_reason": "accepted",
+        "edge_refine_area_ratio": area_ratio,
+    }
+
+
 def refine_contour_in_roi(
     roi_gray,
     center_hint_local,
@@ -368,6 +681,8 @@ def refine_contour_in_roi(
     recenter_min_shift_px=6.0,
     clip_bbox_local=None,
     clip_pad_ratio=0.05,
+    edge_refine_method="hybrid",
+    edge_refine_iterations=2,
 ):
     """在单个 ROI 内细化轮廓，并返回 ROI 局部坐标结果。
 
@@ -435,6 +750,7 @@ def refine_contour_in_roi(
     else:
         mask_full = mask_small.copy()
 
+    allowed = None
     if clip_bbox_local is not None:
         bx, by, bw, bh = [int(round(v)) for v in clip_bbox_local]
         pad_x = int(round(max(0, bw) * float(clip_pad_ratio)))
@@ -448,7 +764,28 @@ def refine_contour_in_roi(
         cv2.ellipse(allowed, center, axes, 0, 0, 360, 255, thickness=-1)
         mask_full = cv2.bitwise_and(mask_full, allowed)
 
-    cnts, _ = cv2.findContours(mask_full, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    edge_refine_method = str(edge_refine_method or "none").lower()
+    edge_refine_success = False
+    edge_refine_meta = {
+        "edge_refine_method": edge_refine_method,
+        "edge_refine_success": False,
+        "edge_refine_reason": "disabled",
+    }
+    if edge_refine_method in ("grabcut", "hybrid"):
+        center_for_refine = [float(cx * scale), float(cy * scale)]
+        refined_mask, edge_refine_success, edge_refine_meta = _edge_refine_mask_grabcut(
+            roi_gray,
+            mask_full,
+            center_for_refine,
+            allowed_mask_u8=allowed,
+            iterations=edge_refine_iterations,
+        )
+        mask_full = refined_mask
+        edge_refine_meta["edge_refine_method"] = "grabcut"
+        edge_refine_meta["edge_refine_success"] = bool(edge_refine_success)
+
+    contour_mode = cv2.CHAIN_APPROX_NONE if edge_refine_success else cv2.CHAIN_APPROX_SIMPLE
+    cnts, _ = cv2.findContours(mask_full, cv2.RETR_EXTERNAL, contour_mode)
     if not cnts:
         return None, {
             "flat": flat,
@@ -461,7 +798,8 @@ def refine_contour_in_roi(
         }
 
     cnt = max(cnts, key=cv2.contourArea)
-    eps = max(2.0, 0.0035 * cv2.arcLength(cnt, True))
+    eps_ratio = 0.0012 if edge_refine_success else 0.0035
+    eps = max(1.0 if edge_refine_success else 2.0, eps_ratio * cv2.arcLength(cnt, True))
     cnt = cv2.approxPolyDP(cnt, eps, True)
 
     M = cv2.moments(cnt)
@@ -483,6 +821,10 @@ def refine_contour_in_roi(
         "area_px": int(cv2.contourArea(cnt)),
         "mask_full": mask_full,
         "center_history_small": center_history,
+        "refine_method": edge_refine_meta.get("edge_refine_method", edge_refine_method),
+        "edge_refine_success": bool(edge_refine_success),
+        "edge_refine_reason": edge_refine_meta.get("edge_refine_reason"),
+        "edge_refine_area_ratio": edge_refine_meta.get("edge_refine_area_ratio"),
     }, {
         "flat": flat,
         "dark_seed": dark_seed_u8,
@@ -491,4 +833,5 @@ def refine_contour_in_roi(
         "scale": scale,
         "target": float(target),
         "center_history_small": center_history,
+        **edge_refine_meta,
     }
