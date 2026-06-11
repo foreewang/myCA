@@ -239,7 +239,7 @@ def _create_camera(cfg: Mapping[str, Any]) -> Any:
         use_mvs=backend == "mvs",
         opencv_index=int(camera_settings.get("opencv_index", 0)),
         net_export_ip=camera_settings.get("net_export_ip"),
-        mvs_sdk_path=camera_settings.get("mvs_sdk_path"),
+        mvs_sdk_path=camera_settings.get("mvs_python_dir") or camera_settings.get("mvs_sdk_path"),
         exposure_auto=_optional_bool(camera_settings, "exposure_auto", "camera.exposure_auto"),
         exposure_time_us=_optional_float(
             camera_settings, "exposure_time_us", "camera.exposure_time_us"
