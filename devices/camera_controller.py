@@ -757,7 +757,22 @@ class HikCameraController:
 
     @property
     def is_background_recording(self) -> bool:
-        return self.recording and self._record_thread is not None and self._record_thread.is_alive()
+        with self._sdk_lock:
+            return self._is_background_recording_unlocked()
+
+    def _is_background_recording_unlocked(self) -> bool:
+        thread = self._record_thread
+        return bool(self.recording and thread is not None and thread.is_alive())
+
+    def _fail_pending_snapshot_requests(self, error: Any) -> None:
+        with self._snapshot_condition:
+            if not self._snapshot_requests:
+                return
+            for request in self._snapshot_requests:
+                request["error"] = error
+                request["done"] = True
+            self._snapshot_requests.clear()
+            self._snapshot_condition.notify_all()
 
     def _grab_one_frame(self, timeout_ms: int):
         if self.trigger_source == "software":
@@ -801,10 +816,15 @@ class HikCameraController:
         }
         Path(request["save_path"]).parent.mkdir(parents=True, exist_ok=True)
 
+        with self._sdk_lock:
+            if not self._is_background_recording_unlocked():
+                raise CameraSDKError("background recording is not running; cannot capture snapshot from recording frame")
+            with self._snapshot_condition:
+                self._snapshot_requests.append(request)
+                self._snapshot_condition.notify_all()
+
         deadline = time.monotonic() + max(timeout_ms / 1000.0, 0.1)
         with self._snapshot_condition:
-            self._snapshot_requests.append(request)
-            self._snapshot_condition.notify_all()
             while not request["done"]:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
@@ -849,7 +869,7 @@ class HikCameraController:
 
     def capture_once(self, save_path: str, timeout_ms: Optional[int] = None) -> FrameInfo:
         with self._sdk_lock:
-            if not self.is_background_recording:
+            if not self._is_background_recording_unlocked():
                 return self._capture_once_unlocked(save_path, timeout_ms=timeout_ms)
         return self.capture_snapshot_during_recording(save_path, timeout_ms=timeout_ms)
 
@@ -1140,12 +1160,9 @@ class HikCameraController:
         except Exception as exc:
             self._record_error = str(exc)
             logger.exception("background recording failed")
-            with self._snapshot_condition:
-                for request in self._snapshot_requests:
-                    request["error"] = exc
-                    request["done"] = True
-                self._snapshot_requests.clear()
-                self._snapshot_condition.notify_all()
+            self._fail_pending_snapshot_requests(exc)
+        finally:
+            self._fail_pending_snapshot_requests("background recording stopped before snapshot was captured")
 
     def start_background_recording(
         self,
@@ -1185,29 +1202,23 @@ class HikCameraController:
 
     def stop_background_recording(self, join_timeout_s: float = 5.0) -> VideoRecordInfo:
         """请求后台录像线程停止，并返回 MVS 录像结果。"""
-        self._record_stop_event.set()
-        thread = self._record_thread
+        with self._sdk_lock:
+            self._record_stop_event.set()
+            thread = self._record_thread
         if thread is not None and thread.is_alive():
             thread.join(timeout=max(float(join_timeout_s), 0.1))
             if thread.is_alive():
                 message = f"后台录像线程未在 {join_timeout_s}s 内退出，已拒绝停止 MVS 录像以避免并发写帧"
-                self._record_error = message
-                with self._snapshot_condition:
-                    for request in self._snapshot_requests:
-                        request["error"] = message
-                        request["done"] = True
-                    self._snapshot_requests.clear()
-                    self._snapshot_condition.notify_all()
+                with self._sdk_lock:
+                    if self._record_thread is thread:
+                        self._record_error = message
+                    self._fail_pending_snapshot_requests(message)
                 raise CameraSDKError(message)
 
         with self._sdk_lock:
-            self._record_thread = None
-            with self._snapshot_condition:
-                for request in self._snapshot_requests:
-                    request["error"] = "录像已停止，拍照请求未完成"
-                    request["done"] = True
-                self._snapshot_requests.clear()
-                self._snapshot_condition.notify_all()
+            if self._record_thread is thread:
+                self._record_thread = None
+            self._fail_pending_snapshot_requests("background recording stopped before snapshot was captured")
             return self._stop_recording_unlocked()
 
     def recording_status(self) -> Dict[str, Any]:
@@ -1216,7 +1227,7 @@ class HikCameraController:
             started_at = self._record_started_at
             return {
                 "recording": bool(self.recording),
-                "background": bool(self.is_background_recording),
+                "background": bool(self._is_background_recording_unlocked()),
                 "saved_path": self._record_path,
                 "frame_rate": self._record_frame_rate,
                 "bitrate_kbps": self._record_bitrate_kbps,
@@ -1226,13 +1237,18 @@ class HikCameraController:
             }
 
     def close(self) -> None:
-        if self.is_background_recording:
+        with self._sdk_lock:
+            background_recording = self._is_background_recording_unlocked()
+        if background_recording:
             try:
                 self.stop_background_recording()
             except Exception as exc:
                 logger.error("background recording did not stop cleanly; skip camera close to avoid SDK race: %s", exc)
                 return
         with self._sdk_lock:
+            if self._is_background_recording_unlocked():
+                logger.error("background recording is still active; skip camera close to avoid SDK race")
+                return
             self._close_unlocked()
 
     def _close_unlocked(self) -> None:
