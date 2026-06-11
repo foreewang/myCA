@@ -258,6 +258,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                     mvs_python_dir=params.get("mvs_python_dir"),
                     device_index=int(params["device_index"]),
                     serial_number=params.get("serial_number"),
+                    camera_ip=params.get("camera_ip"),
+                    pixel_format=params.get("pixel_format", "mono8"),
                     exposure_us=params.get("exposure_us"),
                     gain=params.get("gain"),
                 )
@@ -293,6 +295,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 "gain": params.get("gain"),
                 "device_index": params.get("device_index"),
                 "serial_number": params.get("serial_number"),
+                "camera_ip": params.get("camera_ip"),
+                "pixel_format": params.get("pixel_format"),
                 "mvs_python_dir": params.get("mvs_python_dir"),
             },
 
@@ -321,6 +325,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 "gain": params.get("gain"),
                 "device_index": params.get("device_index"),
                 "serial_number": params.get("serial_number"),
+                "camera_ip": params.get("camera_ip"),
+                "pixel_format": params.get("pixel_format"),
                 "mvs_python_dir": params.get("mvs_python_dir"),
             },
             
