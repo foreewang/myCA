@@ -276,6 +276,8 @@ def _capture_closed_loop_image(
         mvs_python_dir=params.get("mvs_python_dir"),
         device_index=int(params["device_index"]),
         serial_number=params.get("serial_number"),
+        camera_ip=params.get("camera_ip"),
+        pixel_format=params.get("pixel_format", "mono8"),
         exposure_us=params.get("exposure_us"),
         gain=params.get("gain"),
     )
