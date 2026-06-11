@@ -39,12 +39,27 @@ def _recording_is_active() -> bool:
     return _RECORDING_CAMERA is not None and bool(getattr(_RECORDING_CAMERA, "recording", False))
 
 
-def _settings_match_recording(device_index: int, serial_number: str | None) -> bool:
+def _normalize_pixel_format(pixel_format: str | None) -> str:
+    return str(pixel_format or "mono8").strip().lower().replace("-", "").replace("_", "")
+
+
+def _settings_match_recording(
+    device_index: int,
+    serial_number: str | None,
+    camera_ip: str | None = None,
+    pixel_format: str | None = None,
+) -> bool:
     if not _recording_is_active():
+        return False
+    active_pixel_format = _RECORDING_CAMERA_SETTINGS.get("pixel_format")
+    if _normalize_pixel_format(active_pixel_format) != _normalize_pixel_format(pixel_format):
         return False
     active_serial = _RECORDING_CAMERA_SETTINGS.get("serial_number")
     if active_serial or serial_number:
         return str(active_serial or "") == str(serial_number or "")
+    active_ip = _RECORDING_CAMERA_SETTINGS.get("camera_ip")
+    if active_ip or camera_ip:
+        return str(active_ip or "") == str(camera_ip or "")
     return int(_RECORDING_CAMERA_SETTINGS.get("device_index", 0)) == int(device_index)
 
 
@@ -183,6 +198,8 @@ def open_camera(
     mvs_python_dir: str | None = None,
     device_index: int = 0,
     serial_number: str | None = None,
+    camera_ip: str | None = None,
+    pixel_format: str = "mono8",
     exposure_us: int | float | None = None,
     gain: float | None = None,
 ) -> HikCameraController:
@@ -226,7 +243,7 @@ def open_camera(
     """
     with _SHARED_CAMERA_LOCK:
         if _recording_is_active():
-            if not _settings_match_recording(device_index, serial_number):
+            if not _settings_match_recording(device_index, serial_number, camera_ip, pixel_format):
                 raise RuntimeError("录像正在使用另一台相机，不能同时打开不同相机执行拍照任务")
             return _RECORDING_CAMERA  # type: ignore[return-value]
 
@@ -234,14 +251,20 @@ def open_camera(
         mvs_python_dir=mvs_python_dir,
         device_index=device_index,
         serial_number=serial_number,
+        camera_ip=camera_ip,
+        pixel_format=pixel_format,
     )
-    cam.open()
+    try:
+        cam.open()
 
-    if exposure_us is not None:
-        cam.set_exposure_us(float(exposure_us))
+        if exposure_us is not None:
+            cam.set_exposure_us(float(exposure_us))
 
-    if gain is not None:
-        cam.set_gain(float(gain))
+        if gain is not None:
+            cam.set_gain(float(gain))
+    except Exception:
+        cam.close()
+        raise
 
     return cam
 
@@ -332,6 +355,8 @@ def capture_single_image(
     mvs_python_dir: str | None = None,
     device_index: int = 0,
     serial_number: str | None = None,
+    camera_ip: str | None = None,
+    pixel_format: str = "mono8",
     exposure_us: int | float | None = None,
     gain: float | None = None,
 ) -> Dict[str, Any]:
@@ -382,6 +407,8 @@ def capture_single_image(
             mvs_python_dir=mvs_python_dir,
             device_index=device_index,
             serial_number=serial_number,
+            camera_ip=camera_ip,
+            pixel_format=pixel_format,
             exposure_us=exposure_us,
             gain=gain,
         )
@@ -423,6 +450,8 @@ def start_recording_camera(
     mvs_python_dir: str | None = None,
     device_index: int = 0,
     serial_number: str | None = None,
+    camera_ip: str | None = None,
+    pixel_format: str = "mono8",
     exposure_us: int | float | None = None,
     gain: float | None = None,
     fps: float | None = None,
@@ -439,6 +468,8 @@ def start_recording_camera(
             mvs_python_dir=mvs_python_dir,
             device_index=device_index,
             serial_number=serial_number,
+            camera_ip=camera_ip,
+            pixel_format=pixel_format,
         )
         try:
             cam.open()
@@ -462,6 +493,8 @@ def start_recording_camera(
             "mvs_python_dir": mvs_python_dir,
             "device_index": int(device_index),
             "serial_number": serial_number,
+            "camera_ip": camera_ip,
+            "pixel_format": pixel_format,
             "exposure_us": exposure_us,
             "gain": gain,
             "fps": fps,
@@ -519,6 +552,8 @@ def record_video(
     mvs_python_dir: str | None = None,
     device_index: int = 0,
     serial_number: str | None = None,
+    camera_ip: str | None = None,
+    pixel_format: str = "mono8",
     exposure_us: int | float | None = None,
     gain: float | None = None,
     fps: float | None = None,
@@ -531,6 +566,8 @@ def record_video(
             mvs_python_dir=mvs_python_dir,
             device_index=device_index,
             serial_number=serial_number,
+            camera_ip=camera_ip,
+            pixel_format=pixel_format,
             exposure_us=exposure_us,
             gain=gain,
         )
