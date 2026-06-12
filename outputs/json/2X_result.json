@@ -1,0 +1,54 @@
+{
+  "image_id": "2X",
+  "image_name": "2X.bmp",
+  "image_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "fov_size_mm": {
+    "width": 6.5,
+    "height": 6.5
+  },
+  "image_center": [
+    2559.5,
+    2559.5
+  ],
+  "mm_per_pixel": {
+    "x": 0.00127,
+    "y": 0.00127
+  },
+  "candidate_count": 1,
+  "overlay_path": "C:\\colony_system\\outputs\\overlays\\2X_overlay.png",
+  "candidates": [
+    {
+      "target_id": "C01",
+      "rank": 1,
+      "area": 8557611,
+      "bbox": [
+        0,
+        162,
+        4626,
+        4958
+      ],
+      "roundness": 0.022182,
+      "center_pixel": [
+        2003.965,
+        2875.794
+      ],
+      "offset_from_image_center_px": [
+        -555.535,
+        316.294
+      ],
+      "offset_from_image_center_mm": [
+        -0.705529,
+        0.401693
+      ],
+      "safe_point": [
+        1162,
+        2988
+      ],
+      "safe_radius_px": 427.608,
+      "mask_path": "C:\\colony_system\\outputs\\masks\\2X_C01_mask.png"
+    }
+  ]
+}

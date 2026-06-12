@@ -1,0 +1,54 @@
+{
+  "image_id": "Image_20260317113509384",
+  "image_name": "Image_20260317113509384.bmp",
+  "image_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "fov_size_mm": {
+    "width": 6.5,
+    "height": 6.5
+  },
+  "image_center": [
+    2559.5,
+    2559.5
+  ],
+  "mm_per_pixel": {
+    "x": 0.00127,
+    "y": 0.00127
+  },
+  "candidate_count": 1,
+  "overlay_path": "C:\\colony_system\\outputs\\overlays\\Image_20260317113509384_overlay.png",
+  "candidates": [
+    {
+      "target_id": "C01",
+      "rank": 1,
+      "area": 6300030,
+      "bbox": [
+        943,
+        410,
+        3516,
+        3592
+      ],
+      "roundness": 0.129578,
+      "center_pixel": [
+        2521.754,
+        2296.279
+      ],
+      "offset_from_image_center_px": [
+        -37.746,
+        -263.221
+      ],
+      "offset_from_image_center_mm": [
+        -0.047937,
+        -0.334291
+      ],
+      "safe_point": [
+        2318,
+        2625
+      ],
+      "safe_radius_px": 994.766,
+      "mask_path": "C:\\colony_system\\outputs\\masks\\Image_20260317113509384_C01_mask.png"
+    }
+  ]
+}
