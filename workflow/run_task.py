@@ -14,6 +14,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from workflow.config_validator import resolve_mvs_python_dir, validate_autofocus_file
+
 
 def load_structured_file(path: str | Path) -> Dict[str, Any]:
     path = Path(path)
@@ -93,7 +95,11 @@ def load_local_autofocus_policy(task: Dict[str, Any], default_config_dir: Path) 
     cfg: Dict[str, Any] = {}
 
     if default_path.exists():
-        local_cfg = load_structured_file(default_path)
+        local_cfg = validate_autofocus_file(
+            default_path,
+            objectives_path=default_config_dir / "objectives.yaml",
+            camera_path=default_config_dir / "camera.yaml",
+        )
         if isinstance(local_cfg.get("autofocus"), dict):
             cfg.update(local_cfg["autofocus"])
         else:
@@ -226,9 +232,11 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "objective_name": task["objective"],
         "fov_mm": {"width": fov_w, "height": fov_h},
         "resolution": camera["resolution"],
-        "mvs_python_dir": camera.get("mvs_python_dir"),
+        "mvs_python_dir": resolve_mvs_python_dir(camera),
         "device_index": camera.get("device_index", 0),
         "serial_number": camera.get("serial_number"),
+        "camera_ip": camera.get("ip"),
+        "pixel_format": camera.get("pixel_format", "mono8"),
         "exposure_us": _camera_setting_for_objective(
             camera,
             task["objective"],
@@ -391,6 +399,8 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
                 mvs_python_dir=params.get("mvs_python_dir"),
                 device_index=int(params["device_index"]),
                 serial_number=params.get("serial_number"),
+                camera_ip=params.get("camera_ip"),
+                pixel_format=params.get("pixel_format", "mono8"),
                 exposure_us=params.get("exposure_us"),
                 gain=params.get("gain"),
             )
@@ -459,10 +469,11 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
 
 def run_handoff_task(raw_task_cfg: Dict[str, Any], handoff_path: str | None = None) -> Dict[str, Any]:
     from workflow.handoff_executor import execute_handoff_task
+    from workflow.config_validator import validate_handoff_file
 
     default_config_dir = PROJECT_ROOT / "config"
     handoff_path = handoff_path or str(default_config_dir / "handoff.yaml")
-    handoff_root_cfg = load_structured_file(handoff_path)
+    handoff_root_cfg = validate_handoff_file(handoff_path)
     task = raw_task_cfg["task"]
     return execute_handoff_task(task, handoff_root_cfg)
 
