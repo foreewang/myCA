@@ -8,9 +8,10 @@ import os
 import re
 import threading
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, AsyncIterator, Dict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -23,7 +24,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 
-app = FastAPI(title="Colony Workflow API", version="0.3.0")
 logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("uvicorn.error")
 _TASK_RECORD_IO_LOCK = threading.RLock()
@@ -33,8 +33,18 @@ _HARDWARE_OPERATION_LOCK = threading.RLock()
 _HARDWARE_OWNER: Dict[str, Any] | None = None
 _CAMERA_RECORD_OWNER: Dict[str, Any] | None = None
 _HARDWARE_OWNER_SYNC_GRACE_SEC = 5.0
-_TASK_TERMINAL_STATUSES = {"success", "failed"}
+_TASK_ACTIVE_STATUSES = {"queued", "running"}
+_TASK_TERMINAL_STATUSES = {"success", "failed", "interrupted"}
 _STAGE_TERMINAL_STATUSES = {"stopped", "failed"}
+
+
+@asynccontextmanager
+async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _recover_interrupted_task_records()
+    yield
+
+
+app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)
 
 
 def _hardware_busy_detail(owner: Dict[str, Any]) -> str:
@@ -363,6 +373,74 @@ def _task_exists(task_id: str) -> bool:
     return _task_record_path(task_id).exists()
 
 
+def _mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, Any]:
+    now = _utc_now()
+    previous_status = record.get("status")
+    updated = dict(record)
+    updated["status"] = "interrupted"
+    updated["previous_status"] = previous_status
+    updated["updated_at"] = now
+    updated["finished_at"] = now
+    updated["interrupted_at"] = now
+    updated["message"] = reason
+    updated["error"] = reason
+
+    wells = updated.get("wells")
+    if isinstance(wells, dict):
+        updated_wells = {}
+        for well_name, well_record in wells.items():
+            if not isinstance(well_record, dict):
+                updated_wells[well_name] = well_record
+                continue
+            item = dict(well_record)
+            if item.get("status") in _TASK_ACTIVE_STATUSES:
+                item["previous_status"] = item.get("status")
+                item["status"] = "interrupted"
+                item["message"] = reason
+            updated_wells[well_name] = item
+        updated["wells"] = updated_wells
+
+    return updated
+
+
+def _recover_interrupted_task_records() -> Dict[str, int]:
+    reason = "API 服务启动时发现任务未正常结束，已标记为 interrupted"
+    stats = {
+        "scanned": 0,
+        "interrupted": 0,
+        "errors": 0,
+    }
+    index_dir = _task_index_dir()
+    if not index_dir.exists():
+        return stats
+
+    with _TASK_RECORD_IO_LOCK:
+        for path in sorted(index_dir.glob("*.json")):
+            stats["scanned"] += 1
+            try:
+                record = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(record, dict):
+                    continue
+                if record.get("status") not in _TASK_ACTIVE_STATUSES:
+                    continue
+                if not str(record.get("task_id") or "").strip():
+                    record["task_id"] = path.stem
+                _write_task_record_unlocked(_mark_record_interrupted(record, reason))
+                stats["interrupted"] += 1
+            except Exception:
+                stats["errors"] += 1
+                logger.exception("failed to recover interrupted task record: %s", path)
+
+    if stats["interrupted"] or stats["errors"]:
+        logger.warning(
+            "task record startup recovery finished: scanned=%s interrupted=%s errors=%s",
+            stats["scanned"],
+            stats["interrupted"],
+            stats["errors"],
+        )
+    return stats
+
+
 def _update_task_record(task_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
     with _TASK_RECORD_IO_LOCK:
         record = _read_task_record_unlocked(task_id)
@@ -668,7 +746,7 @@ def _monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
     while not stop_event.is_set():
         try:
             record = _read_task_record(task_id)
-            if record.get("status") in {"success", "failed"}:
+            if record.get("status") in _TASK_TERMINAL_STATUSES:
                 return
             patch = _guess_current_progress(record)
             _update_task_record(task_id, patch)
@@ -829,7 +907,7 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
 
     if _task_exists(task_id):
         old = _read_task_record(task_id)
-        if old.get("status") in {"queued", "running"}:
+        if old.get("status") in _TASK_ACTIVE_STATUSES:
             raise HTTPException(status_code=409, detail=f"任务正在执行中: {task_id}")
 
     _acquire_hardware_operation("task", task_id)
@@ -882,7 +960,7 @@ def get_task_status(task_id: str) -> Dict[str, Any]:
 @app.get("/api/tasks/{task_id}/result")
 def get_task_result(task_id: str) -> Dict[str, Any]:
     record = _read_task_record(task_id)
-    if record.get("status") in {"queued", "running"}:
+    if record.get("status") in _TASK_ACTIVE_STATUSES:
         return {
             "task_id": record.get("task_id"),
             "status": record.get("status"),
