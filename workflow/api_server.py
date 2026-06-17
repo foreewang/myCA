@@ -29,6 +29,126 @@ access_logger = logging.getLogger("uvicorn.error")
 _TASK_RECORD_IO_LOCK = threading.RLock()
 _TASK_RECORD_REPLACE_ATTEMPTS = 200
 _TASK_RECORD_REPLACE_SLEEP_SEC = 0.05
+_HARDWARE_OPERATION_LOCK = threading.RLock()
+_HARDWARE_OWNER: Dict[str, Any] | None = None
+_CAMERA_RECORD_OWNER: Dict[str, Any] | None = None
+_HARDWARE_OWNER_SYNC_GRACE_SEC = 5.0
+_TASK_TERMINAL_STATUSES = {"success", "failed"}
+_STAGE_TERMINAL_STATUSES = {"stopped", "failed"}
+
+
+def _hardware_busy_detail(owner: Dict[str, Any]) -> str:
+    kind = owner.get("kind") or "unknown"
+    operation_id = owner.get("operation_id") or "<unknown>"
+    started_at = owner.get("started_at") or "<unknown>"
+    return f"硬件正在被占用: kind={kind}, operation_id={operation_id}, started_at={started_at}"
+
+
+def _public_hardware_owner(owner: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "kind": owner.get("kind"),
+        "operation_id": owner.get("operation_id"),
+        "started_at": owner.get("started_at"),
+    }
+
+
+def _sync_hardware_owner_unlocked() -> None:
+    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
+
+    owner = _HARDWARE_OWNER
+    if owner and time.monotonic() >= float(owner.get("sync_after_monotonic") or 0.0):
+        kind = owner.get("kind")
+        operation_id = str(owner.get("operation_id") or "")
+        try:
+            if kind == "task":
+                record = _read_task_record_unlocked(operation_id)
+                if record.get("status") in _TASK_TERMINAL_STATUSES:
+                    _HARDWARE_OWNER = None
+            elif kind == "stage_reciprocation":
+                from workflow.stage_reciprocation import stage_reciprocation_controller
+
+                status = stage_reciprocation_controller.status()
+                if status.get("status") in _STAGE_TERMINAL_STATUSES:
+                    _HARDWARE_OWNER = None
+        except Exception:
+            logger.debug("failed to sync hardware owner: %s", owner, exc_info=True)
+
+    camera_owner = _CAMERA_RECORD_OWNER
+    if camera_owner and time.monotonic() >= float(camera_owner.get("sync_after_monotonic") or 0.0):
+        try:
+            from workflow.camera_executor import recording_camera_status
+
+            status = recording_camera_status()
+            if not status.get("recording") and not status.get("background"):
+                _CAMERA_RECORD_OWNER = None
+        except Exception:
+            logger.debug("failed to sync camera record owner: %s", camera_owner, exc_info=True)
+
+
+def _acquire_hardware_operation(kind: str, operation_id: str) -> Dict[str, Any]:
+    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
+
+    with _HARDWARE_OPERATION_LOCK:
+        _sync_hardware_owner_unlocked()
+        if kind == "camera_record":
+            if _HARDWARE_OWNER is not None:
+                raise HTTPException(status_code=409, detail=_hardware_busy_detail(_HARDWARE_OWNER))
+            if _CAMERA_RECORD_OWNER is not None:
+                raise HTTPException(status_code=409, detail=_hardware_busy_detail(_CAMERA_RECORD_OWNER))
+            _CAMERA_RECORD_OWNER = {
+                "kind": kind,
+                "operation_id": str(operation_id),
+                "started_at": _utc_now(),
+                "sync_after_monotonic": time.monotonic() + _HARDWARE_OWNER_SYNC_GRACE_SEC,
+            }
+            return _public_hardware_owner(_CAMERA_RECORD_OWNER)
+
+        if _HARDWARE_OWNER is not None:
+            raise HTTPException(status_code=409, detail=_hardware_busy_detail(_HARDWARE_OWNER))
+        _HARDWARE_OWNER = {
+            "kind": kind,
+            "operation_id": str(operation_id),
+            "started_at": _utc_now(),
+            "sync_after_monotonic": time.monotonic() + _HARDWARE_OWNER_SYNC_GRACE_SEC,
+        }
+        return _public_hardware_owner(_HARDWARE_OWNER)
+
+
+def _release_hardware_operation(kind: str, operation_id: str) -> None:
+    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
+
+    with _HARDWARE_OPERATION_LOCK:
+        if kind == "camera_record":
+            if (
+                _CAMERA_RECORD_OWNER is not None
+                and str(_CAMERA_RECORD_OWNER.get("operation_id") or "") == str(operation_id)
+            ):
+                _CAMERA_RECORD_OWNER = None
+            return
+
+        if (
+            _HARDWARE_OWNER is not None
+            and _HARDWARE_OWNER.get("kind") == kind
+            and str(_HARDWARE_OWNER.get("operation_id") or "") == str(operation_id)
+        ):
+            _HARDWARE_OWNER = None
+
+
+def _current_hardware_owner() -> Dict[str, Any] | None:
+    with _HARDWARE_OPERATION_LOCK:
+        _sync_hardware_owner_unlocked()
+        return None if _HARDWARE_OWNER is None else _public_hardware_owner(_HARDWARE_OWNER)
+
+
+def _current_hardware_owners() -> list[Dict[str, Any]]:
+    with _HARDWARE_OPERATION_LOCK:
+        _sync_hardware_owner_unlocked()
+        owners = []
+        if _HARDWARE_OWNER is not None:
+            owners.append(_public_hardware_owner(_HARDWARE_OWNER))
+        if _CAMERA_RECORD_OWNER is not None:
+            owners.append(_public_hardware_owner(_CAMERA_RECORD_OWNER))
+        return owners
 
 
 @app.middleware("http")
@@ -592,6 +712,7 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
         _write_task_record(record)
     finally:
         _stop_monitor_thread(monitor, stop_event, monitor_started)
+        _release_hardware_operation("task", task_id)
 
 
 @app.get("/health")
@@ -606,11 +727,23 @@ def get_camera_record_status() -> Dict[str, Any]:
     return recording_camera_status()
 
 
+@app.get("/api/hardware/status")
+def get_hardware_status() -> Dict[str, Any]:
+    owners = _current_hardware_owners()
+    return {
+        "busy": bool(owners),
+        "owners": owners,
+        "owner": owners[0] if owners else {},
+    }
+
+
 @app.post("/api/camera/record/start")
 def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
     from workflow.camera_executor import start_recording_camera
 
     settings = _load_camera_settings_for_recording(req)
+    operation_id = str(req.save_path)
+    _acquire_hardware_operation("camera_record", operation_id)
     try:
         result = start_recording_camera(
             save_path=req.save_path,
@@ -628,6 +761,7 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
         result["camera_path"] = settings.get("camera_path")
         return result
     except Exception as exc:
+        _release_hardware_operation("camera_record", operation_id)
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
@@ -636,7 +770,15 @@ def stop_camera_record() -> Dict[str, Any]:
     from workflow.camera_executor import stop_recording_camera
 
     try:
-        return stop_recording_camera()
+        result = stop_recording_camera()
+        camera_owner = None
+        for owner in _current_hardware_owners():
+            if owner.get("kind") == "camera_record":
+                camera_owner = owner
+                break
+        if camera_owner is not None:
+            _release_hardware_operation("camera_record", str(camera_owner.get("operation_id") or ""))
+        return result
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -647,9 +789,12 @@ def start_stage_reciprocation(req: StageReciprocationStartRequest | None = None)
 
     req = req or StageReciprocationStartRequest()
     cfg = req.dict()
+    operation_id = "stage_reciprocation"
+    _acquire_hardware_operation("stage_reciprocation", operation_id)
     try:
         return stage_reciprocation_controller.start(cfg)
     except Exception as exc:
+        _release_hardware_operation("stage_reciprocation", operation_id)
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
@@ -659,7 +804,10 @@ def stop_stage_reciprocation(req: StageReciprocationStopRequest | None = None) -
 
     try:
         join_timeout_s = 5.0 if req is None else req.join_timeout_s
-        return stage_reciprocation_controller.stop(join_timeout_s=join_timeout_s)
+        result = stage_reciprocation_controller.stop(join_timeout_s=join_timeout_s)
+        if result.get("status") in _STAGE_TERMINAL_STATUSES:
+            _release_hardware_operation("stage_reciprocation", "stage_reciprocation")
+        return result
     except Exception as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -684,12 +832,17 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
         if old.get("status") in {"queued", "running"}:
             raise HTTPException(status_code=409, detail=f"任务正在执行中: {task_id}")
 
-    record = _build_accepted_record(task, req.dump_json, req.persist_result)
-    access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
-    _write_task_record(record)
+    _acquire_hardware_operation("task", task_id)
+    try:
+        record = _build_accepted_record(task, req.dump_json, req.persist_result)
+        access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
+        _write_task_record(record)
 
-    worker = threading.Thread(target=_run_task_async, args=(copy.deepcopy(task), req), daemon=True)
-    worker.start()
+        worker = threading.Thread(target=_run_task_async, args=(copy.deepcopy(task), req), daemon=True)
+        worker.start()
+    except Exception:
+        _release_hardware_operation("task", task_id)
+        raise
     access_logger.info("execute_task worker started: task_id=%s thread=%s", task_id, worker.name)
 
     return {
