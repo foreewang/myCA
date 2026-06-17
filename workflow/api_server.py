@@ -21,6 +21,9 @@ from workflow.config_validator import resolve_mvs_python_dir, validate_camera_co
 from workflow.run_task import execute_task_request
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_ROOT = PROJECT_ROOT / "config"
+DATA_ROOT = PROJECT_ROOT / "data"
+OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
 DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 
@@ -265,7 +268,10 @@ def _utc_now() -> str:
 
 
 def _load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[str, Any]:
-    camera_path = req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(PROJECT_ROOT / "config" / "camera.yaml")
+    camera_path = _resolve_config_path(
+        req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(CONFIG_ROOT / "camera.yaml"),
+        "camera_path",
+    )
     cfg = validate_camera_file(camera_path)
     camera_cfg = cfg.get("camera", cfg) if isinstance(cfg, dict) else {}
     if not isinstance(camera_cfg, dict):
@@ -310,6 +316,86 @@ def _safe_str_path(value: Any) -> str | None:
         return None
     s = str(value).strip()
     return s or None
+
+
+def _is_path_within(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+def _resolve_allowed_path(value: Any, allowed_roots: tuple[Path, ...], field_name: str) -> str | None:
+    raw = _safe_str_path(value)
+    if raw is None:
+        return None
+
+    path = Path(raw)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    resolved = path.resolve(strict=False)
+    resolved_roots = tuple(root.resolve(strict=False) for root in allowed_roots)
+    if not any(_is_path_within(resolved, root) for root in resolved_roots):
+        allowed = ", ".join(str(root) for root in resolved_roots)
+        raise HTTPException(status_code=400, detail=f"{field_name} 路径越界: {resolved}；允许根目录: {allowed}")
+    return str(resolved)
+
+
+def _resolve_config_path(value: Any, field_name: str) -> str | None:
+    return _resolve_allowed_path(value, (CONFIG_ROOT,), field_name)
+
+
+def _resolve_output_path(value: Any, field_name: str) -> str | None:
+    return _resolve_allowed_path(value, (DATA_ROOT, OUTPUTS_ROOT), field_name)
+
+
+def _normalize_nested_path(task: Dict[str, Any], keys: tuple[str, ...], field_name: str) -> None:
+    node: Any = task
+    for key in keys[:-1]:
+        if not isinstance(node, dict):
+            return
+        node = node.get(key)
+    if not isinstance(node, dict):
+        return
+    leaf = keys[-1]
+    if leaf in node and node[leaf] is not None:
+        node[leaf] = _resolve_output_path(node[leaf], field_name)
+
+
+def _normalize_task_paths(task: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = copy.deepcopy(task)
+    for keys in (
+        ("capture", "save_dir"),
+        ("scan", "output_json"),
+        ("detect", "output_json"),
+        ("detect", "input_scan_result_json"),
+        ("compensate", "input_detect_json"),
+        ("compensate", "output_json"),
+        ("compensate", "closed_loop", "save_dir"),
+        ("output", "result_json"),
+        ("output", "scan_json"),
+        ("output", "detect_json"),
+        ("output", "compensate_json"),
+    ):
+        _normalize_nested_path(normalized, keys, ".".join(("task", *keys)))
+    return normalized
+
+
+def _normalize_execute_task_request(req: ExecuteTaskRequest) -> ExecuteTaskRequest:
+    return ExecuteTaskRequest(
+        task=_normalize_task_paths(req.task or {}),
+        camera_path=_resolve_config_path(
+            req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(CONFIG_ROOT / "camera.yaml"),
+            "camera_path",
+        ),
+        objectives_path=_resolve_config_path(
+            req.objectives_path or os.getenv("OBJECTIVES_CONFIG_PATH") or str(CONFIG_ROOT / "objectives.yaml"),
+            "objectives_path",
+        ),
+        plates_path=_resolve_config_path(
+            req.plates_path or os.getenv("PLATES_CONFIG_PATH") or str(CONFIG_ROOT / "plates.yaml"),
+            "plates_path",
+        ),
+        dump_json=_resolve_output_path(req.dump_json, "dump_json"),
+        persist_result=req.persist_result,
+    )
 
 
 def _write_task_record(record: Dict[str, Any]) -> None:
@@ -675,10 +761,18 @@ def _resolve_image_dir(record: Dict[str, Any], well_name: str) -> Path:
     image_dir = well_record.get("image_dir")
     if not image_dir:
         raise HTTPException(status_code=404, detail=f"任务 {record.get('task_id')} 的孔位 {well_name} 未记录图片目录")
-    path = Path(image_dir)
+    path = Path(_resolve_output_path(image_dir, f"task.{record.get('task_id')}.wells.{well_name}.image_dir"))
     if not path.exists() or not path.is_dir():
         raise HTTPException(status_code=404, detail=f"图片目录不存在: {path}")
     return path
+
+
+def _existing_output_path_or_none(value: Any, field_name: str) -> str | None:
+    raw = _safe_str_path(value)
+    if raw is None:
+        return None
+    path = Path(_resolve_output_path(raw, field_name))
+    return str(path) if path.exists() else None
 
 
 def _count_images(image_dir: Path) -> int:
@@ -820,11 +914,14 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
     from workflow.camera_executor import start_recording_camera
 
     settings = _load_camera_settings_for_recording(req)
-    operation_id = str(req.save_path)
+    save_path = _resolve_output_path(req.save_path, "save_path")
+    if save_path is None:
+        raise HTTPException(status_code=400, detail="save_path 不能为空")
+    operation_id = str(save_path)
     _acquire_hardware_operation("camera_record", operation_id)
     try:
         result = start_recording_camera(
-            save_path=req.save_path,
+            save_path=str(save_path),
             mvs_python_dir=settings.get("mvs_python_dir"),
             device_index=int(settings.get("device_index", 0)),
             serial_number=settings.get("serial_number"),
@@ -899,6 +996,7 @@ def get_stage_reciprocation_status() -> Dict[str, Any]:
 
 @app.post("/api/tasks/execute", status_code=202)
 def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
+    req = _normalize_execute_task_request(req)
     task = req.task or {}
     task_id = str(task.get("task_id") or "").strip()
     access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
@@ -974,7 +1072,7 @@ def get_task_result(task_id: str) -> Dict[str, Any]:
 
     result_json_path = record.get("result_json_path")
     if result_json_path:
-        p = Path(result_json_path)
+        p = Path(_resolve_output_path(result_json_path, f"task.{task_id}.result_json_path"))
         if p.exists() and p.is_file():
             return json.loads(p.read_text(encoding="utf-8"))
     result = record.get("result")
@@ -996,9 +1094,9 @@ def list_well_images(task_id: str, well_name: str) -> Dict[str, Any]:
         "task_id": record.get("task_id"),
         "well_name": well_name,
         "image_dir": str(image_dir),
-        "capture_result_json": capture_path if capture_path and Path(capture_path).exists() else None,
-        "detect_result_json": detect_path if detect_path and Path(detect_path).exists() else None,
-        "compensate_result_json": compensate_path if compensate_path and Path(compensate_path).exists() else None,
+        "capture_result_json": _existing_output_path_or_none(capture_path, f"task.{task_id}.{well_name}.capture_result_json"),
+        "detect_result_json": _existing_output_path_or_none(detect_path, f"task.{task_id}.{well_name}.detect_result_json"),
+        "compensate_result_json": _existing_output_path_or_none(compensate_path, f"task.{task_id}.{well_name}.compensate_result_json"),
         "images": images,
     }
 
