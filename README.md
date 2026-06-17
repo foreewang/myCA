@@ -207,7 +207,7 @@ python tools/test_camera_photo_video.py `
 启动服务：
 
 ```powershell
-uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000
+uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
 开发时如果只改 Python 代码，可以使用自动重载：
