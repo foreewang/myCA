@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from workflow.config_validator import resolve_mvs_python_dir, validate_camera_config, validate_camera_file
+from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
 from workflow.run_task import execute_task_request
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -913,10 +913,18 @@ def get_hardware_status() -> Dict[str, Any]:
 def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
     from workflow.camera_executor import start_recording_camera
 
-    settings = _load_camera_settings_for_recording(req)
-    save_path = _resolve_output_path(req.save_path, "save_path")
-    if save_path is None:
-        raise HTTPException(status_code=400, detail="save_path 不能为空")
+    try:
+        settings = _load_camera_settings_for_recording(req)
+        save_path = _resolve_output_path(req.save_path, "save_path")
+        if save_path is None:
+            raise HTTPException(status_code=400, detail="save_path 不能为空")
+    except HTTPException:
+        raise
+    except (ConfigValidationError, ValueError, OSError) as exc:
+        raise HTTPException(status_code=400, detail=f"相机录像配置无效: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"相机录像配置加载失败: {exc}") from exc
+
     operation_id = str(save_path)
     _acquire_hardware_operation("camera_record", operation_id)
     try:
