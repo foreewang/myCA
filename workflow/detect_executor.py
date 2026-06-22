@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from workflow.detect_api import run_detect_on_image
+from workflow.task_control import raise_if_cancel_requested
 
 
 def _image_size(image_path: str) -> tuple[int, int]:
@@ -217,6 +218,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     images: List[Dict[str, Any]] = []
 
     for capture in scan_result.get("captures", []):
+        raise_if_cancel_requested(params, f"before_detect:image_{capture.get('index')}")
         image_path = capture.get("capture_result", {}).get("saved_path")
         if not image_path:
             continue
@@ -320,6 +322,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "clones": clones,
             }
         )
+        raise_if_cancel_requested(params, f"after_detect:image_{capture.get('index')}")
 
     total_clones = sum(int(x["clone_count"]) for x in images)
 

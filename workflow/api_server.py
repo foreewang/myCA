@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
 from workflow.run_task import execute_task_request
+from workflow.task_control import TaskCanceled
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_ROOT = PROJECT_ROOT / "config"
@@ -32,12 +33,14 @@ access_logger = logging.getLogger("uvicorn.error")
 _TASK_RECORD_IO_LOCK = threading.RLock()
 _TASK_RECORD_REPLACE_ATTEMPTS = 200
 _TASK_RECORD_REPLACE_SLEEP_SEC = 0.05
+_TASK_CANCEL_LOCK = threading.RLock()
+_TASK_CANCEL_EVENTS: Dict[str, threading.Event] = {}
 _HARDWARE_OPERATION_LOCK = threading.RLock()
 _HARDWARE_OWNER: Dict[str, Any] | None = None
 _CAMERA_RECORD_OWNER: Dict[str, Any] | None = None
 _HARDWARE_OWNER_SYNC_GRACE_SEC = 5.0
 _TASK_ACTIVE_STATUSES = {"queued", "running"}
-_TASK_TERMINAL_STATUSES = {"success", "failed", "interrupted"}
+_TASK_TERMINAL_STATUSES = {"success", "failed", "interrupted", "canceled"}
 _STAGE_TERMINAL_STATUSES = {"stopped", "failed"}
 
 
@@ -485,6 +488,49 @@ def _task_exists(task_id: str) -> bool:
     return _task_record_path(task_id).exists()
 
 
+def _register_task_cancel_event(task_id: str, cancel_event: threading.Event) -> None:
+    with _TASK_CANCEL_LOCK:
+        _TASK_CANCEL_EVENTS[_sanitize_task_id(task_id)] = cancel_event
+
+
+def _unregister_task_cancel_event(task_id: str) -> None:
+    with _TASK_CANCEL_LOCK:
+        _TASK_CANCEL_EVENTS.pop(_sanitize_task_id(task_id), None)
+
+
+def _is_task_cancel_requested(task_id: str) -> bool:
+    normalized = _sanitize_task_id(task_id)
+    with _TASK_CANCEL_LOCK:
+        event = _TASK_CANCEL_EVENTS.get(normalized)
+        if event is not None and event.is_set():
+            return True
+    try:
+        record = _read_task_record(normalized)
+    except Exception:
+        return False
+    return bool(record.get("cancel_requested", False))
+
+
+def _request_task_cancel(task_id: str) -> Dict[str, Any]:
+    normalized = _sanitize_task_id(task_id)
+    with _TASK_CANCEL_LOCK:
+        event = _TASK_CANCEL_EVENTS.get(normalized)
+        if event is not None:
+            event.set()
+
+    with _TASK_RECORD_IO_LOCK:
+        record = _read_task_record_unlocked(normalized)
+        if record.get("status") in _TASK_TERMINAL_STATUSES:
+            return record
+        now = _utc_now()
+        record["cancel_requested"] = True
+        record["cancel_requested_at"] = now
+        record["updated_at"] = now
+        record["message"] = "cancel requested; task will stop at the next safe checkpoint"
+        _write_task_record_unlocked(record)
+        return record
+
+
 def _mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, Any]:
     now = _utc_now()
     previous_status = record.get("status")
@@ -508,6 +554,38 @@ def _mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, A
             if item.get("status") in _TASK_ACTIVE_STATUSES:
                 item["previous_status"] = item.get("status")
                 item["status"] = "interrupted"
+                item["message"] = reason
+            updated_wells[well_name] = item
+        updated["wells"] = updated_wells
+
+    return updated
+
+
+def _mark_record_canceled(record: Dict[str, Any], reason: str) -> Dict[str, Any]:
+    now = _utc_now()
+    previous_status = record.get("status")
+    updated = dict(record)
+    updated["status"] = "canceled"
+    updated["previous_status"] = previous_status
+    updated["cancel_requested"] = True
+    updated.setdefault("cancel_requested_at", now)
+    updated["canceled_at"] = now
+    updated["finished_at"] = now
+    updated["updated_at"] = now
+    updated["message"] = reason
+    updated["cancel_reason"] = reason
+
+    wells = updated.get("wells")
+    if isinstance(wells, dict):
+        updated_wells = {}
+        for well_name, well_record in wells.items():
+            if not isinstance(well_record, dict):
+                updated_wells[well_name] = well_record
+                continue
+            item = dict(well_record)
+            if item.get("status") in _TASK_ACTIVE_STATUSES:
+                item["previous_status"] = item.get("status")
+                item["status"] = "canceled"
                 item["message"] = reason
             updated_wells[well_name] = item
         updated["wells"] = updated_wells
@@ -868,6 +946,8 @@ def _monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
             record = _read_task_record(task_id)
             if record.get("status") in _TASK_TERMINAL_STATUSES:
                 return
+            if record.get("cancel_requested"):
+                return
             patch = _guess_current_progress(record)
             _update_task_record(task_id, patch)
         except Exception:
@@ -881,7 +961,7 @@ def _stop_monitor_thread(monitor: threading.Thread, stop_event: threading.Event,
         monitor.join(timeout=1.0)
 
 
-def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
+def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest, cancel_event: threading.Event) -> None:
     task_id = str(task.get("task_id") or "").strip()
     stop_event = threading.Event()
     monitor = threading.Thread(target=_monitor_running_task, args=(task_id, stop_event), daemon=True)
@@ -897,11 +977,21 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
             plates_path=req.plates_path or os.getenv("PLATES_CONFIG_PATH"),
             dump_json=req.dump_json,
             persist_result=req.persist_result,
+            cancel_check=lambda: cancel_event.is_set() or _is_task_cancel_requested(task_id),
         )
         _stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
         record = _build_task_record(task, result, req.dump_json, req.persist_result)
         _write_task_record(record)
+    except TaskCanceled as exc:
+        logger.info("task canceled: %s", task_id)
+        _stop_monitor_thread(monitor, stop_event, monitor_started)
+        monitor_started = False
+        try:
+            record = _read_task_record(task_id)
+        except Exception:
+            record = _build_accepted_record(task, req.dump_json, req.persist_result)
+        _write_task_record(_mark_record_canceled(record, str(exc)))
     except Exception as exc:
         logger.exception("task execution failed: %s", task_id)
         _stop_monitor_thread(monitor, stop_event, monitor_started)
@@ -910,6 +1000,7 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest) -> None:
         _write_task_record(record)
     finally:
         _stop_monitor_thread(monitor, stop_event, monitor_started)
+        _unregister_task_cancel_event(task_id)
         _release_hardware_operation("task", task_id)
 
 
@@ -1043,14 +1134,17 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
             raise HTTPException(status_code=409, detail=f"任务正在执行中: {task_id}")
 
     _acquire_hardware_operation("task", task_id)
+    cancel_event = threading.Event()
+    _register_task_cancel_event(task_id, cancel_event)
     try:
         record = _build_accepted_record(task, req.dump_json, req.persist_result)
         access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
         _write_task_record(record)
 
-        worker = threading.Thread(target=_run_task_async, args=(copy.deepcopy(task), req), daemon=True)
+        worker = threading.Thread(target=_run_task_async, args=(copy.deepcopy(task), req, cancel_event), daemon=True)
         worker.start()
     except Exception:
+        _unregister_task_cancel_event(task_id)
         _release_hardware_operation("task", task_id)
         raise
     access_logger.info("execute_task worker started: task_id=%s thread=%s", task_id, worker.name)
@@ -1062,6 +1156,28 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
         "observe_scope": task.get("observe_scope"),
         "message": "task accepted",
         "result_json_path": record.get("result_json_path"),
+    }
+
+
+@app.post("/api/tasks/{task_id}/cancel")
+def cancel_task(task_id: str) -> Dict[str, Any]:
+    record = _request_task_cancel(task_id)
+    status = record.get("status")
+    if status in _TASK_TERMINAL_STATUSES:
+        return {
+            "task_id": record.get("task_id"),
+            "status": status,
+            "cancel_requested": bool(record.get("cancel_requested", False)),
+            "message": "task is already terminal",
+        }
+
+    return {
+        "task_id": record.get("task_id"),
+        "status": "cancel_requested",
+        "previous_status": status,
+        "cancel_requested": True,
+        "cancel_requested_at": record.get("cancel_requested_at"),
+        "message": record.get("message"),
     }
 
 
@@ -1086,6 +1202,10 @@ def get_task_status(task_id: str) -> Dict[str, Any]:
         "stored_at_utc": record.get("stored_at_utc"),
         "result_json_path": record.get("result_json_path"),
         "error": record.get("error"),
+        "cancel_requested": record.get("cancel_requested", False),
+        "cancel_requested_at": record.get("cancel_requested_at"),
+        "canceled_at": record.get("canceled_at"),
+        "cancel_reason": record.get("cancel_reason"),
     }
 
 

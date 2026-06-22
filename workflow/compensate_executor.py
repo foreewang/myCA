@@ -10,6 +10,7 @@ from workflow.camera_executor import capture_single_image
 from workflow.detect_api import run_detect_on_image
 from workflow.plate_geometry import get_pulses_per_mm, get_view_signs
 from workflow.stage_executor import move_to_absolute_with_approach
+from workflow.task_control import raise_if_cancel_requested
 
 
 def _image_center_distance2(image_item: Dict[str, Any], clone_item: Dict[str, Any]) -> float:
@@ -155,8 +156,9 @@ def _move_to_compensate_target(
     target_x: int,
     target_y: int,
 ) -> Dict[str, Any]:
+    raise_if_cancel_requested(params, "before_compensate_move")
     motion = params["motion"]
-    return move_to_absolute_with_approach(
+    result = move_to_absolute_with_approach(
         port=motion.get("port", "COM3"),
         x_target=target_x,
         y_target=target_y,
@@ -169,6 +171,8 @@ def _move_to_compensate_target(
         settle_s=float(params.get("settle_s", motion.get("settle_s", 0.8))),
         approach_cfg=params.get("compensate_approach") or {},
     )
+    raise_if_cancel_requested(params, "after_compensate_move")
+    return result
 
 
 def _build_image_item_from_capture(
@@ -300,7 +304,9 @@ def _run_closed_loop(
     iterations: List[Dict[str, Any]] = []
 
     for iteration in range(1, max_iterations + 1):
+        raise_if_cancel_requested(params, f"before_closed_loop_capture:{iteration}")
         capture_result = _capture_closed_loop_image(params=params, iteration=iteration)
+        raise_if_cancel_requested(params, f"after_closed_loop_capture:{iteration}")
         image_item = _build_image_item_from_capture(
             image_path=capture_result["saved_path"],
             params=params,
@@ -309,6 +315,7 @@ def _run_closed_loop(
             detect_entrypoint=detect_entrypoint,
         )
         loop_detect_result = {"images": [image_item]}
+        raise_if_cancel_requested(params, f"before_closed_loop_select:{iteration}")
         image_item, clone_item = select_clone_for_compensation(loop_detect_result, selector_cfg)
         calc = _calc_compensate_target(ctx=ctx, params=params, image_item=image_item, clone_item=clone_item)
         in_tolerance = _within_tolerance(calc["offset_from_image_center_px"], cfg)
@@ -327,6 +334,7 @@ def _run_closed_loop(
             break
 
         target = calc["compensate_target"]
+        raise_if_cancel_requested(params, f"before_closed_loop_move:{iteration}")
         move_result = _move_to_compensate_target(
             params=params,
             target_x=int(target["x"]),
@@ -357,10 +365,12 @@ def execute_compensate_on_detect_result(
 ) -> Dict[str, Any]:
     """根据选定克隆相对图像中心的偏差，计算并执行位移台补偿。"""
     selector_cfg = params.get("compensate_selector", {}) or {}
+    raise_if_cancel_requested(params, "before_compensate_select")
     image_item, clone_item = select_clone_for_compensation(detect_result, selector_cfg)
 
     calc = _calc_compensate_target(ctx=ctx, params=params, image_item=image_item, clone_item=clone_item)
     target = calc["compensate_target"]
+    raise_if_cancel_requested(params, "before_initial_compensate_move")
     move_result = _move_to_compensate_target(
         params=params,
         target_x=int(target["x"]),

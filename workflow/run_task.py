@@ -6,7 +6,9 @@ import json
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
+
+from workflow.task_control import raise_if_cancel_requested
 
 import yaml
 
@@ -344,14 +346,17 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=N
     stages = params["stages"]
     stage_results: Dict[str, Any] = {}
 
+    raise_if_cancel_requested(params, "before_capture")
     if "capture" in stages:
         stage_results["capture"] = run_single_well_capture(ctx, params, cam=cam)
     else:
         raise ValueError("当前 pipeline 版本要求 stages 至少包含 capture。")
 
+    raise_if_cancel_requested(params, "after_capture")
     if "detect" in stages:
         stage_results["detect"] = run_single_well_detect(ctx, params, stage_results["capture"])
 
+    raise_if_cancel_requested(params, "after_detect")
     if "compensate" in stages:
         if "detect" not in stage_results:
             raise ValueError("compensate 依赖 detect，请在 stages 中包含 detect。")
@@ -394,6 +399,7 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
     open_shared_camera = need_capture and not need_autofocus
 
     try:
+        raise_if_cancel_requested(params, "before_open_shared_camera")
         if open_shared_camera:
             shared_cam = open_camera(
                 mvs_python_dir=params.get("mvs_python_dir"),
@@ -408,9 +414,11 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
         autofocus_runtime_state: Dict[str, Any] = params.setdefault("_autofocus_runtime_state", {})
 
         for well_name in well_list:
+            raise_if_cancel_requested(params, f"before_well:{well_name}")
             well_ctx, well_params = _derive_well_ctx_params(ctx, params, well_name)
             # deepcopy 会复制运行时状态；这里显式指回同一个对象，保证 scope=once_per_task 能跨孔生效。
             well_params["_autofocus_runtime_state"] = autofocus_runtime_state
+            well_params["_cancel_check"] = params.get("_cancel_check")
             well_result = _run_single_well_pipeline(well_ctx, well_params, cam=shared_cam)
             wells.append(
                 {
@@ -487,6 +495,7 @@ def execute_task_request(
     handoff_path: str | None = None,
     dump_json: str | None = None,
     persist_result: bool = True,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> Dict[str, Any]:
     if "task" not in raw_task_cfg:
         raise KeyError("task 文件缺少顶层字段 'task'")
@@ -496,7 +505,11 @@ def execute_task_request(
     if task_type not in {"capture", "pipeline", "compensate", "handoff"}:
         raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate / handoff")
 
+    cancel_params = {"_cancel_check": cancel_check}
+    raise_if_cancel_requested(cancel_params, "before_task")
+
     if task_type == "handoff":
+        raise_if_cancel_requested(cancel_params, "before_handoff")
         result = run_handoff_task(raw_task_cfg, handoff_path=handoff_path)
         output_path = dump_json or ((task.get("output", {}) or {}).get("result_json"))
         if persist_result:
@@ -530,13 +543,16 @@ def execute_task_request(
     objectives_root_cfg = load_structured_file(objectives_path)
     ctx["objectives_cfg"] = objectives_root_cfg
 
+    raise_if_cancel_requested(cancel_params, "before_objective")
     objective_result = ensure_objective_for_task(
         task_cfg=task,
         objectives_root_cfg=objectives_root_cfg,
         extra_context={"task_id": task.get("task_id")},
     )
+    raise_if_cancel_requested(cancel_params, "after_objective")
 
     params = build_pipeline_params(ctx)
+    params["_cancel_check"] = cancel_check
 
     autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
     autofocus_should_run, autofocus_reason = should_run_autofocus(
@@ -563,8 +579,10 @@ def execute_task_request(
     params["autofocus_decision"] = autofocus_decision
 
     if task_type == "compensate":
+        raise_if_cancel_requested(params, "before_compensate")
         result = run_compensate_task(ctx, params)
     else:
+        raise_if_cancel_requested(params, "before_pipeline")
         result = run_pipeline_task(ctx, params)
 
     result = attach_objective_result(result, objective_result)
