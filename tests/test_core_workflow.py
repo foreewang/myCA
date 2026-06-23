@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import threading
 import textwrap
 
+from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 import pytest
 
 from workflow.config_validator import (
@@ -20,6 +26,650 @@ from workflow.detect_api import normalize_detect_result
 from workflow.handoff_executor import HandoffError, _check_arrival_tolerance
 from workflow.plate_geometry import compute_well_start, parse_well_name, well_name_from_index
 from workflow.stage_reciprocation import StageReciprocationController, StageReciprocationError
+
+
+def test_api_server_hardware_guard_blocks_parallel_operations() -> None:
+    from workflow import api_server
+
+    with api_server._HARDWARE_OPERATION_LOCK:
+        api_server._HARDWARE_OWNER = None
+        api_server._CAMERA_RECORD_OWNER = None
+
+    api_server._acquire_hardware_operation("task", "task-a")
+    try:
+        with pytest.raises(HTTPException) as exc:
+            api_server._acquire_hardware_operation("stage_reciprocation", "stage_reciprocation")
+        assert exc.value.status_code == 409
+        assert exc.value.detail["error_code"] == "HARDWARE_BUSY"
+        assert exc.value.detail["message"] == "硬件正在执行其他任务，请稍后重试"
+    finally:
+        api_server._release_hardware_operation("task", "task-a")
+
+
+def test_api_server_file_logging_is_configured_once() -> None:
+    from workflow import api_server
+
+    log_path = str(api_server.API_LOG_PATH.resolve(strict=False))
+
+    api_server._configure_api_file_logging()
+    api_server._configure_api_file_logging()
+
+    api_handlers = [
+        handler for handler in api_server.logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
+    ]
+    access_handlers = [
+        handler for handler in api_server.access_logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
+    ]
+
+    assert len(api_handlers) == 1
+    assert len(access_handlers) == 1
+    assert api_server.API_LOG_PATH == api_server.PROJECT_ROOT / "logs" / "api_server.log"
+
+
+def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
+    from workflow import api_server
+
+    with api_server._HARDWARE_OPERATION_LOCK:
+        api_server._HARDWARE_OWNER = None
+        api_server._CAMERA_RECORD_OWNER = None
+
+    api_server._acquire_hardware_operation("camera_record", "recording.avi")
+    try:
+        api_server._acquire_hardware_operation("task", "allowed-task")
+        owners = api_server._current_hardware_owners()
+        assert {owner["kind"] for owner in owners} == {"camera_record", "task"}
+        assert {owner["operation_id"] for owner in owners} == {"recording.avi", "allowed-task"}
+    finally:
+        api_server._release_hardware_operation("task", "allowed-task")
+        api_server._release_hardware_operation("camera_record", "recording.avi")
+
+
+def test_api_server_hardware_guard_releases_terminal_task_record(tmp_path, monkeypatch) -> None:
+    from workflow import api_server
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    with api_server._HARDWARE_OPERATION_LOCK:
+        api_server._HARDWARE_OWNER = None
+        api_server._CAMERA_RECORD_OWNER = None
+    api_server._write_task_record(
+        {
+            "task_id": "finished-task",
+            "status": "success",
+            "updated_at": api_server._utc_now(),
+        }
+    )
+    with api_server._HARDWARE_OPERATION_LOCK:
+        api_server._HARDWARE_OWNER = {
+            "kind": "task",
+            "operation_id": "finished-task",
+            "started_at": api_server._utc_now(),
+            "sync_after_monotonic": 0.0,
+        }
+
+    assert api_server._current_hardware_owner() is None
+
+
+def test_api_server_startup_recovery_marks_active_tasks_interrupted(tmp_path, monkeypatch) -> None:
+    from workflow import api_server
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    api_server._write_task_record(
+        {
+            "task_id": "running-task",
+            "status": "running",
+            "progress": 25,
+            "updated_at": api_server._utc_now(),
+            "wells": {
+                "A1": {"status": "running", "message": "capturing"},
+                "A2": {"status": "queued", "message": "waiting"},
+                "A3": {"status": "success", "message": "completed"},
+            },
+        }
+    )
+    api_server._write_task_record(
+        {
+            "task_id": "success-task",
+            "status": "success",
+            "message": "task completed",
+            "updated_at": api_server._utc_now(),
+        }
+    )
+
+    stats = api_server._recover_interrupted_task_records()
+
+    assert stats["interrupted"] == 1
+    running = api_server._read_task_record("running-task")
+    assert running["status"] == "interrupted"
+    assert running["previous_status"] == "running"
+    assert running["progress"] == 25
+    assert running["finished_at"]
+    assert running["interrupted_at"]
+    assert "API 服务启动" in running["message"]
+    assert running["wells"]["A1"]["status"] == "interrupted"
+    assert running["wells"]["A1"]["previous_status"] == "running"
+    assert running["wells"]["A2"]["status"] == "interrupted"
+    assert running["wells"]["A3"]["status"] == "success"
+
+    success = api_server._read_task_record("success-task")
+    assert success["status"] == "success"
+    assert "previous_status" not in success
+
+
+def test_api_server_request_paths_are_normalized_under_project_roots() -> None:
+    from workflow import api_server
+
+    req = api_server.ExecuteTaskRequest(
+        task={
+            "task_id": "path-task",
+            "capture": {"save_dir": "data/captures/path-task"},
+            "scan": {"output_json": "outputs/path-task/scan_result.json"},
+            "detect": {
+                "input_scan_result_json": "data/captures/path-task/scan_result.json",
+                "output_json": "data/captures/path-task/detect_result.json",
+            },
+            "compensate": {
+                "input_detect_json": "data/captures/path-task/detect_result.json",
+                "output_json": "outputs/path-task/compensate_result.json",
+                "closed_loop": {"save_dir": "data/captures/path-task/closed_loop"},
+            },
+            "output": {
+                "result_json": "data/captures/path-task/result.json",
+                "detect_json": "outputs/path-task/result_detect.json",
+            },
+        },
+        camera_path="config/camera.yaml",
+        objectives_path="config/objectives.yaml",
+        plates_path="config/plates.yaml",
+        dump_json="data/captures/path-task/api_result.json",
+    )
+
+    normalized = api_server._normalize_execute_task_request(req)
+
+    assert normalized.camera_path == str((api_server.CONFIG_ROOT / "camera.yaml").resolve(strict=False))
+    assert normalized.objectives_path == str((api_server.CONFIG_ROOT / "objectives.yaml").resolve(strict=False))
+    assert normalized.plates_path == str((api_server.CONFIG_ROOT / "plates.yaml").resolve(strict=False))
+    assert normalized.dump_json == str((api_server.DATA_ROOT / "captures" / "path-task" / "api_result.json").resolve(strict=False))
+    assert normalized.task["capture"]["save_dir"] == str((api_server.DATA_ROOT / "captures" / "path-task").resolve(strict=False))
+    assert normalized.task["scan"]["output_json"] == str((api_server.OUTPUTS_ROOT / "path-task" / "scan_result.json").resolve(strict=False))
+    assert normalized.task["compensate"]["closed_loop"]["save_dir"] == str(
+        (api_server.DATA_ROOT / "captures" / "path-task" / "closed_loop").resolve(strict=False)
+    )
+
+
+def test_api_server_request_paths_reject_outside_project_roots() -> None:
+    from workflow import api_server
+
+    with pytest.raises(HTTPException) as config_exc:
+        api_server._normalize_execute_task_request(
+            api_server.ExecuteTaskRequest(
+                task={"task_id": "bad-config"},
+                camera_path="C:/Windows/camera.yaml",
+            )
+        )
+    assert config_exc.value.status_code == 400
+    assert config_exc.value.detail["error_code"] == "PATH_OUT_OF_ALLOWED_ROOT"
+
+    with pytest.raises(HTTPException) as output_exc:
+        api_server._normalize_execute_task_request(
+            api_server.ExecuteTaskRequest(
+                task={
+                    "task_id": "bad-output",
+                    "capture": {"save_dir": "../outside-captures"},
+                }
+            )
+        )
+    assert output_exc.value.status_code == 400
+    assert output_exc.value.detail["error_code"] == "PATH_OUT_OF_ALLOWED_ROOT"
+
+
+def test_api_server_camera_record_config_error_returns_400(monkeypatch) -> None:
+    from workflow import api_server
+
+    with api_server._HARDWARE_OPERATION_LOCK:
+        api_server._HARDWARE_OWNER = None
+        api_server._CAMERA_RECORD_OWNER = None
+
+    def fail_load_settings(_req):
+        raise ValueError("bad camera config")
+
+    monkeypatch.setattr(api_server, "_load_camera_settings_for_recording", fail_load_settings)
+
+    with pytest.raises(HTTPException) as exc:
+        api_server.start_camera_record(
+            api_server.CameraRecordStartRequest(save_path="data/camera_records/config-error.avi")
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail["error_code"] == "CAMERA_RECORD_CONFIG_INVALID"
+    assert exc.value.detail["message"] == "相机录像配置无效，请检查 camera.yaml 或请求参数"
+    assert api_server._current_hardware_owners() == []
+
+
+def test_api_server_camera_record_request_rejects_invalid_ranges() -> None:
+    from workflow import api_server
+
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(fps=0)
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(bitrate_kbps=0)
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(timeout_ms=-1)
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(device_index=-1)
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(exposure_us=0)
+    with pytest.raises(ValidationError):
+        api_server.CameraRecordStartRequest(gain=-0.1)
+
+
+def test_api_server_request_validation_error_returns_public_error() -> None:
+    from workflow import api_server
+
+    class RequestStub:
+        class UrlStub:
+            path = "/api/camera/record/start"
+
+        url = UrlStub()
+
+    response = asyncio.run(
+        api_server._request_validation_exception_handler(
+            RequestStub(),
+            RequestValidationError(
+                [{"type": "greater_than", "loc": ("body", "fps"), "msg": "Input should be greater than 0"}],
+                body={"save_path": "data/camera_records/invalid-fps.avi", "fps": 0},
+            ),
+        )
+    )
+
+    assert response.status_code == 422
+    assert json.loads(response.body)["detail"] == {
+        "error_code": "REQUEST_VALIDATION_FAILED",
+        "message": "请求参数不合法",
+    }
+
+
+def test_api_server_http_error_handler_sanitizes_plain_detail() -> None:
+    from workflow import api_server
+
+    class RequestStub:
+        class UrlStub:
+            path = "/missing"
+
+        url = UrlStub()
+
+    response = asyncio.run(
+        api_server._http_exception_handler(
+            RequestStub(),
+            api_server.HTTPException(status_code=404, detail="C:/secret/config.yaml"),
+        )
+    )
+
+    assert response.status_code == 404
+    assert json.loads(response.body)["detail"] == {
+        "error_code": "HTTP_404",
+        "message": "请求的资源不存在",
+    }
+
+
+def test_api_server_stage_reciprocation_request_rejects_invalid_ranges() -> None:
+    from workflow import api_server
+
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(profile_vel=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(profile_acc=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(profile_dec=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(poll_s=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(move_timeout_s=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(max_cycles=0)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(x_min=10, x_max=10)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(safety_margin=10_000_000)
+    with pytest.raises(ValidationError):
+        api_server.StageReciprocationStartRequest(point_a_x=999_999_999)
+
+
+def test_api_server_cancel_task_marks_record_and_sets_event(tmp_path, monkeypatch) -> None:
+    from workflow import api_server
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    cancel_event = threading.Event()
+    with api_server._TASK_CANCEL_LOCK:
+        api_server._TASK_CANCEL_EVENTS.clear()
+    api_server._register_task_cancel_event("cancel-me", cancel_event)
+    api_server._write_task_record(
+        {
+            "task_id": "cancel-me",
+            "status": "running",
+            "progress": 40,
+            "updated_at": api_server._utc_now(),
+        }
+    )
+
+    result = api_server.cancel_task("cancel-me")
+
+    assert result["status"] == "cancel_requested"
+    assert result["cancel_requested"] is True
+    assert cancel_event.is_set()
+    record = api_server._read_task_record("cancel-me")
+    assert record["status"] == "running"
+    assert record["cancel_requested"] is True
+    assert record["cancel_requested_at"]
+
+    api_server._unregister_task_cancel_event("cancel-me")
+
+
+def test_api_server_run_task_async_writes_canceled_record(tmp_path, monkeypatch) -> None:
+    from workflow import api_server
+    from workflow.task_control import TaskCanceled
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    task = {"task_id": "worker-cancel", "task_type": "capture"}
+    req = api_server.ExecuteTaskRequest(task=task)
+    api_server._write_task_record(api_server._build_accepted_record(task, None, True))
+
+    def fake_execute_task_request(*_args, **_kwargs):
+        raise TaskCanceled("operator canceled")
+
+    monkeypatch.setattr(api_server, "execute_task_request", fake_execute_task_request)
+
+    api_server._run_task_async(task, req, threading.Event())
+
+    record = api_server._read_task_record("worker-cancel")
+    assert record["status"] == "canceled"
+    assert record["cancel_requested"] is True
+    assert record["canceled_at"]
+    assert record["cancel_reason"] == "operator canceled"
+
+
+def test_scan_executor_checks_cancel_before_stage_move() -> None:
+    from workflow import scan_executor
+    from workflow.task_control import TaskCanceled
+
+    params = {
+        "task_id": "scan-cancel",
+        "task_type": "capture",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "motion": {},
+        "_cancel_check": lambda: True,
+    }
+    plan = {
+        "points": [
+            {
+                "index": 1,
+                "row_index": 0,
+                "col_index": 0,
+                "stage_x_target": 1,
+                "stage_y_target": 2,
+            }
+        ],
+        "reference": {},
+        "scan_config": {},
+    }
+
+    with pytest.raises(TaskCanceled):
+        scan_executor.execute_scan_capture({"plate": {}}, params, plan)
+
+
+def test_detect_executor_checks_cancel_before_image_detection() -> None:
+    from workflow import detect_executor
+    from workflow.task_control import TaskCanceled
+
+    scan_result = {
+        "scan_config": {"fov_mm": {"width": 1.0, "height": 1.0}},
+        "captures": [
+            {
+                "index": 1,
+                "capture_result": {"saved_path": "not-read-before-cancel.bmp"},
+            }
+        ],
+    }
+    params = {
+        "task_id": "detect-cancel",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "_cancel_check": lambda: True,
+    }
+
+    with pytest.raises(TaskCanceled):
+        detect_executor.execute_detect_on_scan_result({"task": {}}, params, scan_result)
+
+
+def test_compensate_executor_checks_cancel_before_selection() -> None:
+    from workflow import compensate_executor
+    from workflow.task_control import TaskCanceled
+
+    params = {
+        "task_id": "compensate-cancel",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "_cancel_check": lambda: True,
+    }
+
+    with pytest.raises(TaskCanceled):
+        compensate_executor.execute_compensate_on_detect_result({}, params, {"images": []})
+
+
+def test_stage_executor_move_uses_timeout_and_arrival_tolerance(monkeypatch) -> None:
+    from workflow import stage_executor
+
+    class FakeClient:
+        events = []
+
+        REG_CURRENT_POS = 968
+        REG_CMD_POS = 966
+        REG_TARGET_POS = 999
+        REG_PROFILE_VEL_HIGH = 1016
+        REG_PROFILE_ACC_HIGH = 1020
+        REG_PROFILE_DEC_HIGH = 1022
+        CMD_ENABLE_OPERATION = 0x0F
+        STAT_FAULT = 0x0008
+
+        def __init__(self, *args, **kwargs):
+            self.positions = {1: 0, 2: 0}
+            self.targets = {1: 0, 2: 0}
+            self.quick_stops = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+        def _read_32bit(self, slave, reg):
+            if reg == self.REG_CMD_POS:
+                return self.targets[slave]
+            return self.positions[slave]
+
+        def _read_statusword(self, _slave):
+            return 4
+
+        def _write_32bit(self, slave, reg, value):
+            if reg == self.REG_TARGET_POS:
+                self.targets[slave] = int(value)
+                FakeClient.events.append(("write_target", slave, int(value)))
+            else:
+                FakeClient.events.append(("write_param", slave, reg, int(value)))
+            return True
+
+        def _write_controlword(self, slave, value):
+            FakeClient.events.append(("controlword", slave, int(value)))
+            if int(value) == (self.CMD_ENABLE_OPERATION | 0x10):
+                self.positions[slave] = self.targets[slave]
+            return True
+
+        def _restore_enabled_state(self, slave):
+            FakeClient.events.append(("restore", slave))
+            return True
+
+        def quick_stop(self, slave):
+            self.quick_stops.append(slave)
+            FakeClient.events.append(("quick_stop", slave))
+            return True
+
+    class FakeMotor:
+        MODE_PROFILE_POSITION = 0x01
+
+        def __init__(self, client, slave):
+            self.client = client
+            self.slave = slave
+
+        def _ensure_mode_and_enable(self, target_mode, auto_enable=True):
+            return target_mode == self.MODE_PROFILE_POSITION and auto_enable is True
+
+    monkeypatch.setattr(stage_executor, "ModbusRTUClient", FakeClient)
+    monkeypatch.setattr(stage_executor, "MotorManager", FakeMotor)
+
+    result = stage_executor.move_to_absolute(
+        port="COM3",
+        x_target=100,
+        y_target=200,
+        profile_vel=10,
+        profile_acc=20,
+        profile_dec=30,
+        settle_s=0,
+        timeout_s=7.5,
+        arrival_tolerance_pulse=0,
+        stage_limits={
+            "enabled": True,
+            "x_min": 0,
+            "x_max": 1000,
+            "y_min": 0,
+            "y_max": 1000,
+            "safety_margin": 0,
+        },
+    )
+
+    assert result["err_to_target"] == {"x": 0, "y": 0}
+    assert result["motion_params"]["timeout_s"] == 7.5
+    assert result["motion_params"]["move_mode"] == "simultaneous_pp"
+    first_trigger_index = next(
+        index
+        for index, event in enumerate(FakeClient.events)
+        if event == ("controlword", 1, 0x1F) or event == ("controlword", 2, 0x1F)
+    )
+    assert ("write_target", 1, 100) in FakeClient.events[:first_trigger_index]
+    assert ("write_target", 2, 200) in FakeClient.events[:first_trigger_index]
+
+
+def test_stage_executor_rejects_target_outside_stage_limits(monkeypatch) -> None:
+    from workflow import stage_executor
+
+    class ShouldNotOpenClient:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("client should not be opened for an out-of-range target")
+
+    monkeypatch.setattr(stage_executor, "ModbusRTUClient", ShouldNotOpenClient)
+
+    with pytest.raises(stage_executor.StageMotionError, match="outside safe range"):
+        stage_executor.move_to_absolute(
+            port="COM3",
+            x_target=2000,
+            y_target=100,
+            profile_vel=10,
+            profile_acc=10,
+            profile_dec=10,
+            settle_s=0,
+            stage_limits={
+                "enabled": True,
+                "x_min": 0,
+                "x_max": 1000,
+                "y_min": 0,
+                "y_max": 1000,
+                "safety_margin": 0,
+            },
+        )
+
+
+def test_stage_executor_quick_stops_xy_when_axis_move_fails(monkeypatch) -> None:
+    from workflow import stage_executor
+
+    class FakeClient:
+        last_instance = None
+        fail_slave = 2
+        REG_CURRENT_POS = 968
+        REG_CMD_POS = 966
+        REG_TARGET_POS = 999
+        REG_PROFILE_VEL_HIGH = 1016
+        REG_PROFILE_ACC_HIGH = 1020
+        REG_PROFILE_DEC_HIGH = 1022
+        CMD_ENABLE_OPERATION = 0x0F
+        STAT_FAULT = 0x0008
+
+        def __init__(self, *args, **kwargs):
+            self.positions = {1: 0, 2: 0}
+            self.targets = {1: 0, 2: 0}
+            self.quick_stops = []
+            FakeClient.last_instance = self
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+        def _read_32bit(self, slave, reg):
+            if reg == self.REG_CMD_POS:
+                return self.targets[slave]
+            return self.positions[slave]
+
+        def _read_statusword(self, _slave):
+            return 4
+
+        def _write_32bit(self, slave, reg, value):
+            if slave == self.fail_slave and reg == self.REG_TARGET_POS:
+                return False
+            if reg == self.REG_TARGET_POS:
+                self.targets[slave] = int(value)
+            return True
+
+        def _write_controlword(self, slave, value):
+            if int(value) == (self.CMD_ENABLE_OPERATION | 0x10):
+                self.positions[slave] = self.targets[slave]
+            return True
+
+        def _restore_enabled_state(self, _slave):
+            return True
+
+        def quick_stop(self, slave):
+            self.quick_stops.append(slave)
+            return True
+
+    class FakeMotor:
+        MODE_PROFILE_POSITION = 0x01
+
+        def __init__(self, client, slave):
+            self.client = client
+            self.slave = slave
+
+        def _ensure_mode_and_enable(self, target_mode, auto_enable=True):
+            return target_mode == self.MODE_PROFILE_POSITION and auto_enable is True
+
+    monkeypatch.setattr(stage_executor, "ModbusRTUClient", FakeClient)
+    monkeypatch.setattr(stage_executor, "MotorManager", FakeMotor)
+
+    with pytest.raises(stage_executor.StageMotionError, match="y axis failed to set target position"):
+        stage_executor.move_to_absolute(
+            port="COM3",
+            x_target=100,
+            y_target=200,
+            profile_vel=10,
+            profile_acc=10,
+            profile_dec=10,
+            settle_s=0,
+        )
+
+    assert FakeClient.last_instance is not None
+    assert FakeClient.last_instance.quick_stops == [1, 2]
 
 
 def test_well_name_round_trip_supports_multi_letter_rows() -> None:
@@ -153,6 +803,134 @@ def test_stage_reciprocation_rejects_invalid_limits() -> None:
                 "x_max": 10,
             }
         )
+
+
+def test_handoff_executor_uses_stage_executor_move_entry(monkeypatch) -> None:
+    from workflow import handoff_executor
+
+    calls = []
+
+    def fake_move_to_absolute(**kwargs):
+        calls.append(kwargs)
+        return {
+            "before": {
+                "x": {"current_pos": 0},
+                "y": {"current_pos": 0},
+            },
+            "after": {
+                "x": {"current_pos": kwargs["x_target"], "target_pos": kwargs["x_target"]},
+                "y": {"current_pos": kwargs["y_target"], "target_pos": kwargs["y_target"]},
+            },
+            "err_to_target": {"x": 0, "y": 0},
+            "motion_params": {"move_mode": "simultaneous_pp"},
+        }
+
+    monkeypatch.setattr(handoff_executor, "move_to_absolute", fake_move_to_absolute)
+
+    result = handoff_executor.execute_handoff_task(
+        {
+            "task_id": "handoff-task",
+            "plate_type": "24-well",
+            "handoff": {"action": "load_in"},
+        },
+        {
+            "handoff": {
+                "hardware": {
+                    "modbus": {"port": "COM3", "baudrate": 115200},
+                    "x_axis": {"slave": 1},
+                    "y_axis": {"slave": 2},
+                },
+                "points": {
+                    "robot_exchange": {
+                        "x": 100,
+                        "y": 200,
+                        "profile_vel": 10,
+                        "profile_acc": 20,
+                        "profile_dec": 30,
+                        "settle_s": 0,
+                        "timeout_s": 5,
+                        "poll_s": 0.01,
+                        "arrival_tolerance_pulse": 3,
+                    },
+                },
+                "actions": {
+                    "load_in": {
+                        "point": "robot_exchange",
+                        "ready_state": "ready_for_load",
+                    },
+                },
+            },
+        },
+    )
+
+    assert result["status"] == "success"
+    assert len(calls) == 1
+    assert calls[0]["port"] == "COM3"
+    assert calls[0]["x_target"] == 100
+    assert calls[0]["y_target"] == 200
+    assert calls[0]["arrival_tolerance_pulse"] == 3
+    assert calls[0]["poll_s"] == 0.01
+    assert result["move_result"]["motion_params"]["move_mode"] == "simultaneous_pp"
+
+
+def test_stage_reciprocation_move_target_uses_stage_executor_entry(monkeypatch) -> None:
+    from workflow import stage_reciprocation
+
+    calls = []
+
+    def fake_move_to_absolute(**kwargs):
+        calls.append(kwargs)
+        kwargs["progress_callback"]({"x": 11, "y": 22})
+        return {
+            "before": {
+                "x": {"current_pos": 0},
+                "y": {"current_pos": 0},
+            },
+            "after": {
+                "x": {"current_pos": kwargs["x_target"], "target_pos": kwargs["x_target"]},
+                "y": {"current_pos": kwargs["y_target"], "target_pos": kwargs["y_target"]},
+            },
+            "err_to_target": {"x": 0, "y": 0},
+            "motion_params": {"move_mode": "simultaneous_pp"},
+        }
+
+    monkeypatch.setattr(stage_reciprocation, "move_to_absolute", fake_move_to_absolute)
+
+    controller = StageReciprocationController()
+    cfg = {
+        "port": "COM3",
+        "baudrate": 115200,
+        "x_slave": 1,
+        "y_slave": 2,
+        "profile_vel": 10,
+        "profile_acc": 20,
+        "profile_dec": 30,
+        "settle_s": 0,
+        "move_timeout_s": 5,
+        "poll_s": 0.01,
+        "arrival_tolerance": 3,
+        "limits": {
+            "enabled": True,
+            "x_min": 0,
+            "x_max": 1000,
+            "y_min": 0,
+            "y_max": 1000,
+            "safety_margin": 0,
+        },
+    }
+
+    move = controller._move_target({"well_name": "B2", "x": 100, "y": 200}, cfg, cycle=1)
+
+    assert len(calls) == 1
+    assert calls[0]["stop_event"] is controller._stop_event
+    assert calls[0]["progress_callback"] == controller._update_current_pos
+    assert calls[0]["stage_limits"] == cfg["limits"]
+    assert calls[0]["x_target"] == 100
+    assert calls[0]["y_target"] == 200
+    assert move["motion_params"]["move_mode"] == "simultaneous_pp"
+    status = controller.status()
+    assert status["last_move"]["target"]["well_name"] == "B2"
+    assert status["current_pos"] == {"x": 100, "y": 200}
 
 
 def test_project_plates_config_passes_machine_validation() -> None:
