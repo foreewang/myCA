@@ -239,6 +239,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 baudrate=int(motion.get("baudrate", 115200)),
                 settle_s=float(params["settle_s"]),
                 timeout_s=float(motion.get("timeout_s", 120.0)),
+                poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
                 arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
                 stage_limits=ctx["plate"].get("stage_limits"),
             )
