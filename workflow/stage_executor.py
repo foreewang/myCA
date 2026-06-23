@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
-from typing import Any, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping
 
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient
@@ -224,16 +225,30 @@ def _wait_xy_arrival(
     poll_s: float,
     monitor_tolerance: int,
     stage_limits: Mapping[str, Any] | None,
-) -> Dict[str, int]:
+    stop_event: threading.Event | None = None,
+    progress_callback: Callable[[Dict[str, int]], None] | None = None,
+) -> Dict[str, Any]:
     deadline = time.monotonic() + timeout_s
     poll_s = max(0.02, float(poll_s))
     last_pos = _snapshot_positions(x_motor, y_motor)
     while True:
+        if stop_event is not None and stop_event.is_set():
+            _quick_stop_xy(x_motor, y_motor)
+            return {
+                "current": last_pos,
+                "stopped_by_request": True,
+            }
+
         current = _snapshot_positions(x_motor, y_motor)
         last_pos = current
         _check_current_within_hard_limits(current=current, stage_limits=stage_limits)
+        if progress_callback is not None:
+            progress_callback(dict(current))
         if abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance:
-            return current
+            return {
+                "current": current,
+                "stopped_by_request": False,
+            }
         _check_axis_fault(x_motor, "x")
         _check_axis_fault(y_motor, "y")
         if time.monotonic() >= deadline:
@@ -278,6 +293,8 @@ def move_to_absolute(
     poll_s: float = 0.05,
     arrival_tolerance_pulse: int | None = None,
     stage_limits: Mapping[str, Any] | None = None,
+    stop_event: threading.Event | None = None,
+    progress_callback: Callable[[Dict[str, int]], None] | None = None,
 ) -> Dict[str, Any]:
     """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
     port = str(port or "").strip()
@@ -339,7 +356,7 @@ def move_to_absolute(
             _trigger_axis_pp(x_motor, axis_name="x")
             _trigger_axis_pp(y_motor, axis_name="y")
 
-            _wait_xy_arrival(
+            wait_result = _wait_xy_arrival(
                 x_motor=x_motor,
                 y_motor=y_motor,
                 x_target=x_target,
@@ -348,7 +365,38 @@ def move_to_absolute(
                 poll_s=poll_s,
                 monitor_tolerance=monitor_tolerance,
                 stage_limits=stage_limits,
+                stop_event=stop_event,
+                progress_callback=progress_callback,
             )
+            if wait_result.get("stopped_by_request"):
+                current = dict(wait_result.get("current") or {})
+                return {
+                    "target": {"x": x_target, "y": y_target},
+                    "before": before,
+                    "after": {
+                        "x": {"axis": "x", "slave": x_slave, "current_pos": current.get("x"), "statusword": None},
+                        "y": {"axis": "y", "slave": y_slave, "current_pos": current.get("y"), "statusword": None},
+                    },
+                    "err_to_target": {
+                        "x": None if current.get("x") is None else int(current["x"]) - x_target,
+                        "y": None if current.get("y") is None else int(current["y"]) - y_target,
+                    },
+                    "stopped_by_request": True,
+                    "motion_params": {
+                        "port": port,
+                        "baudrate": baudrate,
+                        "x_slave": x_slave,
+                        "y_slave": y_slave,
+                        "profile_vel": profile_vel,
+                        "profile_acc": profile_acc,
+                        "profile_dec": profile_dec,
+                        "settle_s": settle_s,
+                        "timeout_s": timeout_s,
+                        "poll_s": poll_s,
+                        "arrival_tolerance_pulse": arrival_tolerance_pulse,
+                        "move_mode": "simultaneous_pp",
+                    },
+                }
             _finish_axis_pp(x_motor, axis_name="x")
             _finish_axis_pp(y_motor, axis_name="y")
 
@@ -413,6 +461,8 @@ def move_to_absolute_with_approach(
     poll_s: float = 0.05,
     arrival_tolerance_pulse: int | None = None,
     stage_limits: Mapping[str, Any] | None = None,
+    stop_event: threading.Event | None = None,
+    progress_callback: Callable[[Dict[str, int]], None] | None = None,
     approach_cfg: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Move to a target using an optional fixed-direction final approach."""
@@ -433,6 +483,8 @@ def move_to_absolute_with_approach(
             poll_s=poll_s,
             arrival_tolerance_pulse=arrival_tolerance_pulse,
             stage_limits=stage_limits,
+            stop_event=stop_event,
+            progress_callback=progress_callback,
         )
 
     x_direction = int(cfg.get("x_direction", cfg.get("direction", 1)))
@@ -476,7 +528,23 @@ def move_to_absolute_with_approach(
         poll_s=poll_s,
         arrival_tolerance_pulse=arrival_tolerance_pulse,
         stage_limits=stage_limits,
+        stop_event=stop_event,
+        progress_callback=progress_callback,
     )
+    if pre_move.get("stopped_by_request"):
+        return {
+            **pre_move,
+            "approach": {
+                "enabled": True,
+                "x_direction": x_direction,
+                "y_direction": y_direction,
+                "x_margin_pulse": x_margin,
+                "y_margin_pulse": y_margin,
+                "pre_target": {"x": pre_x, "y": pre_y},
+                "pre_move": pre_move,
+                "final_move": None,
+            },
+        }
     final_move = move_to_absolute(
         port=port,
         x_target=x_target,
@@ -492,6 +560,8 @@ def move_to_absolute_with_approach(
         poll_s=poll_s,
         arrival_tolerance_pulse=arrival_tolerance_pulse,
         stage_limits=stage_limits,
+        stop_event=stop_event,
+        progress_callback=progress_callback,
     )
 
     return {
