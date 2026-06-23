@@ -65,6 +65,13 @@ def _get_runtime_guard(plate: Dict[str, Any]) -> Dict[str, Any]:
         "abort_on_motion_failure": bool(cfg.get("abort_on_motion_failure", True)),
     }
 
+
+def _stage_arrival_tolerance(plate: Dict[str, Any]) -> int | None:
+    guard = _get_runtime_guard(plate)
+    if not guard["enabled"] or not guard["abort_on_motion_failure"]:
+        return None
+    return int(guard["max_err_to_target_pulse"])
+
 def _axis_pos(motion_result: Dict[str, Any], phase: str, axis: str) -> int:
     return int(motion_result[phase][axis]["current_pos"])
 
@@ -231,6 +238,9 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 y_slave=int(motion.get("y_slave", 2)),
                 baudrate=int(motion.get("baudrate", 115200)),
                 settle_s=float(params["settle_s"]),
+                timeout_s=float(motion.get("timeout_s", 120.0)),
+                arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
+                stage_limits=ctx["plate"].get("stage_limits"),
             )
 
             _check_motion_guard(ctx["plate"], point, motion_result)
