@@ -1,56 +1,133 @@
-"""
-位移台执行器
-输入是目标坐标，
-输出是这次运动的执行结果
-"""
-
 from __future__ import annotations
 
-import sys
+import logging
 import time
-from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict, Mapping
 
-# 约定项目根目录为当前脚本所在目录的上两级
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MOTION_DIR = PROJECT_ROOT / "devices" / "motion"
+from devices.motion.MotorManager import MotorManager
+from devices.motion.modbus import ModbusRTUClient
 
-# 为兼容“直接运行脚本”的场景，将底层运动控制模块目录加入导入路径
-if str(MOTION_DIR) not in sys.path:
-    sys.path.insert(0, str(MOTION_DIR))
+logger = logging.getLogger(__name__)
 
-from modbus import ModbusRTUClient  # type: ignore
-from MotorManager import MotorManager  # type: ignore
+
+class StageMotionError(RuntimeError):
+    """Raised when an XY stage move cannot be completed safely."""
+
+
+def _positive_int(value: Any, name: str) -> int:
+    try:
+        number = int(value)
+    except Exception as exc:
+        raise StageMotionError(f"{name} must be an integer") from exc
+    if number <= 0:
+        raise StageMotionError(f"{name} must be positive")
+    return number
+
+
+def _non_negative_float(value: Any, name: str) -> float:
+    try:
+        number = float(value)
+    except Exception as exc:
+        raise StageMotionError(f"{name} must be a number") from exc
+    if number < 0:
+        raise StageMotionError(f"{name} must be non-negative")
+    return number
+
+
+def _positive_float(value: Any, name: str) -> float:
+    number = _non_negative_float(value, name)
+    if number <= 0:
+        raise StageMotionError(f"{name} must be positive")
+    return number
+
+
+def _normalize_stage_limits(stage_limits: Mapping[str, Any] | None) -> Dict[str, Any]:
+    cfg = dict(stage_limits or {})
+    enabled = bool(cfg.get("enabled", False))
+    if not enabled:
+        return {"enabled": False}
+
+    required = ("x_min", "x_max", "y_min", "y_max")
+    missing = [key for key in required if cfg.get(key) is None]
+    if missing:
+        raise StageMotionError(f"stage_limits missing required field(s): {', '.join(missing)}")
+
+    limits = {
+        "enabled": True,
+        "x_min": int(cfg["x_min"]),
+        "x_max": int(cfg["x_max"]),
+        "y_min": int(cfg["y_min"]),
+        "y_max": int(cfg["y_max"]),
+        "safety_margin": int(cfg.get("safety_margin", 0)),
+    }
+    if limits["x_min"] >= limits["x_max"] or limits["y_min"] >= limits["y_max"]:
+        raise StageMotionError("stage_limits min must be smaller than max")
+    if limits["safety_margin"] < 0:
+        raise StageMotionError("stage_limits safety_margin must be non-negative")
+    return limits
+
+
+def _safe_bounds(limits: Mapping[str, Any], axis: str) -> tuple[int, int]:
+    margin = int(limits.get("safety_margin", 0))
+    return int(limits[f"{axis}_min"]) + margin, int(limits[f"{axis}_max"]) - margin
+
+
+def _check_target_in_stage_limits(
+    *,
+    x_target: int,
+    y_target: int,
+    stage_limits: Mapping[str, Any] | None,
+    label: str,
+) -> None:
+    limits = _normalize_stage_limits(stage_limits)
+    if not limits["enabled"]:
+        return
+
+    x_lo, x_hi = _safe_bounds(limits, "x")
+    y_lo, y_hi = _safe_bounds(limits, "y")
+    if x_lo > x_hi or y_lo > y_hi:
+        raise StageMotionError("stage_limits safety_margin leaves no valid travel range")
+    if not (x_lo <= int(x_target) <= x_hi):
+        raise StageMotionError(f"{label}.x={int(x_target)} is outside safe range [{x_lo}, {x_hi}]")
+    if not (y_lo <= int(y_target) <= y_hi):
+        raise StageMotionError(f"{label}.y={int(y_target)} is outside safe range [{y_lo}, {y_hi}]")
+
+
+def _require_axis_position(snapshot: Mapping[str, Any], axis_name: str) -> int:
+    pos = snapshot.get("current_pos")
+    if pos is None:
+        raise StageMotionError(f"failed to read {axis_name} current position")
+    return int(pos)
+
+
+def _check_arrival_tolerance(
+    *,
+    err_to_target: Mapping[str, int],
+    arrival_tolerance_pulse: int | None,
+) -> None:
+    if arrival_tolerance_pulse is None:
+        return
+    tolerance = int(arrival_tolerance_pulse)
+    if tolerance < 0:
+        raise StageMotionError("arrival_tolerance_pulse must be non-negative")
+    for axis in ("x", "y"):
+        err = int(err_to_target[axis])
+        if abs(err) > tolerance:
+            raise StageMotionError(f"{axis} arrival error is too large: err={err}, tolerance={tolerance}")
+
+
+def _quick_stop_xy(x_motor: MotorManager | None, y_motor: MotorManager | None) -> None:
+    for axis_name, motor in (("x", x_motor), ("y", y_motor)):
+        if motor is None:
+            continue
+        try:
+            if not motor.client.quick_stop(motor.slave):
+                logger.warning("quick stop returned false for %s axis slave=%s", axis_name, motor.slave)
+        except Exception:
+            logger.exception("quick stop failed for %s axis slave=%s", axis_name, motor.slave)
 
 
 def snapshot_axis(motor: MotorManager, axis_name: str) -> Dict[str, Any]:
-    """
-    读取单个轴的当前位置和状态字快照。
-
-    参数
-    ----
-    motor : MotorManager
-        对应某个轴的电机管理对象。
-    axis_name : str
-        轴名称标记，通常为 "x" 或 "y"。
-
-    返回
-    ----
-    Dict[str, Any]
-        当前轴的快照信息，包括：
-        - axis: 轴名称
-        - slave: 从站地址
-        - current_pos: 当前实际位置
-        - statusword: 当前状态字
-
-    说明
-    ----
-    这个函数的作用不是控制运动，而是“记录当前状态”。
-    常用于：
-    - 运动前后状态对比
-    - 日志记录
-    - 排查电机是否到位、是否有异常状态
-    """
     pos = motor.client._read_32bit(motor.slave, motor.client.REG_CURRENT_POS)
     sw = motor.client._read_statusword(motor.slave)
     return {
@@ -62,26 +139,6 @@ def snapshot_axis(motor: MotorManager, axis_name: str) -> Dict[str, Any]:
 
 
 def snapshot_xy(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, Any]:
-    """
-    同时读取 X/Y 两个轴的状态快照。
-
-    参数
-    ----
-    x_motor : MotorManager
-        X 轴电机对象。
-    y_motor : MotorManager
-        Y 轴电机对象。
-
-    返回
-    ----
-    Dict[str, Any]
-        包含 x 和 y 两个轴当前状态的字典。
-
-    说明
-    ----
-    这是一个组合函数，用于把双轴状态统一打包，
-    方便在运动前后做整体对比。
-    """
     return {
         "x": snapshot_axis(x_motor, "x"),
         "y": snapshot_axis(y_motor, "y"),
@@ -100,106 +157,103 @@ def move_to_absolute(
     y_slave: int = 2,
     baudrate: int = 115200,
     settle_s: float = 0.8,
+    timeout_s: float = 120.0,
+    arrival_tolerance_pulse: int | None = None,
+    stage_limits: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """
-    控制 X/Y 两个轴移动到指定绝对位置，并返回运动结果。
+    """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
+    port = str(port or "").strip()
+    if not port:
+        raise StageMotionError("port must not be empty")
 
-    参数
-    ----
-    port : str
-        串口号，例如 "COM3"。
-    x_target : int
-        X 轴目标绝对位置。
-    y_target : int
-        Y 轴目标绝对位置。
-    profile_vel : int
-        轮廓速度。
-    profile_acc : int
-        轮廓加速度。
-    profile_dec : int
-        轮廓减速度。
-    x_slave : int, optional
-        X 轴从站地址，默认 1。
-    y_slave : int, optional
-        Y 轴从站地址，默认 2。
-    baudrate : int, optional
-        串口波特率，默认 115200。
-    settle_s : float, optional
-        指令下发后等待系统稳定的时间，单位秒。
+    x_target = int(x_target)
+    y_target = int(y_target)
+    profile_vel = _positive_int(profile_vel, "profile_vel")
+    profile_acc = _positive_int(profile_acc, "profile_acc")
+    profile_dec = _positive_int(profile_dec, "profile_dec")
+    x_slave = _positive_int(x_slave, "x_slave")
+    y_slave = _positive_int(y_slave, "y_slave")
+    baudrate = _positive_int(baudrate, "baudrate")
+    settle_s = _non_negative_float(settle_s, "settle_s")
+    timeout_s = _positive_float(timeout_s, "timeout_s")
+    if arrival_tolerance_pulse is not None:
+        arrival_tolerance_pulse = int(arrival_tolerance_pulse)
+        if arrival_tolerance_pulse < 0:
+            raise StageMotionError("arrival_tolerance_pulse must be non-negative")
 
-    返回
-    ----
-    Dict[str, Any]
-        本次移动的完整结果，包括：
-        - target: 目标坐标
-        - before: 运动前双轴状态
-        - move_result: 下发运动命令后的返回值
-        - after: 等待稳定后的双轴状态
-        - err_to_target: 实际位置相对目标位置的误差
+    _check_target_in_stage_limits(
+        x_target=x_target,
+        y_target=y_target,
+        stage_limits=stage_limits,
+        label="target",
+    )
 
-    处理流程
-    --------
-    1. 打开 Modbus 串口连接；
-    2. 分别创建 X/Y 轴的 MotorManager；
-    3. 记录运动前状态；
-    4. 向两个轴下发绝对位置运动命令；
-    5. 等待电机和机械系统稳定；
-    6. 再次读取运动后状态；
-    7. 计算当前位置与目标位置之间的误差；
-    8. 返回完整运动结果。
-
-    说明
-    ----
-    这个函数是上层 workflow 调用的“位移执行入口”。
-    它不负责决定应该去哪里，只负责：
-    - 接收目标位置
-    - 执行移动
-    - 返回前后状态和误差
-
-    也就是说：
-    scan_planner 决定“目标点”
-    这个函数负责“把电机移动到那个点”
-    """
+    x_motor: MotorManager | None = None
+    y_motor: MotorManager | None = None
     with ModbusRTUClient(port=port, baudrate=baudrate) as client:
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
+        try:
+            before = snapshot_xy(x_motor, y_motor)
+            _require_axis_position(before["x"], "x")
+            _require_axis_position(before["y"], "y")
 
-        # 记录运动前状态，便于后续做位置变化和状态变化对比
-        before = snapshot_xy(x_motor, y_motor)
+            x_diff = x_motor.pp_absolute_move(
+                target_pos=x_target,
+                profile_vel=profile_vel,
+                profile_acc=profile_acc,
+                profile_dec=profile_dec,
+                timeout=timeout_s,
+            )
+            if x_diff is None:
+                raise StageMotionError(f"x axis failed to move to {x_target}")
 
-        # 分别向 X/Y 轴下发绝对位置运动命令
-        x_diff = x_motor.pp_absolute_move(
-            target_pos=int(x_target),
-            profile_vel=int(profile_vel),
-            profile_acc=int(profile_acc),
-            profile_dec=int(profile_dec),
-        )
-        y_diff = y_motor.pp_absolute_move(
-            target_pos=int(y_target),
-            profile_vel=int(profile_vel),
-            profile_acc=int(profile_acc),
-            profile_dec=int(profile_dec),
-        )
+            y_diff = y_motor.pp_absolute_move(
+                target_pos=y_target,
+                profile_vel=profile_vel,
+                profile_acc=profile_acc,
+                profile_dec=profile_dec,
+                timeout=timeout_s,
+            )
+            if y_diff is None:
+                raise StageMotionError(f"y axis failed to move to {y_target}")
 
-        # 等待机械系统稳定后再读取位置，避免刚下发命令就取值导致结果不准
-        time.sleep(settle_s)
+            time.sleep(settle_s)
+            after = snapshot_xy(x_motor, y_motor)
+            after_x = _require_axis_position(after["x"], "x")
+            after_y = _require_axis_position(after["y"], "y")
 
-        # 记录运动后状态
-        after = snapshot_xy(x_motor, y_motor)
+            err_to_target = {
+                "x": after_x - x_target,
+                "y": after_y - y_target,
+            }
+            _check_arrival_tolerance(
+                err_to_target=err_to_target,
+                arrival_tolerance_pulse=arrival_tolerance_pulse,
+            )
 
-        # 计算当前位置相对于目标位置的误差
-        err_to_target = {
-            "x": int(after["x"]["current_pos"]) - int(x_target),
-            "y": int(after["y"]["current_pos"]) - int(y_target),
-        }
-
-        return {
-            "target": {"x": int(x_target), "y": int(y_target)},
-            "before": before,
-            "move_result": {"x_diff": x_diff, "y_diff": y_diff},
-            "after": after,
-            "err_to_target": err_to_target,
-        }
+            return {
+                "target": {"x": x_target, "y": y_target},
+                "before": before,
+                "move_result": {"x_diff": int(x_diff), "y_diff": int(y_diff)},
+                "after": after,
+                "err_to_target": err_to_target,
+                "motion_params": {
+                    "port": port,
+                    "baudrate": baudrate,
+                    "x_slave": x_slave,
+                    "y_slave": y_slave,
+                    "profile_vel": profile_vel,
+                    "profile_acc": profile_acc,
+                    "profile_dec": profile_dec,
+                    "settle_s": settle_s,
+                    "timeout_s": timeout_s,
+                    "arrival_tolerance_pulse": arrival_tolerance_pulse,
+                },
+            }
+        except Exception:
+            _quick_stop_xy(x_motor, y_motor)
+            raise
 
 
 def move_to_absolute_with_approach(
@@ -214,15 +268,12 @@ def move_to_absolute_with_approach(
     y_slave: int = 2,
     baudrate: int = 115200,
     settle_s: float = 0.8,
+    timeout_s: float = 120.0,
+    arrival_tolerance_pulse: int | None = None,
+    stage_limits: Mapping[str, Any] | None = None,
     approach_cfg: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Move to a target using an optional fixed-direction final approach.
-
-    The normal compensation move is a direct absolute move. When backlash matters,
-    the final arrival should come from a consistent direction so the screw gap is
-    always loaded on the same side. This helper first moves to a pre-target point,
-    then makes the final move into the requested target.
-    """
+    """Move to a target using an optional fixed-direction final approach."""
     cfg = approach_cfg or {}
     if not bool(cfg.get("enabled", False)):
         return move_to_absolute(
@@ -236,21 +287,36 @@ def move_to_absolute_with_approach(
             y_slave=y_slave,
             baudrate=baudrate,
             settle_s=settle_s,
+            timeout_s=timeout_s,
+            arrival_tolerance_pulse=arrival_tolerance_pulse,
+            stage_limits=stage_limits,
         )
 
     x_direction = int(cfg.get("x_direction", cfg.get("direction", 1)))
     y_direction = int(cfg.get("y_direction", cfg.get("direction", 1)))
     if x_direction not in (-1, 1) or y_direction not in (-1, 1):
-        raise ValueError("approach x_direction/y_direction 必须为 +1 或 -1")
+        raise StageMotionError("approach x_direction/y_direction must be +1 or -1")
 
     default_margin = int(cfg.get("margin_pulse", 0))
     x_margin = int(cfg.get("x_margin_pulse", default_margin))
     y_margin = int(cfg.get("y_margin_pulse", default_margin))
     if x_margin < 0 or y_margin < 0:
-        raise ValueError("approach margin_pulse 不能为负数")
+        raise StageMotionError("approach margin_pulse must be non-negative")
 
     pre_x = int(x_target) - x_direction * x_margin
     pre_y = int(y_target) - y_direction * y_margin
+    _check_target_in_stage_limits(
+        x_target=pre_x,
+        y_target=pre_y,
+        stage_limits=stage_limits,
+        label="approach.pre_target",
+    )
+    _check_target_in_stage_limits(
+        x_target=int(x_target),
+        y_target=int(y_target),
+        stage_limits=stage_limits,
+        label="target",
+    )
 
     pre_move = move_to_absolute(
         port=port,
@@ -263,6 +329,9 @@ def move_to_absolute_with_approach(
         y_slave=y_slave,
         baudrate=baudrate,
         settle_s=float(cfg.get("pre_settle_s", settle_s)),
+        timeout_s=timeout_s,
+        arrival_tolerance_pulse=arrival_tolerance_pulse,
+        stage_limits=stage_limits,
     )
     final_move = move_to_absolute(
         port=port,
@@ -275,6 +344,9 @@ def move_to_absolute_with_approach(
         y_slave=y_slave,
         baudrate=baudrate,
         settle_s=settle_s,
+        timeout_s=timeout_s,
+        arrival_tolerance_pulse=arrival_tolerance_pulse,
+        stage_limits=stage_limits,
     )
 
     return {
