@@ -127,6 +127,123 @@ def _quick_stop_xy(x_motor: MotorManager | None, y_motor: MotorManager | None) -
             logger.exception("quick stop failed for %s axis slave=%s", axis_name, motor.slave)
 
 
+def _ensure_xy_ready(x_motor: MotorManager, y_motor: MotorManager) -> None:
+    for axis_name, motor in (("x", x_motor), ("y", y_motor)):
+        if not motor._ensure_mode_and_enable(MotorManager.MODE_PROFILE_POSITION, True):
+            raise StageMotionError(f"{axis_name} axis cannot switch to PP mode and enable")
+
+
+def _write_axis_pp_target(
+    motor: MotorManager,
+    *,
+    target_pos: int,
+    profile_vel: int,
+    profile_acc: int,
+    profile_dec: int,
+    axis_name: str,
+) -> None:
+    client = motor.client
+    slave = motor.slave
+    if not client._write_32bit(slave, client.REG_PROFILE_VEL_HIGH, profile_vel):
+        raise StageMotionError(f"{axis_name} axis failed to set profile velocity")
+    if not client._write_32bit(slave, client.REG_PROFILE_ACC_HIGH, profile_acc):
+        raise StageMotionError(f"{axis_name} axis failed to set profile acceleration")
+    if not client._write_32bit(slave, client.REG_PROFILE_DEC_HIGH, profile_dec):
+        raise StageMotionError(f"{axis_name} axis failed to set profile deceleration")
+    if not client._write_32bit(slave, client.REG_TARGET_POS, target_pos):
+        raise StageMotionError(f"{axis_name} axis failed to set target position")
+
+
+def _trigger_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+    client = motor.client
+    slave = motor.slave
+    if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION):
+        raise StageMotionError(f"{axis_name} axis failed to clear PP trigger bit")
+    time.sleep(0.02)
+    if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10):
+        raise StageMotionError(f"{axis_name} axis failed to trigger PP move")
+
+
+def _finish_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+    client = motor.client
+    slave = motor.slave
+    if not client._restore_enabled_state(slave):
+        raise StageMotionError(f"{axis_name} axis failed to restore enabled state")
+    if not client.quick_stop(slave):
+        raise StageMotionError(f"{axis_name} axis failed to quick stop after arrival")
+
+
+def _snapshot_positions(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, int]:
+    snapshot = snapshot_xy(x_motor, y_motor)
+    return {
+        "x": _require_axis_position(snapshot["x"], "x"),
+        "y": _require_axis_position(snapshot["y"], "y"),
+    }
+
+
+def _snapshot_command_positions(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, int | None]:
+    return {
+        "x": x_motor.client._read_32bit(x_motor.slave, x_motor.client.REG_CMD_POS),
+        "y": y_motor.client._read_32bit(y_motor.slave, y_motor.client.REG_CMD_POS),
+    }
+
+
+def _check_current_within_hard_limits(
+    *,
+    current: Mapping[str, int],
+    stage_limits: Mapping[str, Any] | None,
+) -> None:
+    limits = _normalize_stage_limits(stage_limits)
+    if not limits["enabled"]:
+        return
+    if int(current["x"]) < int(limits["x_min"]) or int(current["x"]) > int(limits["x_max"]):
+        raise StageMotionError(
+            f"x current position {int(current['x'])} is outside hard range "
+            f"[{int(limits['x_min'])}, {int(limits['x_max'])}]"
+        )
+    if int(current["y"]) < int(limits["y_min"]) or int(current["y"]) > int(limits["y_max"]):
+        raise StageMotionError(
+            f"y current position {int(current['y'])} is outside hard range "
+            f"[{int(limits['y_min'])}, {int(limits['y_max'])}]"
+        )
+
+
+def _check_axis_fault(motor: MotorManager, axis_name: str) -> None:
+    status = motor.client._read_statusword(motor.slave)
+    if status is not None and bool(status & motor.client.STAT_FAULT):
+        raise StageMotionError(f"{axis_name} axis reported fault during move")
+
+
+def _wait_xy_arrival(
+    *,
+    x_motor: MotorManager,
+    y_motor: MotorManager,
+    x_target: int,
+    y_target: int,
+    timeout_s: float,
+    poll_s: float,
+    monitor_tolerance: int,
+    stage_limits: Mapping[str, Any] | None,
+) -> Dict[str, int]:
+    deadline = time.monotonic() + timeout_s
+    poll_s = max(0.02, float(poll_s))
+    last_pos = _snapshot_positions(x_motor, y_motor)
+    while True:
+        current = _snapshot_positions(x_motor, y_motor)
+        last_pos = current
+        _check_current_within_hard_limits(current=current, stage_limits=stage_limits)
+        if abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance:
+            return current
+        _check_axis_fault(x_motor, "x")
+        _check_axis_fault(y_motor, "y")
+        if time.monotonic() >= deadline:
+            raise StageMotionError(
+                "xy move timed out: "
+                f"target=({x_target},{y_target}), current=({last_pos['x']},{last_pos['y']}), timeout_s={timeout_s}"
+            )
+        time.sleep(poll_s)
+
+
 def snapshot_axis(motor: MotorManager, axis_name: str) -> Dict[str, Any]:
     pos = motor.client._read_32bit(motor.slave, motor.client.REG_CURRENT_POS)
     sw = motor.client._read_statusword(motor.slave)
@@ -158,6 +275,7 @@ def move_to_absolute(
     baudrate: int = 115200,
     settle_s: float = 0.8,
     timeout_s: float = 120.0,
+    poll_s: float = 0.05,
     arrival_tolerance_pulse: int | None = None,
     stage_limits: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
@@ -176,10 +294,12 @@ def move_to_absolute(
     baudrate = _positive_int(baudrate, "baudrate")
     settle_s = _non_negative_float(settle_s, "settle_s")
     timeout_s = _positive_float(timeout_s, "timeout_s")
+    poll_s = _positive_float(poll_s, "poll_s")
     if arrival_tolerance_pulse is not None:
         arrival_tolerance_pulse = int(arrival_tolerance_pulse)
         if arrival_tolerance_pulse < 0:
             raise StageMotionError("arrival_tolerance_pulse must be non-negative")
+    monitor_tolerance = 50 if arrival_tolerance_pulse is None else int(arrival_tolerance_pulse)
 
     _check_target_in_stage_limits(
         x_target=x_target,
@@ -198,30 +318,45 @@ def move_to_absolute(
             _require_axis_position(before["x"], "x")
             _require_axis_position(before["y"], "y")
 
-            x_diff = x_motor.pp_absolute_move(
+            _ensure_xy_ready(x_motor, y_motor)
+            _write_axis_pp_target(
+                x_motor,
                 target_pos=x_target,
                 profile_vel=profile_vel,
                 profile_acc=profile_acc,
                 profile_dec=profile_dec,
-                timeout=timeout_s,
+                axis_name="x",
             )
-            if x_diff is None:
-                raise StageMotionError(f"x axis failed to move to {x_target}")
-
-            y_diff = y_motor.pp_absolute_move(
+            _write_axis_pp_target(
+                y_motor,
                 target_pos=y_target,
                 profile_vel=profile_vel,
                 profile_acc=profile_acc,
                 profile_dec=profile_dec,
-                timeout=timeout_s,
+                axis_name="y",
             )
-            if y_diff is None:
-                raise StageMotionError(f"y axis failed to move to {y_target}")
+            time.sleep(0.02)
+            _trigger_axis_pp(x_motor, axis_name="x")
+            _trigger_axis_pp(y_motor, axis_name="y")
+
+            _wait_xy_arrival(
+                x_motor=x_motor,
+                y_motor=y_motor,
+                x_target=x_target,
+                y_target=y_target,
+                timeout_s=timeout_s,
+                poll_s=poll_s,
+                monitor_tolerance=monitor_tolerance,
+                stage_limits=stage_limits,
+            )
+            _finish_axis_pp(x_motor, axis_name="x")
+            _finish_axis_pp(y_motor, axis_name="y")
 
             time.sleep(settle_s)
             after = snapshot_xy(x_motor, y_motor)
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
+            cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
             err_to_target = {
                 "x": after_x - x_target,
@@ -235,7 +370,11 @@ def move_to_absolute(
             return {
                 "target": {"x": x_target, "y": y_target},
                 "before": before,
-                "move_result": {"x_diff": int(x_diff), "y_diff": int(y_diff)},
+                "cmd_pos": cmd_pos,
+                "move_result": {
+                    "x_diff": None if cmd_pos["x"] is None else after_x - int(cmd_pos["x"]),
+                    "y_diff": None if cmd_pos["y"] is None else after_y - int(cmd_pos["y"]),
+                },
                 "after": after,
                 "err_to_target": err_to_target,
                 "motion_params": {
@@ -248,7 +387,9 @@ def move_to_absolute(
                     "profile_dec": profile_dec,
                     "settle_s": settle_s,
                     "timeout_s": timeout_s,
+                    "poll_s": poll_s,
                     "arrival_tolerance_pulse": arrival_tolerance_pulse,
+                    "move_mode": "simultaneous_pp",
                 },
             }
         except Exception:
@@ -269,6 +410,7 @@ def move_to_absolute_with_approach(
     baudrate: int = 115200,
     settle_s: float = 0.8,
     timeout_s: float = 120.0,
+    poll_s: float = 0.05,
     arrival_tolerance_pulse: int | None = None,
     stage_limits: Mapping[str, Any] | None = None,
     approach_cfg: Dict[str, Any] | None = None,
@@ -288,6 +430,7 @@ def move_to_absolute_with_approach(
             baudrate=baudrate,
             settle_s=settle_s,
             timeout_s=timeout_s,
+            poll_s=poll_s,
             arrival_tolerance_pulse=arrival_tolerance_pulse,
             stage_limits=stage_limits,
         )
@@ -330,6 +473,7 @@ def move_to_absolute_with_approach(
         baudrate=baudrate,
         settle_s=float(cfg.get("pre_settle_s", settle_s)),
         timeout_s=timeout_s,
+        poll_s=poll_s,
         arrival_tolerance_pulse=arrival_tolerance_pulse,
         stage_limits=stage_limits,
     )
@@ -345,6 +489,7 @@ def move_to_absolute_with_approach(
         baudrate=baudrate,
         settle_s=settle_s,
         timeout_s=timeout_s,
+        poll_s=poll_s,
         arrival_tolerance_pulse=arrival_tolerance_pulse,
         stage_limits=stage_limits,
     )
