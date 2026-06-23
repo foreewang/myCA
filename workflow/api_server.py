@@ -13,9 +13,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, model_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
 from workflow.run_task import execute_task_request
@@ -51,6 +53,100 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)
+
+
+def _error_detail(error_code: str, message: str) -> Dict[str, str]:
+    return {
+        "error_code": error_code,
+        "message": message,
+    }
+
+
+def _api_error(
+    status_code: int,
+    error_code: str,
+    message: str,
+    *,
+    log_detail: str | None = None,
+    exc: BaseException | None = None,
+) -> HTTPException:
+    if exc is not None:
+        logger.exception("%s: %s", error_code, log_detail or message)
+    elif log_detail is not None:
+        logger.warning("%s: %s", error_code, log_detail)
+    return HTTPException(status_code=status_code, detail=_error_detail(error_code, message))
+
+
+def _generic_http_message(status_code: int) -> str:
+    if status_code == 400:
+        return "请求参数不合法"
+    if status_code == 401:
+        return "未认证或认证已失效"
+    if status_code == 403:
+        return "没有权限执行该操作"
+    if status_code == 404:
+        return "请求的资源不存在"
+    if status_code == 409:
+        return "请求与当前系统状态冲突"
+    if status_code == 422:
+        return "请求参数不合法"
+    if status_code >= 500:
+        return "服务内部错误，请查看本地日志或联系维护人员"
+    return "请求处理失败"
+
+
+def _is_public_error_detail(detail: Any) -> bool:
+    return (
+        isinstance(detail, dict)
+        and isinstance(detail.get("error_code"), str)
+        and isinstance(detail.get("message"), str)
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    if _is_public_error_detail(exc.detail):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
+
+    error_code = f"HTTP_{exc.status_code}"
+    logger.warning("%s: path=%s detail=%r", error_code, request.url.path, exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": _error_detail(error_code, _generic_http_message(exc.status_code))},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.warning(
+        "REQUEST_VALIDATION_FAILED: path=%s errors=%s body=%r",
+        request.url.path,
+        exc.errors(),
+        exc.body,
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": _error_detail("REQUEST_VALIDATION_FAILED", "请求参数不合法")},
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": _error_detail(
+                "INTERNAL_SERVER_ERROR",
+                "服务内部错误，请查看本地日志或联系维护人员",
+            )
+        },
+    )
 
 
 def _hardware_busy_detail(owner: Dict[str, Any]) -> str:
@@ -108,9 +204,19 @@ def _acquire_hardware_operation(kind: str, operation_id: str) -> Dict[str, Any]:
         _sync_hardware_owner_unlocked()
         if kind == "camera_record":
             if _HARDWARE_OWNER is not None:
-                raise HTTPException(status_code=409, detail=_hardware_busy_detail(_HARDWARE_OWNER))
+                raise _api_error(
+                    409,
+                    "HARDWARE_BUSY",
+                    "硬件正在执行其他任务，请稍后重试",
+                    log_detail=_hardware_busy_detail(_HARDWARE_OWNER),
+                )
             if _CAMERA_RECORD_OWNER is not None:
-                raise HTTPException(status_code=409, detail=_hardware_busy_detail(_CAMERA_RECORD_OWNER))
+                raise _api_error(
+                    409,
+                    "CAMERA_RECORD_BUSY",
+                    "相机录像已在进行中，请先停止当前录像",
+                    log_detail=_hardware_busy_detail(_CAMERA_RECORD_OWNER),
+                )
             _CAMERA_RECORD_OWNER = {
                 "kind": kind,
                 "operation_id": str(operation_id),
@@ -120,7 +226,12 @@ def _acquire_hardware_operation(kind: str, operation_id: str) -> Dict[str, Any]:
             return _public_hardware_owner(_CAMERA_RECORD_OWNER)
 
         if _HARDWARE_OWNER is not None:
-            raise HTTPException(status_code=409, detail=_hardware_busy_detail(_HARDWARE_OWNER))
+            raise _api_error(
+                409,
+                "HARDWARE_BUSY",
+                "硬件正在执行其他任务，请稍后重试",
+                log_detail=_hardware_busy_detail(_HARDWARE_OWNER),
+            )
         _HARDWARE_OWNER = {
             "kind": kind,
             "operation_id": str(operation_id),
@@ -363,7 +474,12 @@ def _resolve_allowed_path(value: Any, allowed_roots: tuple[Path, ...], field_nam
     resolved_roots = tuple(root.resolve(strict=False) for root in allowed_roots)
     if not any(_is_path_within(resolved, root) for root in resolved_roots):
         allowed = ", ".join(str(root) for root in resolved_roots)
-        raise HTTPException(status_code=400, detail=f"{field_name} 路径越界: {resolved}；允许根目录: {allowed}")
+        raise _api_error(
+            400,
+            "PATH_OUT_OF_ALLOWED_ROOT",
+            "请求路径不在允许目录内",
+            log_detail=f"{field_name} resolved={resolved} allowed={allowed}",
+        )
     return str(resolved)
 
 
@@ -480,7 +596,12 @@ def _read_task_record(task_id: str) -> Dict[str, Any]:
 def _read_task_record_unlocked(task_id: str) -> Dict[str, Any]:
     path = _task_record_path(task_id)
     if not path.exists():
-        raise HTTPException(status_code=404, detail=f"未找到任务记录: {task_id}")
+        raise _api_error(
+            404,
+            "TASK_NOT_FOUND",
+            "未找到任务记录",
+            log_detail=f"task_id={task_id} path={path}",
+        )
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -798,7 +919,14 @@ def _build_task_record(task: Dict[str, Any], result: Dict[str, Any], dump_json: 
     }
 
 
-def _build_failed_record(task: Dict[str, Any], error: str, dump_json: str | None, persist_result: bool) -> Dict[str, Any]:
+def _build_failed_record(
+    task: Dict[str, Any],
+    error: str,
+    dump_json: str | None,
+    persist_result: bool,
+    *,
+    error_code: str = "TASK_EXECUTION_FAILED",
+) -> Dict[str, Any]:
     task_id = str(task.get("task_id") or "")
     output_cfg = task.get("output", {}) or {}
     return {
@@ -821,6 +949,7 @@ def _build_failed_record(task: Dict[str, Any], error: str, dump_json: str | None
         "current_stage": None,
         "current_well": None,
         "wells": _guess_well_artifacts_from_task(task),
+        "error_code": error_code,
         "error": error,
         "request_task": task,
     }
@@ -856,7 +985,12 @@ def _build_accepted_record(task: Dict[str, Any], dump_json: str | None, persist_
 def _ensure_well_record(record: Dict[str, Any], well_name: str) -> Dict[str, Any]:
     wells = record.get("wells") or {}
     if well_name not in wells:
-        raise HTTPException(status_code=404, detail=f"任务 {record.get('task_id')} 中未找到孔位 {well_name}")
+        raise _api_error(
+            404,
+            "WELL_NOT_FOUND",
+            "未找到指定孔位记录",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
+        )
     return wells[well_name]
 
 
@@ -864,10 +998,20 @@ def _resolve_image_dir(record: Dict[str, Any], well_name: str) -> Path:
     well_record = _ensure_well_record(record, well_name)
     image_dir = well_record.get("image_dir")
     if not image_dir:
-        raise HTTPException(status_code=404, detail=f"任务 {record.get('task_id')} 的孔位 {well_name} 未记录图片目录")
+        raise _api_error(
+            404,
+            "IMAGE_DIR_NOT_RECORDED",
+            "当前孔位未记录图片目录",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
+        )
     path = Path(_resolve_output_path(image_dir, f"task.{record.get('task_id')}.wells.{well_name}.image_dir"))
     if not path.exists() or not path.is_dir():
-        raise HTTPException(status_code=404, detail=f"图片目录不存在: {path}")
+        raise _api_error(
+            404,
+            "IMAGE_DIR_NOT_FOUND",
+            "图片目录不存在",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name} path={path}",
+        )
     return path
 
 
@@ -996,7 +1140,12 @@ def _run_task_async(task: Dict[str, Any], req: ExecuteTaskRequest, cancel_event:
         logger.exception("task execution failed: %s", task_id)
         _stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
-        record = _build_failed_record(task, str(exc), req.dump_json, req.persist_result)
+        record = _build_failed_record(
+            task,
+            "任务执行失败，请查看本地日志或联系维护人员",
+            req.dump_json,
+            req.persist_result,
+        )
         _write_task_record(record)
     finally:
         _stop_monitor_thread(monitor, stop_event, monitor_started)
@@ -1034,13 +1183,24 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
         settings = _load_camera_settings_for_recording(req)
         save_path = _resolve_output_path(req.save_path, "save_path")
         if save_path is None:
-            raise HTTPException(status_code=400, detail="save_path 不能为空")
+            raise _api_error(400, "CAMERA_RECORD_SAVE_PATH_REQUIRED", "录像保存路径不能为空")
     except HTTPException:
         raise
     except (ConfigValidationError, ValueError, OSError) as exc:
-        raise HTTPException(status_code=400, detail=f"相机录像配置无效: {exc}") from exc
+        raise _api_error(
+            400,
+            "CAMERA_RECORD_CONFIG_INVALID",
+            "相机录像配置无效，请检查 camera.yaml 或请求参数",
+            log_detail=str(exc),
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"相机录像配置加载失败: {exc}") from exc
+        raise _api_error(
+            400,
+            "CAMERA_RECORD_CONFIG_LOAD_FAILED",
+            "相机录像配置加载失败",
+            log_detail=str(exc),
+            exc=exc,
+        ) from exc
 
     operation_id = str(save_path)
     _acquire_hardware_operation("camera_record", operation_id)
@@ -1062,7 +1222,13 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
         return result
     except Exception as exc:
         _release_hardware_operation("camera_record", operation_id)
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _api_error(
+            409,
+            "CAMERA_RECORD_START_FAILED",
+            "相机录像启动失败，请检查相机连接或硬件状态",
+            log_detail=f"save_path={save_path} error={exc}",
+            exc=exc,
+        ) from exc
 
 
 @app.post("/api/camera/record/stop")
@@ -1080,7 +1246,13 @@ def stop_camera_record() -> Dict[str, Any]:
             _release_hardware_operation("camera_record", str(camera_owner.get("operation_id") or ""))
         return result
     except Exception as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _api_error(
+            409,
+            "CAMERA_RECORD_STOP_FAILED",
+            "相机录像停止失败，请检查硬件状态",
+            log_detail=str(exc),
+            exc=exc,
+        ) from exc
 
 
 @app.post("/api/stage/reciprocation/start", status_code=202)
@@ -1095,7 +1267,13 @@ def start_stage_reciprocation(req: StageReciprocationStartRequest | None = None)
         return stage_reciprocation_controller.start(cfg)
     except Exception as exc:
         _release_hardware_operation("stage_reciprocation", operation_id)
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _api_error(
+            409,
+            "STAGE_RECIPROCATION_START_FAILED",
+            "位移台往复运动启动失败，请检查位移台连接或参数",
+            log_detail=str(exc),
+            exc=exc,
+        ) from exc
 
 
 @app.post("/api/stage/reciprocation/stop")
@@ -1109,7 +1287,13 @@ def stop_stage_reciprocation(req: StageReciprocationStopRequest | None = None) -
             _release_hardware_operation("stage_reciprocation", "stage_reciprocation")
         return result
     except Exception as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _api_error(
+            409,
+            "STAGE_RECIPROCATION_STOP_FAILED",
+            "位移台往复运动停止失败，请检查位移台状态",
+            log_detail=str(exc),
+            exc=exc,
+        ) from exc
 
 
 @app.get("/api/stage/reciprocation/status")
@@ -1126,12 +1310,17 @@ def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
     task_id = str(task.get("task_id") or "").strip()
     access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
     if not task_id:
-        raise HTTPException(status_code=400, detail="task.task_id 不能为空")
+        raise _api_error(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
 
     if _task_exists(task_id):
         old = _read_task_record(task_id)
         if old.get("status") in _TASK_ACTIVE_STATUSES:
-            raise HTTPException(status_code=409, detail=f"任务正在执行中: {task_id}")
+            raise _api_error(
+                409,
+                "TASK_ALREADY_RUNNING",
+                "任务正在执行中，请勿重复提交",
+                log_detail=f"task_id={task_id}",
+            )
 
     _acquire_hardware_operation("task", task_id)
     cancel_event = threading.Event()
@@ -1201,6 +1390,7 @@ def get_task_status(task_id: str) -> Dict[str, Any]:
         "finished_at": record.get("finished_at"),
         "stored_at_utc": record.get("stored_at_utc"),
         "result_json_path": record.get("result_json_path"),
+        "error_code": record.get("error_code"),
         "error": record.get("error"),
         "cancel_requested": record.get("cancel_requested", False),
         "cancel_requested_at": record.get("cancel_requested_at"),
@@ -1258,12 +1448,22 @@ def list_well_images(task_id: str, well_name: str) -> Dict[str, Any]:
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images/{filename}")
 def download_well_image(task_id: str, well_name: str, filename: str):
     if filename != Path(filename).name:
-        raise HTTPException(status_code=400, detail="非法文件名")
+        raise _api_error(
+            400,
+            "INVALID_IMAGE_FILENAME",
+            "图片文件名非法",
+            log_detail=f"task_id={task_id} well_name={well_name} filename={filename}",
+        )
     record = _read_task_record(task_id)
     image_dir = _resolve_image_dir(record, well_name)
     file_path = image_dir / filename
     if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail=f"未找到图片: {filename}")
+        raise _api_error(
+            404,
+            "IMAGE_NOT_FOUND",
+            "未找到图片",
+            log_detail=f"task_id={task_id} well_name={well_name} path={file_path}",
+        )
     media_type, _ = mimetypes.guess_type(str(file_path))
     return FileResponse(
         path=file_path,
