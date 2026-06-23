@@ -3,12 +3,11 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict
 
-from devices.motion.MotorManager import MotorManager
-from devices.motion.modbus import ModbusRTUClient
 from workflow.config_loader import load_yaml
 from workflow.plate_geometry import compute_well_start
+from workflow.stage_executor import StageMotionError, move_to_absolute
 
 
 class StageReciprocationError(RuntimeError):
@@ -16,7 +15,7 @@ class StageReciprocationError(RuntimeError):
 
 
 class StageReciprocationController:
-    """Run the stage through a fixed 24-well scan path in a background thread."""
+    """Run the stage through a fixed observation path in a background thread."""
 
     DEFAULT_PLATE_TYPE = "24-well"
     DEFAULT_SCAN_WELLS = ["B2", "B3", "B4", "C2", "C3", "C4"]
@@ -80,7 +79,7 @@ class StageReciprocationController:
                 self._status = {
                     **self._status,
                     "status": "stopping",
-                    "message": "stop requested; waiting for motor quick stop",
+                    "message": "stop requested; waiting for stage motion to stop",
                 }
             return dict(self._status)
 
@@ -168,58 +167,51 @@ class StageReciprocationController:
             raise StageReciprocationError("scan target list is empty")
 
         try:
-            with ModbusRTUClient(port=cfg["port"], baudrate=cfg["baudrate"]) as client:
-                motors = {
-                    "x": MotorManager(client, slave=cfg["x_slave"]),
-                    "y": MotorManager(client, slave=cfg["y_slave"]),
+            with self._lock:
+                self._status = {
+                    **self._status,
+                    "status": "running",
+                    "message": "24-well stage scan running",
+                    "cycle": cycles,
+                    "target_count": len(targets),
+                    "completed_targets": 0,
                 }
-                self._ensure_xy_ready(motors)
-                self._validate_current_within_hard_limits(self._snapshot_positions(motors), cfg)
 
-                with self._lock:
-                    self._status = {
-                        **self._status,
-                        "status": "running",
-                        "message": "24-well stage scan running",
-                        "cycle": cycles,
-                        "target_count": len(targets),
-                        "completed_targets": 0,
-                        "current_pos": self._snapshot_positions(motors),
-                    }
+            while not self._stop_event.is_set():
+                target = targets[target_index]
+                move = self._move_target(target, cfg, cycles)
+                if move.get("stopped_by_request") or self._stop_event.is_set():
+                    break
 
-                while not self._stop_event.is_set():
-                    target = targets[target_index]
-                    move = self._move_xy_interruptible(motors, target, cfg, cycles)
-                    if move.get("stopped_by_request") or self._stop_event.is_set():
+                target_index += 1
+                if target_index >= len(targets):
+                    target_index = 0
+                    cycles += 1
+                    if cfg["max_cycles"] is not None and cycles >= cfg["max_cycles"]:
                         break
 
-                    target_index += 1
-                    if target_index >= len(targets):
-                        target_index = 0
-                        cycles += 1
-                        if cfg["max_cycles"] is not None and cycles >= cfg["max_cycles"]:
-                            break
-
-                    with self._lock:
-                        self._status = {
-                            **self._status,
-                            "last_move": move,
-                            "cycle": cycles,
-                            "completed_targets": cycles * len(targets) + target_index,
-                            "next_target": dict(targets[target_index]),
-                        }
-
-                self._quick_stop_motors(motors.values())
                 with self._lock:
                     self._status = {
                         **self._status,
-                        "status": "stopped",
-                        "message": "stage scan stopped",
+                        "last_move": move,
                         "cycle": cycles,
                         "completed_targets": cycles * len(targets) + target_index,
-                        "current_pos": self._snapshot_positions(motors),
-                        "stopped_at": time.time(),
+                        "next_target": dict(targets[target_index]),
                     }
+
+            with self._lock:
+                current_pos = self._current_pos_from_move(self._status.get("last_move"))
+                if current_pos is None:
+                    current_pos = self._status.get("current_pos")
+                self._status = {
+                    **self._status,
+                    "status": "stopped",
+                    "message": "stage scan stopped",
+                    "cycle": cycles,
+                    "completed_targets": cycles * len(targets) + target_index,
+                    "current_pos": current_pos,
+                    "stopped_at": time.time(),
+                }
         except Exception as exc:
             with self._lock:
                 self._status = {
@@ -230,19 +222,7 @@ class StageReciprocationController:
                     "stopped_at": time.time(),
                 }
 
-    def _ensure_xy_ready(self, motors: Dict[str, MotorManager]) -> None:
-        for axis in ("x", "y"):
-            if not motors[axis]._ensure_mode_and_enable(MotorManager.MODE_PROFILE_POSITION, True):
-                raise StageReciprocationError(f"{axis} axis cannot switch to PP mode and enable")
-
-    def _move_xy_interruptible(
-        self,
-        motors: Dict[str, MotorManager],
-        target: Dict[str, Any],
-        cfg: Dict[str, Any],
-        cycle: int,
-    ) -> Dict[str, Any]:
-        before = self._snapshot_positions(motors)
+    def _move_target(self, target: Dict[str, Any], cfg: Dict[str, Any], cycle: int) -> Dict[str, Any]:
         self._validate_target_in_safe_range(target, cfg["limits"], str(target.get("well_name") or "target"))
         with self._lock:
             self._status = {
@@ -251,124 +231,64 @@ class StageReciprocationController:
                 "message": "moving stage to scan well",
                 "cycle": cycle,
                 "target": dict(target),
-                "current_pos": before,
             }
 
-        self._ensure_xy_ready(motors)
-        self._start_axis_pp(motors["x"], int(target["x"]), cfg)
-        self._start_axis_pp(motors["y"], int(target["y"]), cfg)
-
-        deadline = time.monotonic() + float(cfg["move_timeout_s"])
-        poll_s = max(0.02, float(cfg["poll_s"]))
-        tolerance = abs(int(cfg["arrival_tolerance"]))
-        while True:
-            if self._stop_event.is_set():
-                self._quick_stop_motors(motors.values())
-                after_stop = self._snapshot_positions(motors)
-                return {
-                    "target": dict(target),
-                    "before": before,
-                    "after": after_stop,
-                    "stopped_by_request": True,
-                    "err_to_target": {
-                        "x": int(after_stop["x"] - int(target["x"])),
-                        "y": int(after_stop["y"] - int(target["y"])),
-                    },
-                }
-
-            current = self._snapshot_positions(motors)
-            self._validate_current_within_hard_limits(current, cfg)
-            with self._lock:
-                self._status = {
-                    **self._status,
-                    "current_pos": current,
-                }
-
-            if (
-                abs(current["x"] - int(target["x"])) <= tolerance
-                and abs(current["y"] - int(target["y"])) <= tolerance
-            ):
-                break
-            if time.monotonic() >= deadline:
-                self._quick_stop_motors(motors.values())
-                raise StageReciprocationError(f"move to target timed out: {target}")
-            time.sleep(poll_s)
-
-        self._finish_axis_pp(motors["x"])
-        self._finish_axis_pp(motors["y"])
-        time.sleep(max(0.0, float(cfg["settle_s"])))
-        after = self._snapshot_positions(motors)
-        return {
-            "target": dict(target),
-            "before": before,
-            "after": after,
-            "cmd_pos": self._snapshot_command_positions(motors),
-            "err_to_target": {
-                "x": int(after["x"] - int(target["x"])),
-                "y": int(after["y"] - int(target["y"])),
-            },
-        }
-
-    def _start_axis_pp(self, motor: MotorManager, target_pos: int, cfg: Dict[str, Any]) -> None:
-        client = motor.client
-        slave = motor.slave
-        if not client._write_32bit(slave, client.REG_PROFILE_VEL_HIGH, int(cfg["profile_vel"])):
-            raise StageReciprocationError(f"slave {slave} failed to set profile velocity")
-        if not client._write_32bit(slave, client.REG_PROFILE_ACC_HIGH, int(cfg["profile_acc"])):
-            raise StageReciprocationError(f"slave {slave} failed to set profile acceleration")
-        if not client._write_32bit(slave, client.REG_PROFILE_DEC_HIGH, int(cfg["profile_dec"])):
-            raise StageReciprocationError(f"slave {slave} failed to set profile deceleration")
-        if not client._write_32bit(slave, client.REG_TARGET_POS, int(target_pos)):
-            raise StageReciprocationError(f"slave {slave} failed to set target position")
-        time.sleep(0.02)
-        if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION):
-            raise StageReciprocationError(f"slave {slave} failed to clear PP trigger bit")
-        time.sleep(0.02)
-        if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10):
-            raise StageReciprocationError(f"slave {slave} failed to trigger PP move")
-
-    def _finish_axis_pp(self, motor: MotorManager) -> None:
-        client = motor.client
-        slave = motor.slave
-        if not client._restore_enabled_state(slave):
-            raise StageReciprocationError(f"slave {slave} failed to restore enabled state")
-        if not client.quick_stop(slave):
-            raise StageReciprocationError(f"slave {slave} failed to quick stop after arrival")
-
-    def _quick_stop_motors(self, motors: Iterable[MotorManager]) -> None:
-        for motor in motors:
-            try:
-                motor.vl_stop()
-            except Exception:
-                pass
-
-    def _snapshot_positions(self, motors: Dict[str, MotorManager]) -> Dict[str, int]:
-        out = {}
-        for axis in ("x", "y"):
-            pos = motors[axis].client._read_32bit(
-                motors[axis].slave,
-                motors[axis].client.REG_CURRENT_POS,
+        try:
+            move = move_to_absolute(
+                port=cfg["port"],
+                x_target=int(target["x"]),
+                y_target=int(target["y"]),
+                profile_vel=int(cfg["profile_vel"]),
+                profile_acc=int(cfg["profile_acc"]),
+                profile_dec=int(cfg["profile_dec"]),
+                x_slave=int(cfg["x_slave"]),
+                y_slave=int(cfg["y_slave"]),
+                baudrate=int(cfg["baudrate"]),
+                settle_s=float(cfg["settle_s"]),
+                timeout_s=float(cfg["move_timeout_s"]),
+                poll_s=float(cfg["poll_s"]),
+                arrival_tolerance_pulse=int(cfg["arrival_tolerance"]),
+                stage_limits=cfg["limits"],
+                stop_event=self._stop_event,
+                progress_callback=self._update_current_pos,
             )
-            if pos is None:
-                raise StageReciprocationError(f"cannot read current position for {axis} axis")
-            out[axis] = int(pos)
-        return out
+        except StageMotionError as exc:
+            raise StageReciprocationError(str(exc)) from exc
 
-    def _snapshot_command_positions(self, motors: Dict[str, MotorManager]) -> Dict[str, int | None]:
-        out = {}
-        for axis in ("x", "y"):
-            out[axis] = motors[axis].client._read_32bit(
-                motors[axis].slave,
-                motors[axis].client.REG_CMD_POS,
-            )
-        return out
+        move = dict(move)
+        move["target"] = dict(target)
+        with self._lock:
+            self._status = {
+                **self._status,
+                "last_move": move,
+                "current_pos": self._current_pos_from_move(move),
+            }
+        return move
+
+    def _update_current_pos(self, current_pos: Dict[str, int]) -> None:
+        with self._lock:
+            self._status = {
+                **self._status,
+                "current_pos": dict(current_pos),
+            }
+
+    def _current_pos_from_move(self, move: Any) -> Dict[str, int] | None:
+        if not isinstance(move, dict):
+            return None
+        after = move.get("after")
+        if not isinstance(after, dict):
+            return None
+        try:
+            return {
+                "x": int(after["x"]["current_pos"]),
+                "y": int(after["y"]["current_pos"]),
+            }
+        except Exception:
+            return None
 
     def _safe_bounds(self, limits: Dict[str, Any], axis: str) -> tuple[int, int]:
         margin = int(limits["safety_margin"])
         return int(limits[f"{axis}_min"]) + margin, int(limits[f"{axis}_max"]) - margin
-
-    def _hard_bounds(self, limits: Dict[str, Any], axis: str) -> tuple[int, int]:
-        return int(limits[f"{axis}_min"]), int(limits[f"{axis}_max"])
 
     def _validate_target_in_safe_range(self, target: Dict[str, Any], limits: Dict[str, Any], name: str) -> None:
         if not limits["enabled"]:
@@ -378,15 +298,6 @@ class StageReciprocationController:
             value = int(target[axis])
             if value < lo or value > hi:
                 raise StageReciprocationError(f"{name}.{axis}={value} is outside safe range [{lo}, {hi}]")
-
-    def _validate_current_within_hard_limits(self, positions: Dict[str, int], cfg: Dict[str, Any]) -> None:
-        limits = cfg["limits"]
-        if not limits["enabled"]:
-            return
-        for axis, pos in positions.items():
-            lo, hi = self._hard_bounds(limits, axis)
-            if int(pos) < lo or int(pos) > hi:
-                raise StageReciprocationError(f"{axis} current position {pos} is outside hard range [{lo}, {hi}]")
 
 
 stage_reciprocation_controller = StageReciprocationController()
