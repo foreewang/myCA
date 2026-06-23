@@ -10,6 +10,7 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict
 
@@ -28,10 +29,41 @@ CONFIG_ROOT = PROJECT_ROOT / "config"
 DATA_ROOT = PROJECT_ROOT / "data"
 OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
 DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
+LOG_DIR = PROJECT_ROOT / "logs"
+API_LOG_PATH = LOG_DIR / "api_server.log"
+API_LOG_MAX_BYTES = 10 * 1024 * 1024
+API_LOG_BACKUP_COUNT = 5
+API_LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 
 logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("uvicorn.error")
+
+
+def _configure_api_file_logging() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = str(API_LOG_PATH.resolve(strict=False))
+    formatter = logging.Formatter(API_LOG_FORMAT)
+
+    for target_logger in (logger, access_logger):
+        if any(getattr(handler, "_colony_api_log_path", None) == log_path for handler in target_logger.handlers):
+            continue
+        handler = RotatingFileHandler(
+            log_path,
+            maxBytes=API_LOG_MAX_BYTES,
+            backupCount=API_LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(formatter)
+        setattr(handler, "_colony_api_log_path", log_path)
+        target_logger.addHandler(handler)
+        if target_logger.getEffectiveLevel() > logging.INFO:
+            target_logger.setLevel(logging.INFO)
+
+
+_configure_api_file_logging()
+
 _TASK_RECORD_IO_LOCK = threading.RLock()
 _TASK_RECORD_REPLACE_ATTEMPTS = 200
 _TASK_RECORD_REPLACE_SLEEP_SEC = 0.05
