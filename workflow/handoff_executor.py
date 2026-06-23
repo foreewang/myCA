@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import time
-from pathlib import Path
 from typing import Any, Dict
 
-# 如果你项目里的导入路径不是这两个，请改成你本地实际路径
-from devices.motion.modbus import ModbusRTUClient
-from devices.motion.MotorManager import MotorManager
+from workflow.stage_executor import StageMotionError, move_to_absolute
 
 
 class HandoffError(RuntimeError):
@@ -56,18 +52,18 @@ def _resolve_point_cfg(root_cfg: Dict[str, Any], plate_type: str, point_name: st
         if point_name in override_map:
             point_cfg.update(override_map.get(point_name) or {})
 
-    for k in ("x", "y"):
-        if point_cfg.get(k) is None:
-            raise HandoffError(f"点位 {point_name!r} 缺少 {k}")
+    for key in ("x", "y"):
+        if point_cfg.get(key) is None:
+            raise HandoffError(f"点位 {point_name!r} 缺少 {key}")
     return point_cfg
 
 
 def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], point_cfg: Dict[str, Any]) -> Dict[str, Any]:
     task_motion = task_cfg.get("motion", {}) or {}
-    hw = root_cfg.get("hardware", {}) or {}
-    modbus_cfg = hw.get("modbus", {}) or {}
-    x_axis_cfg = hw.get("x_axis", {}) or {}
-    y_axis_cfg = hw.get("y_axis", {}) or {}
+    hardware_cfg = root_cfg.get("hardware", {}) or {}
+    modbus_cfg = hardware_cfg.get("modbus", {}) or {}
+    x_axis_cfg = hardware_cfg.get("x_axis", {}) or {}
+    y_axis_cfg = hardware_cfg.get("y_axis", {}) or {}
 
     port = task_motion.get("port") or modbus_cfg.get("port")
     if not port:
@@ -83,7 +79,7 @@ def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], poin
         raise HandoffError("arrival_tolerance_pulse 不能为负数")
 
     return {
-        "port": port,
+        "port": str(port),
         "baudrate": int(task_motion.get("baudrate", modbus_cfg.get("baudrate", 115200))),
         "x_slave": int(task_motion.get("x_slave", x_axis_cfg.get("slave", 1))),
         "y_slave": int(task_motion.get("y_slave", y_axis_cfg.get("slave", 2))),
@@ -91,6 +87,7 @@ def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], poin
         "profile_acc": int(task_motion.get("profile_acc", point_cfg.get("profile_acc", 100000))),
         "profile_dec": int(task_motion.get("profile_dec", point_cfg.get("profile_dec", 100000))),
         "timeout_s": float(task_motion.get("timeout_s", point_cfg.get("timeout_s", 120.0))),
+        "poll_s": float(task_motion.get("poll_s", point_cfg.get("poll_s", 0.05))),
         "settle_s": float(task_motion.get("settle_s", point_cfg.get("settle_s", 0.5))),
         "arrival_tolerance_pulse": arrival_tolerance,
     }
@@ -99,7 +96,7 @@ def _resolve_motion_cfg(task_cfg: Dict[str, Any], root_cfg: Dict[str, Any], poin
 def _check_arrival_tolerance(axis_name: str, err: int, tolerance: int, target: int) -> None:
     if abs(int(err)) > int(tolerance):
         raise HandoffError(
-            f"{axis_name} 轴到位误差超过阈值: "
+            f"{axis_name}轴到位误差超过阈值: "
             f"target={int(target)}, err={int(err)}, tolerance={int(tolerance)}"
         )
 
@@ -123,44 +120,24 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
 
     target_x = int(point_cfg["x"])
     target_y = int(point_cfg["y"])
-
-    with ModbusRTUClient(port=motion_cfg["port"], baudrate=motion_cfg["baudrate"]) as client:
-        x_motor = MotorManager(client, slave=motion_cfg["x_slave"])
-        y_motor = MotorManager(client, slave=motion_cfg["y_slave"])
-
-        x_err = x_motor.pp_absolute_move(
-            target_pos=target_x,
+    try:
+        move_result = move_to_absolute(
+            port=motion_cfg["port"],
+            x_target=target_x,
+            y_target=target_y,
             profile_vel=motion_cfg["profile_vel"],
             profile_acc=motion_cfg["profile_acc"],
             profile_dec=motion_cfg["profile_dec"],
-            timeout=motion_cfg["timeout_s"],
+            x_slave=motion_cfg["x_slave"],
+            y_slave=motion_cfg["y_slave"],
+            baudrate=motion_cfg["baudrate"],
+            settle_s=motion_cfg["settle_s"],
+            timeout_s=motion_cfg["timeout_s"],
+            poll_s=motion_cfg["poll_s"],
+            arrival_tolerance_pulse=motion_cfg["arrival_tolerance_pulse"],
         )
-        if x_err is None:
-            raise HandoffError(f"X 轴未能到达 handoff 点位: {target_x}")
-        _check_arrival_tolerance(
-            "X",
-            int(x_err),
-            motion_cfg["arrival_tolerance_pulse"],
-            target_x,
-        )
-
-        y_err = y_motor.pp_absolute_move(
-            target_pos=target_y,
-            profile_vel=motion_cfg["profile_vel"],
-            profile_acc=motion_cfg["profile_acc"],
-            profile_dec=motion_cfg["profile_dec"],
-            timeout=motion_cfg["timeout_s"],
-        )
-        if y_err is None:
-            raise HandoffError(f"Y 轴未能到达 handoff 点位: {target_y}")
-        _check_arrival_tolerance(
-            "Y",
-            int(y_err),
-            motion_cfg["arrival_tolerance_pulse"],
-            target_y,
-        )
-
-    time.sleep(max(0.0, motion_cfg["settle_s"]))
+    except StageMotionError as exc:
+        raise HandoffError(str(exc)) from exc
 
     return {
         "task_id": task_id,
@@ -178,8 +155,8 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
         "message": action_cfg.get("message") or "位移台已到机械臂对接点",
         "motion": motion_cfg,
         "move_result": {
-            "target": {"x": target_x, "y": target_y},
-            "x_err_to_target_pulse": int(x_err),
-            "y_err_to_target_pulse": int(y_err),
+            **move_result,
+            "x_err_to_target_pulse": int(move_result["err_to_target"]["x"]),
+            "y_err_to_target_pulse": int(move_result["err_to_target"]["y"]),
         },
     }
