@@ -176,6 +176,7 @@ def _move_to_compensate_target(
         baudrate=int(motion.get("baudrate", 115200)),
         settle_s=float(params.get("settle_s", motion.get("settle_s", 0.8))),
         timeout_s=float(motion.get("timeout_s", 120.0)),
+        poll_s=float(motion.get("poll_s", 0.05)),
         arrival_tolerance_pulse=arrival_tolerance,
         stage_limits=plate.get("stage_limits"),
         approach_cfg=params.get("compensate_approach") or {},
