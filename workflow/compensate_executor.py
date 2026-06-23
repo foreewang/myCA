@@ -152,12 +152,18 @@ def _calc_compensate_target(
 
 def _move_to_compensate_target(
     *,
+    ctx: Dict[str, Any],
     params: Dict[str, Any],
     target_x: int,
     target_y: int,
 ) -> Dict[str, Any]:
     raise_if_cancel_requested(params, "before_compensate_move")
     motion = params["motion"]
+    plate = ctx["plate"]
+    runtime_guard = plate.get("runtime_guard", {}) or {}
+    arrival_tolerance = None
+    if bool(runtime_guard.get("enabled", False)) and bool(runtime_guard.get("abort_on_motion_failure", True)):
+        arrival_tolerance = int(runtime_guard.get("max_err_to_target_pulse", 3000))
     result = move_to_absolute_with_approach(
         port=motion.get("port", "COM3"),
         x_target=target_x,
@@ -169,6 +175,9 @@ def _move_to_compensate_target(
         y_slave=int(motion.get("y_slave", 2)),
         baudrate=int(motion.get("baudrate", 115200)),
         settle_s=float(params.get("settle_s", motion.get("settle_s", 0.8))),
+        timeout_s=float(motion.get("timeout_s", 120.0)),
+        arrival_tolerance_pulse=arrival_tolerance,
+        stage_limits=plate.get("stage_limits"),
         approach_cfg=params.get("compensate_approach") or {},
     )
     raise_if_cancel_requested(params, "after_compensate_move")
@@ -336,6 +345,7 @@ def _run_closed_loop(
         target = calc["compensate_target"]
         raise_if_cancel_requested(params, f"before_closed_loop_move:{iteration}")
         move_result = _move_to_compensate_target(
+            ctx=ctx,
             params=params,
             target_x=int(target["x"]),
             target_y=int(target["y"]),
@@ -372,6 +382,7 @@ def execute_compensate_on_detect_result(
     target = calc["compensate_target"]
     raise_if_cancel_requested(params, "before_initial_compensate_move")
     move_result = _move_to_compensate_target(
+        ctx=ctx,
         params=params,
         target_x=int(target["x"]),
         target_y=int(target["y"]),
