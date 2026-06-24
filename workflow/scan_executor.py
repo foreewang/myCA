@@ -5,7 +5,6 @@
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -14,6 +13,7 @@ from workflow.camera_executor import (
     close_camera,
     capture_with_opened_camera,
 )
+from workflow.file_io import atomic_write_json
 from workflow.stage_executor import move_to_absolute
 from workflow.task_control import TaskCanceled, raise_if_cancel_requested
 
@@ -134,9 +134,7 @@ def _check_motion_guard(
 def _write_result(path: str | None, result: Dict[str, Any]) -> None:
     if not path:
         return
-    out_path = Path(path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, result)
 
 
 def _should_run_autofocus_at_this_point(

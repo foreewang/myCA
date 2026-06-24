@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
 from workflow.detect_api import run_detect_on_image
+from workflow.file_io import atomic_write_json
 from workflow.task_control import raise_if_cancel_requested
 
 
@@ -344,8 +344,6 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
 
     output_json = params.get("detect_output_json")
     if output_json:
-        out_path = Path(output_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(output_json, result)
 
     return result

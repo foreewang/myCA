@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
@@ -8,6 +7,7 @@ from PIL import Image
 
 from workflow.camera_executor import capture_single_image
 from workflow.detect_api import run_detect_on_image
+from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_pulses_per_mm, get_view_signs
 from workflow.stage_executor import move_to_absolute_with_approach
 from workflow.task_control import raise_if_cancel_requested
@@ -420,8 +420,6 @@ def execute_compensate_on_detect_result(
 
     output_json = params.get("compensate_output_json")
     if output_json:
-        out_path = Path(output_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(output_json, result)
 
     return result

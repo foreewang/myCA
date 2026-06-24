@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import logging
 import mimetypes
 import os
@@ -21,6 +20,7 @@ from pydantic import BaseModel, Field, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
+from workflow.file_io import atomic_write_json, read_json_with_retry
 from workflow.run_task import execute_task_request
 from workflow.task_control import TaskCanceled
 
@@ -582,42 +582,12 @@ def _write_task_record(record: Dict[str, Any]) -> None:
 
 def _write_task_record_unlocked(record: Dict[str, Any]) -> None:
     path = _task_record_path(record["task_id"])
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(record, ensure_ascii=False, indent=2)
-    tmp = path.with_name(
-        f".{path.name}.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.tmp"
+    atomic_write_json(
+        path,
+        record,
+        attempts=_TASK_RECORD_REPLACE_ATTEMPTS,
+        sleep_s=_TASK_RECORD_REPLACE_SLEEP_SEC,
     )
-
-    with tmp.open("w", encoding="utf-8") as fh:
-        fh.write(payload)
-        fh.flush()
-        os.fsync(fh.fileno())
-
-    last_exc: OSError | None = None
-    for _ in range(_TASK_RECORD_REPLACE_ATTEMPTS):
-        try:
-            os.replace(str(tmp), str(path))
-            return
-        except OSError as exc:
-            last_exc = exc
-            time.sleep(_TASK_RECORD_REPLACE_SLEEP_SEC)
-    for _ in range(_TASK_RECORD_REPLACE_ATTEMPTS):
-        try:
-            with path.open("w", encoding="utf-8") as fh:
-                fh.write(payload)
-                fh.flush()
-                os.fsync(fh.fileno())
-            tmp.unlink(missing_ok=True)
-            return
-        except OSError as exc:
-            last_exc = exc
-            time.sleep(_TASK_RECORD_REPLACE_SLEEP_SEC)
-    if last_exc is not None:
-        try:
-            tmp.unlink(missing_ok=True)
-        except Exception:
-            logger.debug("failed to cleanup task record tmp file: %s", tmp, exc_info=True)
-        raise last_exc
 
 
 def _read_task_record(task_id: str) -> Dict[str, Any]:
@@ -634,7 +604,28 @@ def _read_task_record_unlocked(task_id: str) -> Dict[str, Any]:
             "未找到任务记录",
             log_detail=f"task_id={task_id} path={path}",
         )
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        record = read_json_with_retry(
+            path,
+            attempts=_TASK_RECORD_REPLACE_ATTEMPTS,
+            sleep_s=_TASK_RECORD_REPLACE_SLEEP_SEC,
+        )
+    except Exception as exc:
+        raise _api_error(
+            503,
+            "TASK_RECORD_TEMPORARILY_UNREADABLE",
+            "任务记录暂时不可读，请稍后重试",
+            log_detail=f"task_id={task_id} path={path}",
+            exc=exc,
+        ) from exc
+    if not isinstance(record, dict):
+        raise _api_error(
+            500,
+            "TASK_RECORD_INVALID",
+            "任务记录格式异常，请查看本地日志",
+            log_detail=f"task_id={task_id} path={path}",
+        )
+    return record
 
 
 def _task_exists(task_id: str) -> bool:
@@ -761,7 +752,7 @@ def _recover_interrupted_task_records() -> Dict[str, int]:
         for path in sorted(index_dir.glob("*.json")):
             stats["scanned"] += 1
             try:
-                record = json.loads(path.read_text(encoding="utf-8"))
+                record = read_json_with_retry(path)
                 if not isinstance(record, dict):
                     continue
                 if record.get("status") not in _TASK_ACTIVE_STATUSES:
@@ -1450,7 +1441,24 @@ def get_task_result(task_id: str) -> Dict[str, Any]:
     if result_json_path:
         p = Path(_resolve_output_path(result_json_path, f"task.{task_id}.result_json_path"))
         if p.exists() and p.is_file():
-            return json.loads(p.read_text(encoding="utf-8"))
+            try:
+                result = read_json_with_retry(p)
+            except Exception as exc:
+                raise _api_error(
+                    503,
+                    "RESULT_JSON_TEMPORARILY_UNREADABLE",
+                    "结果文件暂时不可读，请稍后重试",
+                    log_detail=f"task_id={task_id} path={p}",
+                    exc=exc,
+                ) from exc
+            if not isinstance(result, dict):
+                raise _api_error(
+                    500,
+                    "RESULT_JSON_INVALID",
+                    "结果文件格式异常，请查看本地日志",
+                    log_detail=f"task_id={task_id} path={p}",
+                )
+            return result
     result = record.get("result")
     if result is not None:
         return result

@@ -66,6 +66,71 @@ def test_api_server_file_logging_is_configured_once() -> None:
     assert api_server.API_LOG_PATH == api_server.PROJECT_ROOT / "logs" / "api_server.log"
 
 
+def test_atomic_write_json_retries_short_replace_contention(tmp_path, monkeypatch) -> None:
+    from workflow import file_io
+
+    output = tmp_path / "result.json"
+    original_replace = file_io.os.replace
+    calls = {"count": 0}
+
+    def flaky_replace(src, dst):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise PermissionError("temporary handle contention")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(file_io.os, "replace", flaky_replace)
+
+    file_io.atomic_write_json(output, {"status": "success"}, attempts=2, sleep_s=0)
+
+    assert calls["count"] == 2
+    assert json.loads(output.read_text(encoding="utf-8")) == {"status": "success"}
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_read_json_with_retry_recovers_from_partial_json(monkeypatch) -> None:
+    from workflow import file_io
+
+    reads = iter(["{", '{"status": "success"}'])
+
+    def flaky_read_text(_path, **_kwargs):
+        return next(reads)
+
+    monkeypatch.setattr(file_io, "read_text_with_retry", flaky_read_text)
+
+    assert file_io.read_json_with_retry("result.json", attempts=2, sleep_s=0) == {"status": "success"}
+
+
+def test_api_server_get_task_result_uses_retry_json_reader(tmp_path, monkeypatch) -> None:
+    from workflow import api_server
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path / "task_index"))
+    monkeypatch.setattr(api_server, "DATA_ROOT", tmp_path)
+    monkeypatch.setattr(api_server, "OUTPUTS_ROOT", tmp_path / "outputs")
+    result_path = tmp_path / "result.json"
+    api_server._write_task_record(
+        {
+            "task_id": "result-task",
+            "status": "success",
+            "result_json_path": str(result_path),
+            "updated_at": api_server._utc_now(),
+        }
+    )
+    result_path.write_text('{"status": "success"}', encoding="utf-8")
+
+    original_reader = api_server.read_json_with_retry
+    calls = []
+
+    def tracking_reader(path, **kwargs):
+        calls.append(str(path))
+        return original_reader(path, **kwargs)
+
+    monkeypatch.setattr(api_server, "read_json_with_retry", tracking_reader)
+
+    assert api_server.get_task_result("result-task") == {"status": "success"}
+    assert any(path.endswith("result.json") for path in calls)
+
+
 def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
     from workflow import api_server
 

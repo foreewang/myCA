@@ -7,10 +7,11 @@
 """
 
 from pathlib import Path
-import json
 
 import cv2
 import numpy as np
+
+from workflow.file_io import atomic_write_json
 
 
 def draw_cross(img, center, color=(0, 255, 0), size=50, thickness=8):
@@ -245,7 +246,6 @@ def save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=None):
         "components": refined,
     }
 
-    with open(out_dir / "07_result.json", "w", encoding="utf-8") as f:
-        json.dump(result_json, f, ensure_ascii=False, indent=2)
+    atomic_write_json(out_dir / "07_result.json", result_json)
 
     return result_json

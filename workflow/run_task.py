@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
+from workflow.file_io import atomic_write_json, read_json_with_retry, read_text_with_retry
 from workflow.task_control import raise_if_cancel_requested
 
 import yaml
@@ -21,7 +22,7 @@ from workflow.config_validator import resolve_mvs_python_dir, validate_autofocus
 
 def load_structured_file(path: str | Path) -> Dict[str, Any]:
     path = Path(path)
-    text = path.read_text(encoding="utf-8")
+    text = read_text_with_retry(path)
     return json.loads(text) if path.suffix.lower() == ".json" else (yaml.safe_load(text) or {})
 
 
@@ -51,16 +52,12 @@ def task_path_for_runtime_context(task_path: str | Path) -> Tuple[str, str | Non
 def save_result(result: Dict[str, Any], dump_json: str | None) -> None:
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if dump_json:
-        out_path = Path(dump_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(dump_json, result)
 
 
 def write_result(result: Dict[str, Any], dump_json: str | None) -> None:
     if dump_json:
-        out_path = Path(dump_json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(dump_json, result)
 
 
 
@@ -302,7 +299,7 @@ def run_compensate_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str
         if not detect_path.exists():
             raise FileNotFoundError(f"未找到 detect_result.json: {detect_json}")
 
-        detect_result = json.loads(detect_path.read_text(encoding="utf-8"))
+        detect_result = read_json_with_retry(detect_path)
 
     if "images" not in detect_result:
         raise ValueError("输入的 detect_result 不符合单孔 detect 结果格式，缺少 images 字段")

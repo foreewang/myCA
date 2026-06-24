@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict
 
 from devices.motion.modbus import ModbusRTUClient
 from devices.motion.MotorManager import MotorManager
+from workflow.file_io import atomic_write_json, read_json_with_retry
 
 
 class ObjectiveSwitchError(RuntimeError):
@@ -27,14 +27,13 @@ def _load_state(state_file: Path) -> Dict[str, Any]:
     if not state_file.exists():
         return {}
     try:
-        return json.loads(state_file.read_text(encoding="utf-8"))
+        return read_json_with_retry(state_file)
     except Exception:
         return {}
 
 
 def _save_state(state_file: Path, payload: Dict[str, Any]) -> None:
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(state_file, payload)
 
 
 def _move_axis(motor: MotorManager, target: int, vel: int, acc: int, dec: int) -> Dict[str, Any]:
