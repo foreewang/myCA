@@ -19,6 +19,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
 from workflow.file_io import read_json_with_retry
+from workflow.hardware_guard import (
+    HardwareGuardError,
+    STAGE_TERMINAL_STATUSES as _STAGE_TERMINAL_STATUSES,
+    acquire_hardware_operation as _acquire_hardware_operation,
+    current_hardware_owner as _current_hardware_owner,
+    current_hardware_owners as _current_hardware_owners,
+    logger as hardware_guard_logger,
+    release_hardware_operation as _release_hardware_operation,
+)
 from workflow.run_task import execute_task_request
 from workflow.task_store import (
     TASK_ACTIVE_STATUSES as _TASK_ACTIVE_STATUSES,
@@ -66,7 +75,7 @@ def _configure_api_file_logging() -> None:
     log_path = str(API_LOG_PATH.resolve(strict=False))
     formatter = logging.Formatter(API_LOG_FORMAT)
 
-    for target_logger in (logger, access_logger, task_store_logger):
+    for target_logger in (logger, access_logger, task_store_logger, hardware_guard_logger):
         if any(getattr(handler, "_colony_api_log_path", None) == log_path for handler in target_logger.handlers):
             continue
         handler = RotatingFileHandler(
@@ -87,11 +96,6 @@ _configure_api_file_logging()
 
 _TASK_CANCEL_LOCK = threading.RLock()
 _TASK_CANCEL_EVENTS: Dict[str, threading.Event] = {}
-_HARDWARE_OPERATION_LOCK = threading.RLock()
-_HARDWARE_OWNER: Dict[str, Any] | None = None
-_CAMERA_RECORD_OWNER: Dict[str, Any] | None = None
-_HARDWARE_OWNER_SYNC_GRACE_SEC = 5.0
-_STAGE_TERMINAL_STATUSES = {"stopped", "failed"}
 
 
 @asynccontextmanager
@@ -195,6 +199,16 @@ async def _task_store_exception_handler(_request: Request, exc: TaskStoreError) 
     )
 
 
+@app.exception_handler(HardwareGuardError)
+async def _hardware_guard_exception_handler(_request: Request, exc: HardwareGuardError) -> JSONResponse:
+    if exc.log_detail is not None:
+        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": _error_detail(exc.error_code, exc.message)},
+    )
+
+
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
@@ -207,135 +221,6 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
             )
         },
     )
-
-
-def _hardware_busy_detail(owner: Dict[str, Any]) -> str:
-    kind = owner.get("kind") or "unknown"
-    operation_id = owner.get("operation_id") or "<unknown>"
-    started_at = owner.get("started_at") or "<unknown>"
-    return f"硬件正在被占用: kind={kind}, operation_id={operation_id}, started_at={started_at}"
-
-
-def _public_hardware_owner(owner: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "kind": owner.get("kind"),
-        "operation_id": owner.get("operation_id"),
-        "started_at": owner.get("started_at"),
-    }
-
-
-def _sync_hardware_owner_unlocked() -> None:
-    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
-
-    owner = _HARDWARE_OWNER
-    if owner and time.monotonic() >= float(owner.get("sync_after_monotonic") or 0.0):
-        kind = owner.get("kind")
-        operation_id = str(owner.get("operation_id") or "")
-        try:
-            if kind == "task":
-                record = _read_task_record_unlocked(operation_id)
-                if record.get("status") in _TASK_TERMINAL_STATUSES:
-                    _HARDWARE_OWNER = None
-            elif kind == "stage_reciprocation":
-                from workflow.stage_reciprocation import stage_reciprocation_controller
-
-                status = stage_reciprocation_controller.status()
-                if status.get("status") in _STAGE_TERMINAL_STATUSES:
-                    _HARDWARE_OWNER = None
-        except Exception:
-            logger.debug("failed to sync hardware owner: %s", owner, exc_info=True)
-
-    camera_owner = _CAMERA_RECORD_OWNER
-    if camera_owner and time.monotonic() >= float(camera_owner.get("sync_after_monotonic") or 0.0):
-        try:
-            from workflow.camera_executor import recording_camera_status
-
-            status = recording_camera_status()
-            if not status.get("recording") and not status.get("background"):
-                _CAMERA_RECORD_OWNER = None
-        except Exception:
-            logger.debug("failed to sync camera record owner: %s", camera_owner, exc_info=True)
-
-
-def _acquire_hardware_operation(kind: str, operation_id: str) -> Dict[str, Any]:
-    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
-
-    with _HARDWARE_OPERATION_LOCK:
-        _sync_hardware_owner_unlocked()
-        if kind == "camera_record":
-            if _HARDWARE_OWNER is not None:
-                raise _api_error(
-                    409,
-                    "HARDWARE_BUSY",
-                    "硬件正在执行其他任务，请稍后重试",
-                    log_detail=_hardware_busy_detail(_HARDWARE_OWNER),
-                )
-            if _CAMERA_RECORD_OWNER is not None:
-                raise _api_error(
-                    409,
-                    "CAMERA_RECORD_BUSY",
-                    "相机录像已在进行中，请先停止当前录像",
-                    log_detail=_hardware_busy_detail(_CAMERA_RECORD_OWNER),
-                )
-            _CAMERA_RECORD_OWNER = {
-                "kind": kind,
-                "operation_id": str(operation_id),
-                "started_at": _utc_now(),
-                "sync_after_monotonic": time.monotonic() + _HARDWARE_OWNER_SYNC_GRACE_SEC,
-            }
-            return _public_hardware_owner(_CAMERA_RECORD_OWNER)
-
-        if _HARDWARE_OWNER is not None:
-            raise _api_error(
-                409,
-                "HARDWARE_BUSY",
-                "硬件正在执行其他任务，请稍后重试",
-                log_detail=_hardware_busy_detail(_HARDWARE_OWNER),
-            )
-        _HARDWARE_OWNER = {
-            "kind": kind,
-            "operation_id": str(operation_id),
-            "started_at": _utc_now(),
-            "sync_after_monotonic": time.monotonic() + _HARDWARE_OWNER_SYNC_GRACE_SEC,
-        }
-        return _public_hardware_owner(_HARDWARE_OWNER)
-
-
-def _release_hardware_operation(kind: str, operation_id: str) -> None:
-    global _HARDWARE_OWNER, _CAMERA_RECORD_OWNER
-
-    with _HARDWARE_OPERATION_LOCK:
-        if kind == "camera_record":
-            if (
-                _CAMERA_RECORD_OWNER is not None
-                and str(_CAMERA_RECORD_OWNER.get("operation_id") or "") == str(operation_id)
-            ):
-                _CAMERA_RECORD_OWNER = None
-            return
-
-        if (
-            _HARDWARE_OWNER is not None
-            and _HARDWARE_OWNER.get("kind") == kind
-            and str(_HARDWARE_OWNER.get("operation_id") or "") == str(operation_id)
-        ):
-            _HARDWARE_OWNER = None
-
-
-def _current_hardware_owner() -> Dict[str, Any] | None:
-    with _HARDWARE_OPERATION_LOCK:
-        _sync_hardware_owner_unlocked()
-        return None if _HARDWARE_OWNER is None else _public_hardware_owner(_HARDWARE_OWNER)
-
-
-def _current_hardware_owners() -> list[Dict[str, Any]]:
-    with _HARDWARE_OPERATION_LOCK:
-        _sync_hardware_owner_unlocked()
-        owners = []
-        if _HARDWARE_OWNER is not None:
-            owners.append(_public_hardware_owner(_HARDWARE_OWNER))
-        if _CAMERA_RECORD_OWNER is not None:
-            owners.append(_public_hardware_owner(_CAMERA_RECORD_OWNER))
-        return owners
 
 
 @app.middleware("http")
