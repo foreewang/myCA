@@ -28,6 +28,17 @@ from workflow.hardware_guard import (
     logger as hardware_guard_logger,
     release_hardware_operation as _release_hardware_operation,
 )
+from workflow.path_guard import (
+    CONFIG_ROOT,
+    DATA_ROOT,
+    OUTPUTS_ROOT,
+    PROJECT_ROOT,
+    PathGuardError,
+    normalize_execute_task_values,
+    resolve_config_path as _resolve_config_path,
+    resolve_output_path as _resolve_output_path,
+    safe_str_path as _safe_str_path,
+)
 from workflow.run_task import execute_task_request
 from workflow.task_store import (
     TASK_ACTIVE_STATUSES as _TASK_ACTIVE_STATUSES,
@@ -41,12 +52,9 @@ from workflow.task_store import (
     read_task_record as _read_task_record,
     read_task_record_unlocked as _read_task_record_unlocked,
     recover_interrupted_task_records as _recover_interrupted_task_records,
-    safe_str_path as _safe_str_path,
     sanitize_task_id as _sanitize_task_id,
     task_exists as _task_exists,
-    task_index_dir as _task_index_dir,
     logger as task_store_logger,
-    task_record_path as _task_record_path,
     update_task_record as _update_task_record,
     utc_now as _utc_now,
     write_task_record as _write_task_record,
@@ -54,11 +62,6 @@ from workflow.task_store import (
 )
 from workflow.task_control import TaskCanceled
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_ROOT = PROJECT_ROOT / "config"
-DATA_ROOT = PROJECT_ROOT / "data"
-OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
-DEFAULT_TASK_INDEX_DIR = PROJECT_ROOT / "data" / "task_index"
 LOG_DIR = PROJECT_ROOT / "logs"
 API_LOG_PATH = LOG_DIR / "api_server.log"
 API_LOG_MAX_BYTES = 10 * 1024 * 1024
@@ -201,6 +204,16 @@ async def _task_store_exception_handler(_request: Request, exc: TaskStoreError) 
 
 @app.exception_handler(HardwareGuardError)
 async def _hardware_guard_exception_handler(_request: Request, exc: HardwareGuardError) -> JSONResponse:
+    if exc.log_detail is not None:
+        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": _error_detail(exc.error_code, exc.message)},
+    )
+
+
+@app.exception_handler(PathGuardError)
+async def _path_guard_exception_handler(_request: Request, exc: PathGuardError) -> JSONResponse:
     if exc.log_detail is not None:
         logger.warning("%s: %s", exc.error_code, exc.log_detail)
     return JSONResponse(
@@ -373,87 +386,20 @@ def _load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[s
     }
 
 
-def _is_path_within(path: Path, root: Path) -> bool:
-    return path == root or root in path.parents
-
-
-def _resolve_allowed_path(value: Any, allowed_roots: tuple[Path, ...], field_name: str) -> str | None:
-    raw = _safe_str_path(value)
-    if raw is None:
-        return None
-
-    path = Path(raw)
-    if not path.is_absolute():
-        path = PROJECT_ROOT / path
-    resolved = path.resolve(strict=False)
-    resolved_roots = tuple(root.resolve(strict=False) for root in allowed_roots)
-    if not any(_is_path_within(resolved, root) for root in resolved_roots):
-        allowed = ", ".join(str(root) for root in resolved_roots)
-        raise _api_error(
-            400,
-            "PATH_OUT_OF_ALLOWED_ROOT",
-            "请求路径不在允许目录内",
-            log_detail=f"{field_name} resolved={resolved} allowed={allowed}",
-        )
-    return str(resolved)
-
-
-def _resolve_config_path(value: Any, field_name: str) -> str | None:
-    return _resolve_allowed_path(value, (CONFIG_ROOT,), field_name)
-
-
-def _resolve_output_path(value: Any, field_name: str) -> str | None:
-    return _resolve_allowed_path(value, (DATA_ROOT, OUTPUTS_ROOT), field_name)
-
-
-def _normalize_nested_path(task: Dict[str, Any], keys: tuple[str, ...], field_name: str) -> None:
-    node: Any = task
-    for key in keys[:-1]:
-        if not isinstance(node, dict):
-            return
-        node = node.get(key)
-    if not isinstance(node, dict):
-        return
-    leaf = keys[-1]
-    if leaf in node and node[leaf] is not None:
-        node[leaf] = _resolve_output_path(node[leaf], field_name)
-
-
-def _normalize_task_paths(task: Dict[str, Any]) -> Dict[str, Any]:
-    normalized = copy.deepcopy(task)
-    for keys in (
-        ("capture", "save_dir"),
-        ("scan", "output_json"),
-        ("detect", "output_json"),
-        ("detect", "input_scan_result_json"),
-        ("compensate", "input_detect_json"),
-        ("compensate", "output_json"),
-        ("compensate", "closed_loop", "save_dir"),
-        ("output", "result_json"),
-        ("output", "scan_json"),
-        ("output", "detect_json"),
-        ("output", "compensate_json"),
-    ):
-        _normalize_nested_path(normalized, keys, ".".join(("task", *keys)))
-    return normalized
-
-
 def _normalize_execute_task_request(req: ExecuteTaskRequest) -> ExecuteTaskRequest:
+    values = normalize_execute_task_values(
+        task=req.task or {},
+        camera_path=req.camera_path,
+        objectives_path=req.objectives_path,
+        plates_path=req.plates_path,
+        dump_json=req.dump_json,
+    )
     return ExecuteTaskRequest(
-        task=_normalize_task_paths(req.task or {}),
-        camera_path=_resolve_config_path(
-            req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(CONFIG_ROOT / "camera.yaml"),
-            "camera_path",
-        ),
-        objectives_path=_resolve_config_path(
-            req.objectives_path or os.getenv("OBJECTIVES_CONFIG_PATH") or str(CONFIG_ROOT / "objectives.yaml"),
-            "objectives_path",
-        ),
-        plates_path=_resolve_config_path(
-            req.plates_path or os.getenv("PLATES_CONFIG_PATH") or str(CONFIG_ROOT / "plates.yaml"),
-            "plates_path",
-        ),
-        dump_json=_resolve_output_path(req.dump_json, "dump_json"),
+        task=values["task"],
+        camera_path=values["camera_path"],
+        objectives_path=values["objectives_path"],
+        plates_path=values["plates_path"],
+        dump_json=values["dump_json"],
         persist_result=req.persist_result,
     )
 
@@ -703,7 +649,7 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
         save_path = _resolve_output_path(req.save_path, "save_path")
         if save_path is None:
             raise _api_error(400, "CAMERA_RECORD_SAVE_PATH_REQUIRED", "录像保存路径不能为空")
-    except HTTPException:
+    except (HTTPException, PathGuardError):
         raise
     except (ConfigValidationError, ValueError, OSError) as exc:
         raise _api_error(
