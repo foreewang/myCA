@@ -7,15 +7,28 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
+from workflow.api_errors import (
+    API_LOG_PATH,
+    access_logger,
+    api_error as _api_error,
+    configure_api_file_logging as _configure_api_file_logging_base,
+    error_detail as _error_detail,
+    generic_http_message as _generic_http_message,
+    hardware_guard_exception_handler as _hardware_guard_exception_handler,
+    http_exception_handler as _http_exception_handler,
+    is_public_error_detail as _is_public_error_detail,
+    path_guard_exception_handler as _path_guard_exception_handler,
+    register_api_error_handlers,
+    request_validation_exception_handler as _request_validation_exception_handler,
+    task_store_exception_handler as _task_store_exception_handler,
+    unhandled_exception_handler as _unhandled_exception_handler,
+)
 from workflow.api_models import (
     CameraRecordStartRequest,
     ExecuteTaskRequest,
@@ -25,12 +38,10 @@ from workflow.api_models import (
 from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
 from workflow.file_io import read_json_with_retry
 from workflow.hardware_guard import (
-    HardwareGuardError,
     STAGE_TERMINAL_STATUSES as _STAGE_TERMINAL_STATUSES,
     acquire_hardware_operation as _acquire_hardware_operation,
     current_hardware_owner as _current_hardware_owner,
     current_hardware_owners as _current_hardware_owners,
-    logger as hardware_guard_logger,
     release_hardware_operation as _release_hardware_operation,
 )
 from workflow.path_guard import (
@@ -49,7 +60,6 @@ from workflow.task_store import (
     TASK_ACTIVE_STATUSES as _TASK_ACTIVE_STATUSES,
     TASK_RECORD_IO_LOCK as _TASK_RECORD_IO_LOCK,
     TASK_TERMINAL_STATUSES as _TASK_TERMINAL_STATUSES,
-    TaskStoreError,
     build_accepted_record as _build_accepted_record,
     build_failed_record as _build_failed_record,
     build_task_record as _build_task_record,
@@ -59,7 +69,6 @@ from workflow.task_store import (
     recover_interrupted_task_records as _recover_interrupted_task_records,
     sanitize_task_id as _sanitize_task_id,
     task_exists as _task_exists,
-    logger as task_store_logger,
     update_task_record as _update_task_record,
     utc_now as _utc_now,
     write_task_record as _write_task_record,
@@ -67,37 +76,13 @@ from workflow.task_store import (
 )
 from workflow.task_control import TaskCanceled
 
-LOG_DIR = PROJECT_ROOT / "logs"
-API_LOG_PATH = LOG_DIR / "api_server.log"
-API_LOG_MAX_BYTES = 10 * 1024 * 1024
-API_LOG_BACKUP_COUNT = 5
-API_LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 
 logger = logging.getLogger(__name__)
-access_logger = logging.getLogger("uvicorn.error")
 
 
 def _configure_api_file_logging() -> None:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = str(API_LOG_PATH.resolve(strict=False))
-    formatter = logging.Formatter(API_LOG_FORMAT)
-
-    for target_logger in (logger, access_logger, task_store_logger, hardware_guard_logger):
-        if any(getattr(handler, "_colony_api_log_path", None) == log_path for handler in target_logger.handlers):
-            continue
-        handler = RotatingFileHandler(
-            log_path,
-            maxBytes=API_LOG_MAX_BYTES,
-            backupCount=API_LOG_BACKUP_COUNT,
-            encoding="utf-8",
-        )
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(formatter)
-        setattr(handler, "_colony_api_log_path", log_path)
-        target_logger.addHandler(handler)
-        if target_logger.getEffectiveLevel() > logging.INFO:
-            target_logger.setLevel(logging.INFO)
+    _configure_api_file_logging_base(extra_loggers=(logger, access_logger))
 
 
 _configure_api_file_logging()
@@ -113,132 +98,7 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)
-
-
-def _error_detail(error_code: str, message: str) -> Dict[str, str]:
-    return {
-        "error_code": error_code,
-        "message": message,
-    }
-
-
-def _api_error(
-    status_code: int,
-    error_code: str,
-    message: str,
-    *,
-    log_detail: str | None = None,
-    exc: BaseException | None = None,
-) -> HTTPException:
-    if exc is not None:
-        logger.exception("%s: %s", error_code, log_detail or message)
-    elif log_detail is not None:
-        logger.warning("%s: %s", error_code, log_detail)
-    return HTTPException(status_code=status_code, detail=_error_detail(error_code, message))
-
-
-def _generic_http_message(status_code: int) -> str:
-    if status_code == 400:
-        return "请求参数不合法"
-    if status_code == 401:
-        return "未认证或认证已失效"
-    if status_code == 403:
-        return "没有权限执行该操作"
-    if status_code == 404:
-        return "请求的资源不存在"
-    if status_code == 409:
-        return "请求与当前系统状态冲突"
-    if status_code == 422:
-        return "请求参数不合法"
-    if status_code >= 500:
-        return "服务内部错误，请查看本地日志或联系维护人员"
-    return "请求处理失败"
-
-
-def _is_public_error_detail(detail: Any) -> bool:
-    return (
-        isinstance(detail, dict)
-        and isinstance(detail.get("error_code"), str)
-        and isinstance(detail.get("message"), str)
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    if _is_public_error_detail(exc.detail):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail},
-            headers=exc.headers,
-        )
-
-    error_code = f"HTTP_{exc.status_code}"
-    logger.warning("%s: path=%s detail=%r", error_code, request.url.path, exc.detail)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": _error_detail(error_code, _generic_http_message(exc.status_code))},
-        headers=exc.headers,
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def _request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    logger.warning(
-        "REQUEST_VALIDATION_FAILED: path=%s errors=%s body=%r",
-        request.url.path,
-        exc.errors(),
-        exc.body,
-    )
-    return JSONResponse(
-        status_code=422,
-        content={"detail": _error_detail("REQUEST_VALIDATION_FAILED", "请求参数不合法")},
-    )
-
-
-@app.exception_handler(TaskStoreError)
-async def _task_store_exception_handler(_request: Request, exc: TaskStoreError) -> JSONResponse:
-    if exc.cause is not None:
-        logger.exception("%s: %s", exc.error_code, exc.log_detail or exc.message)
-    elif exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": _error_detail(exc.error_code, exc.message)},
-    )
-
-
-@app.exception_handler(HardwareGuardError)
-async def _hardware_guard_exception_handler(_request: Request, exc: HardwareGuardError) -> JSONResponse:
-    if exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": _error_detail(exc.error_code, exc.message)},
-    )
-
-
-@app.exception_handler(PathGuardError)
-async def _path_guard_exception_handler(_request: Request, exc: PathGuardError) -> JSONResponse:
-    if exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": _error_detail(exc.error_code, exc.message)},
-    )
-
-
-@app.exception_handler(Exception)
-async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": _error_detail(
-                "INTERNAL_SERVER_ERROR",
-                "服务内部错误，请查看本地日志或联系维护人员",
-            )
-        },
-    )
+register_api_error_handlers(app)
 
 
 @app.middleware("http")
@@ -266,6 +126,7 @@ async def log_request_timing(request, call_next):
         elapsed_ms,
     )
     return response
+
 
 def _load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[str, Any]:
     camera_path = _resolve_config_path(
