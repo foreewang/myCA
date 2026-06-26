@@ -4,7 +4,7 @@ API错误处理层，负责：
 _api_error 对应的新实现：api_error
 HTTP 异常兜底消息转换
 Pydantic 参数校验错误处理
-TaskStoreError / HardwareGuardError / PathGuardError 统一转 API 响应
+TaskStoreError / HardwareGuardError / PathGuardError / TaskArtifactError 统一转 API 响应
 未捕获异常统一返回 500，并把详细堆栈写入本地日志
 API 日志文件配置：C:/colony_system/logs/api_server.log
 register_api_error_handlers(app) 统一注册 FastAPI 异常处理器
@@ -22,6 +22,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.hardware_guard import HardwareGuardError, logger as hardware_guard_logger
 from workflow.path_guard import PROJECT_ROOT, PathGuardError
+from workflow.task_artifacts import TaskArtifactError
 from workflow.task_store import TaskStoreError, logger as task_store_logger
 
 LOG_DIR = PROJECT_ROOT / "logs"
@@ -169,6 +170,17 @@ async def path_guard_exception_handler(_request: Request, exc: PathGuardError) -
     )
 
 
+async def task_artifact_exception_handler(_request: Request, exc: TaskArtifactError) -> JSONResponse:
+    if exc.cause is not None:
+        logger.exception("%s: %s", exc.error_code, exc.log_detail or exc.message)
+    elif exc.log_detail is not None:
+        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": error_detail(exc.error_code, exc.message)},
+    )
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
     return JSONResponse(
@@ -188,4 +200,5 @@ def register_api_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(TaskStoreError, task_store_exception_handler)
     app.add_exception_handler(HardwareGuardError, hardware_guard_exception_handler)
     app.add_exception_handler(PathGuardError, path_guard_exception_handler)
+    app.add_exception_handler(TaskArtifactError, task_artifact_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

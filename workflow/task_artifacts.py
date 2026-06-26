@@ -1,0 +1,185 @@
+"""
+管理任务执行后产生的结果文件和图片文件，对API提供统一的读取、解析和校验能力
+读取任务结果 JSON
+解析孔位图片目录
+校验孔位记录
+列出孔位图片
+解析单张图片下载路径
+识别图片文件
+统计图片数量
+统一 artifact 相关错误
+"""
+from __future__ import annotations
+
+import mimetypes
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable
+
+from workflow.file_io import read_json_with_retry
+from workflow.path_guard import resolve_output_path, safe_str_path
+
+IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
+
+
+class TaskArtifactError(RuntimeError):
+    def __init__(
+        self,
+        status_code: int,
+        error_code: str,
+        message: str,
+        *,
+        log_detail: str | None = None,
+        cause: BaseException | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.error_code = error_code
+        self.message = message
+        self.log_detail = log_detail
+        self.cause = cause
+
+
+def ensure_well_record(record: Dict[str, Any], well_name: str) -> Dict[str, Any]:
+    wells = record.get("wells") or {}
+    if well_name not in wells:
+        raise TaskArtifactError(
+            404,
+            "WELL_NOT_FOUND",
+            "未找到指定孔位记录",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
+        )
+    return wells[well_name]
+
+
+def resolve_image_dir(record: Dict[str, Any], well_name: str) -> Path:
+    well_record = ensure_well_record(record, well_name)
+    image_dir = well_record.get("image_dir")
+    if not image_dir:
+        raise TaskArtifactError(
+            404,
+            "IMAGE_DIR_NOT_RECORDED",
+            "当前孔位未记录图片目录",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
+        )
+    path = Path(resolve_output_path(image_dir, f"task.{record.get('task_id')}.wells.{well_name}.image_dir"))
+    if not path.exists() or not path.is_dir():
+        raise TaskArtifactError(
+            404,
+            "IMAGE_DIR_NOT_FOUND",
+            "图片目录不存在",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name} path={path}",
+        )
+    return path
+
+
+def existing_output_path_or_none(value: Any, field_name: str) -> str | None:
+    raw = safe_str_path(value)
+    if raw is None:
+        return None
+    path = Path(resolve_output_path(raw, field_name))
+    return str(path) if path.exists() else None
+
+
+def count_images(image_dir: Path) -> int:
+    if not image_dir.exists() or not image_dir.is_dir():
+        return 0
+    return sum(1 for p in image_dir.iterdir() if is_image_file(p))
+
+
+def is_image_file(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+
+
+def list_image_names(image_dir: Path) -> list[str]:
+    return sorted(p.name for p in image_dir.iterdir() if is_image_file(p))
+
+
+def build_task_result_response(
+    record: Dict[str, Any],
+    active_statuses: Iterable[str],
+    *,
+    json_reader: Callable[..., Any] = read_json_with_retry,
+) -> Dict[str, Any]:
+    if record.get("status") in active_statuses:
+        return {
+            "task_id": record.get("task_id"),
+            "status": record.get("status"),
+            "progress": record.get("progress", 0),
+            "message": record.get("message"),
+            "current_stage": record.get("current_stage"),
+            "current_well": record.get("current_well"),
+            "result_json_path": record.get("result_json_path"),
+            "result": None,
+        }
+
+    task_id = record.get("task_id")
+    result_json_path = record.get("result_json_path")
+    if result_json_path:
+        path = Path(resolve_output_path(result_json_path, f"task.{task_id}.result_json_path"))
+        if path.exists() and path.is_file():
+            try:
+                result = json_reader(path)
+            except Exception as exc:
+                raise TaskArtifactError(
+                    503,
+                    "RESULT_JSON_TEMPORARILY_UNREADABLE",
+                    "结果文件暂时不可读，请稍后重试",
+                    log_detail=f"task_id={task_id} path={path}",
+                    cause=exc,
+                ) from exc
+            if not isinstance(result, dict):
+                raise TaskArtifactError(
+                    500,
+                    "RESULT_JSON_INVALID",
+                    "结果文件格式异常，请查看本地日志",
+                    log_detail=f"task_id={task_id} path={path}",
+                )
+            return result
+
+    result = record.get("result")
+    if result is not None:
+        return result
+    return record
+
+
+def build_well_images_response(record: Dict[str, Any], well_name: str) -> Dict[str, Any]:
+    task_id = record.get("task_id")
+    image_dir = resolve_image_dir(record, well_name)
+    well_record = ensure_well_record(record, well_name)
+    capture_path = well_record.get("capture_result_json")
+    detect_path = well_record.get("detect_result_json")
+    compensate_path = well_record.get("compensate_result_json")
+
+    return {
+        "task_id": task_id,
+        "well_name": well_name,
+        "image_dir": str(image_dir),
+        "capture_result_json": existing_output_path_or_none(capture_path, f"task.{task_id}.{well_name}.capture_result_json"),
+        "detect_result_json": existing_output_path_or_none(detect_path, f"task.{task_id}.{well_name}.detect_result_json"),
+        "compensate_result_json": existing_output_path_or_none(
+            compensate_path,
+            f"task.{task_id}.{well_name}.compensate_result_json",
+        ),
+        "images": list_image_names(image_dir),
+    }
+
+
+def resolve_well_image_file(record: Dict[str, Any], well_name: str, filename: str) -> tuple[Path, str]:
+    if filename != Path(filename).name:
+        raise TaskArtifactError(
+            400,
+            "INVALID_IMAGE_FILENAME",
+            "图片文件名非法",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name} filename={filename}",
+        )
+    image_dir = resolve_image_dir(record, well_name)
+    file_path = image_dir / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise TaskArtifactError(
+            404,
+            "IMAGE_NOT_FOUND",
+            "未找到图片",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name} path={file_path}",
+        )
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    return file_path, media_type or "application/octet-stream"

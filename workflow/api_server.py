@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import logging
-import mimetypes
 import os
 import threading
 import time
@@ -53,7 +52,6 @@ from workflow.path_guard import (
     normalize_execute_task_values,
     resolve_config_path as _resolve_config_path,
     resolve_output_path as _resolve_output_path,
-    safe_str_path as _safe_str_path,
 )
 from workflow.run_task import execute_task_request
 from workflow.task_store import (
@@ -75,8 +73,15 @@ from workflow.task_store import (
     write_task_record_unlocked as _write_task_record_unlocked,
 )
 from workflow.task_control import TaskCanceled
-
-IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
+from workflow.task_artifacts import (
+    build_task_result_response as _build_task_result_response,
+    build_well_images_response as _build_well_images_response,
+    count_images as _count_images,
+    ensure_well_record as _ensure_well_record,
+    existing_output_path_or_none as _existing_output_path_or_none,
+    resolve_image_dir as _resolve_image_dir,
+    resolve_well_image_file as _resolve_well_image_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -231,53 +236,6 @@ def _request_task_cancel(task_id: str) -> Dict[str, Any]:
         record["message"] = "cancel requested; task will stop at the next safe checkpoint"
         _write_task_record_unlocked(record)
         return record
-
-
-def _ensure_well_record(record: Dict[str, Any], well_name: str) -> Dict[str, Any]:
-    wells = record.get("wells") or {}
-    if well_name not in wells:
-        raise _api_error(
-            404,
-            "WELL_NOT_FOUND",
-            "未找到指定孔位记录",
-            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
-        )
-    return wells[well_name]
-
-
-def _resolve_image_dir(record: Dict[str, Any], well_name: str) -> Path:
-    well_record = _ensure_well_record(record, well_name)
-    image_dir = well_record.get("image_dir")
-    if not image_dir:
-        raise _api_error(
-            404,
-            "IMAGE_DIR_NOT_RECORDED",
-            "当前孔位未记录图片目录",
-            log_detail=f"task_id={record.get('task_id')} well_name={well_name}",
-        )
-    path = Path(_resolve_output_path(image_dir, f"task.{record.get('task_id')}.wells.{well_name}.image_dir"))
-    if not path.exists() or not path.is_dir():
-        raise _api_error(
-            404,
-            "IMAGE_DIR_NOT_FOUND",
-            "图片目录不存在",
-            log_detail=f"task_id={record.get('task_id')} well_name={well_name} path={path}",
-        )
-    return path
-
-
-def _existing_output_path_or_none(value: Any, field_name: str) -> str | None:
-    raw = _safe_str_path(value)
-    if raw is None:
-        return None
-    path = Path(_resolve_output_path(raw, field_name))
-    return str(path) if path.exists() else None
-
-
-def _count_images(image_dir: Path) -> int:
-    if not image_dir.exists() or not image_dir.is_dir():
-        return 0
-    return sum(1 for p in image_dir.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES)
 
 
 def _guess_current_progress(record: Dict[str, Any]) -> Dict[str, Any]:
@@ -653,89 +611,22 @@ def get_task_status(task_id: str) -> Dict[str, Any]:
 @app.get("/api/tasks/{task_id}/result")
 def get_task_result(task_id: str) -> Dict[str, Any]:
     record = _read_task_record(task_id)
-    if record.get("status") in _TASK_ACTIVE_STATUSES:
-        return {
-            "task_id": record.get("task_id"),
-            "status": record.get("status"),
-            "progress": record.get("progress", 0),
-            "message": record.get("message"),
-            "current_stage": record.get("current_stage"),
-            "current_well": record.get("current_well"),
-            "result_json_path": record.get("result_json_path"),
-            "result": None,
-        }
-
-    result_json_path = record.get("result_json_path")
-    if result_json_path:
-        p = Path(_resolve_output_path(result_json_path, f"task.{task_id}.result_json_path"))
-        if p.exists() and p.is_file():
-            try:
-                result = read_json_with_retry(p)
-            except Exception as exc:
-                raise _api_error(
-                    503,
-                    "RESULT_JSON_TEMPORARILY_UNREADABLE",
-                    "结果文件暂时不可读，请稍后重试",
-                    log_detail=f"task_id={task_id} path={p}",
-                    exc=exc,
-                ) from exc
-            if not isinstance(result, dict):
-                raise _api_error(
-                    500,
-                    "RESULT_JSON_INVALID",
-                    "结果文件格式异常，请查看本地日志",
-                    log_detail=f"task_id={task_id} path={p}",
-                )
-            return result
-    result = record.get("result")
-    if result is not None:
-        return result
-    return record
+    return _build_task_result_response(record, _TASK_ACTIVE_STATUSES, json_reader=read_json_with_retry)
 
 
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images")
 def list_well_images(task_id: str, well_name: str) -> Dict[str, Any]:
     record = _read_task_record(task_id)
-    image_dir = _resolve_image_dir(record, well_name)
-    images = sorted([p.name for p in image_dir.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES])
-    well_record = _ensure_well_record(record, well_name)
-    capture_path = well_record.get("capture_result_json")
-    detect_path = well_record.get("detect_result_json")
-    compensate_path = well_record.get("compensate_result_json")
-    return {
-        "task_id": record.get("task_id"),
-        "well_name": well_name,
-        "image_dir": str(image_dir),
-        "capture_result_json": _existing_output_path_or_none(capture_path, f"task.{task_id}.{well_name}.capture_result_json"),
-        "detect_result_json": _existing_output_path_or_none(detect_path, f"task.{task_id}.{well_name}.detect_result_json"),
-        "compensate_result_json": _existing_output_path_or_none(compensate_path, f"task.{task_id}.{well_name}.compensate_result_json"),
-        "images": images,
-    }
+    return _build_well_images_response(record, well_name)
 
 
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images/{filename}")
 def download_well_image(task_id: str, well_name: str, filename: str):
-    if filename != Path(filename).name:
-        raise _api_error(
-            400,
-            "INVALID_IMAGE_FILENAME",
-            "图片文件名非法",
-            log_detail=f"task_id={task_id} well_name={well_name} filename={filename}",
-        )
     record = _read_task_record(task_id)
-    image_dir = _resolve_image_dir(record, well_name)
-    file_path = image_dir / filename
-    if not file_path.exists() or not file_path.is_file():
-        raise _api_error(
-            404,
-            "IMAGE_NOT_FOUND",
-            "未找到图片",
-            log_detail=f"task_id={task_id} well_name={well_name} path={file_path}",
-        )
-    media_type, _ = mimetypes.guess_type(str(file_path))
+    file_path, media_type = _resolve_well_image_file(record, well_name, filename)
     return FileResponse(
         path=file_path,
-        media_type=media_type or "application/octet-stream",
+        media_type=media_type,
         filename=file_path.name,
     )
 
