@@ -1,3 +1,4 @@
+"""封装 XY 位移台绝对运动、接近运动、限位检查和到位校验。"""
 from __future__ import annotations
 
 import logging

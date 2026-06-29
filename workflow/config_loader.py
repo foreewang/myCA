@@ -1,12 +1,4 @@
-"""
-读取 task
-读取 camera.yaml
-读取 objectives.yaml
-读取 plates.yaml
-根据 task 里写的 plate_type 和 objective
-去配置文件里找到对应那一段
-最后拼成一个 ctx
-"""
+"""加载任务、相机、物镜和培养板配置并组装运行上下文。"""
 from __future__ import annotations
 
 from pathlib import Path

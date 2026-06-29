@@ -1,3 +1,4 @@
+"""提供 Colony Workflow 的 FastAPI 服务入口并挂载任务、硬件、录像和产物查询接口。"""
 from __future__ import annotations
 
 import logging

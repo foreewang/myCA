@@ -1,3 +1,4 @@
+"""处理相机录像 API 的配置加载、硬件占用申请以及开始和停止录像流程。"""
 from __future__ import annotations
 
 import os

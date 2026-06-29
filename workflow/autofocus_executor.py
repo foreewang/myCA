@@ -1,3 +1,4 @@
+"""封装自动对焦执行流程，并支持复用录像相机完成任务前对焦。"""
 from __future__ import annotations
 
 from pathlib import Path

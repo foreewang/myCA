@@ -1,3 +1,4 @@
+"""根据交接配置驱动位移台移动到指定交接点并校验到位误差。"""
 from __future__ import annotations
 
 from typing import Any, Dict

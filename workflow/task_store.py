@@ -1,20 +1,4 @@
-"""
-任务记录存储模块
-负责 API 任务记录的持久化、读取、更新、恢复和任务记录结构构建
-任务记录文件路径管理
-任务记录读写
-任务状态恢复
-任务状态标记
-任务记录结构构建
-任务存储异常
-e.g.提交任务时写 queued，
-后台开始时改 running，
-运行中定期更新进度，成功写 success，
-异常写 failed，
-取消写 canceled，
-API 重启发现旧活跃任务写 interrupted；
-所有状态查询和结果查询都依赖它保存的 JSON 记录。
-"""
+"""持久化任务记录并构造 queued、running、success、failed、canceled 和 interrupted 状态数据。"""
 from __future__ import annotations
 
 import logging

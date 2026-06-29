@@ -1,3 +1,4 @@
+"""管理 API 普通任务的提交、后台执行、进度监控、取消和资源释放生命周期。"""
 from __future__ import annotations
 
 import copy

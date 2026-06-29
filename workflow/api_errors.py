@@ -1,14 +1,4 @@
-"""
-API错误处理层，负责：
-统一错误响应结构：error_code + message
-_api_error 对应的新实现：api_error
-HTTP 异常兜底消息转换
-Pydantic 参数校验错误处理
-TaskStoreError / HardwareGuardError / PathGuardError / TaskArtifactError 等统一转 API 响应
-未捕获异常统一返回 500，并把详细堆栈写入本地日志
-API 日志文件配置：C:/colony_system/logs/api_server.log
-register_api_error_handlers(app) 统一注册 FastAPI 异常处理器
-"""
+"""统一配置 API 日志、错误响应结构和 FastAPI 异常处理器。"""
 from __future__ import annotations
 
 import logging

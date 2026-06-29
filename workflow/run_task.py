@@ -1,3 +1,4 @@
+"""执行 capture、pipeline、compensate 和 handoff 任务的主工作流。"""
 from __future__ import annotations
 
 import argparse

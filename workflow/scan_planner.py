@@ -1,8 +1,4 @@
-"""
-为单个培养孔生成扫描路径点位
-
-路径点全部生成后，先检查每个点是否在限位范围内。
-"""
+"""根据孔位几何、视野和重叠率生成单孔扫描点位计划。"""
 from __future__ import annotations
 
 from math import sqrt

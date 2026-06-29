@@ -1,3 +1,4 @@
+"""适配第三方检测入口并把原始检测输出规范化为统一结果结构。"""
 from __future__ import annotations
 
 import importlib

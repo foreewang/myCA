@@ -1,10 +1,4 @@
-"""
-定义API请求体的数据结构和第一层参数校验规则
-定义 /api/tasks/execute 的请求结构：
-定义 /api/camera/record/start的请求结构：
-定义 /api/stage/reciprocation/start 的请求结构：
-定义 /api/stage/reciprocation/stop 的请求结构：
-"""
+"""定义 workflow API 请求体模型及基础字段校验规则。"""
 from __future__ import annotations
 
 from typing import Any, Dict

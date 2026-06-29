@@ -1,3 +1,4 @@
+"""对扫描结果中的图片执行检测、计算克隆偏移并生成可视化叠加图。"""
 from __future__ import annotations
 
 from pathlib import Path

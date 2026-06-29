@@ -1,3 +1,4 @@
+"""校验相机、自动对焦、培养板和交接点等配置文件的结构与关键参数。"""
 from __future__ import annotations
 
 import argparse

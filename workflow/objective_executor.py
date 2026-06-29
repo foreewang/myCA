@@ -1,3 +1,4 @@
+"""根据任务物镜要求切换物镜位并记录物镜状态。"""
 from __future__ import annotations
 
 from pathlib import Path

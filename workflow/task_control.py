@@ -1,3 +1,4 @@
+"""提供任务取消检查和安全检查点中断异常。"""
 from __future__ import annotations
 
 from typing import Any, Callable, Mapping

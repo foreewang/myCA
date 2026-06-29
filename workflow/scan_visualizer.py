@@ -1,3 +1,4 @@
+"""导出扫描点位 CSV 并生成本地坐标和位移台坐标的扫描示意图。"""
 from __future__ import annotations
 
 import csv

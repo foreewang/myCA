@@ -1,3 +1,4 @@
+"""管理位移台按配置进行后台往复运动的启动、停止和状态查询。"""
 from __future__ import annotations
 
 import threading

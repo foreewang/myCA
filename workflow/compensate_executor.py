@@ -1,3 +1,4 @@
+"""根据检测到的克隆位置计算位移补偿目标，并执行拍照复核的闭环补偿流程。"""
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,3 +1,4 @@
+"""提供带重试和原子替换能力的文本与 JSON 文件读写工具。"""
 from __future__ import annotations
 
 import json
