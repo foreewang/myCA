@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 
 from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
-from workflow.task_control import raise_if_cancel_requested
+from workflow.task_control import raise_if_cancel_requested, report_progress
 
 
 def _image_size(image_path: str) -> tuple[int, int]:
@@ -217,9 +217,19 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     fov_h_mm = float(fov_cfg.get("height"))
 
     images: List[Dict[str, Any]] = []
+    captures = list(scan_result.get("captures", []) or [])
+    total_captures = max(1, len(captures))
+    report_progress(params, "detect", 0, params.get("well_name"), "detect started")
 
-    for capture in scan_result.get("captures", []):
+    for image_index, capture in enumerate(captures, start=1):
         raise_if_cancel_requested(params, f"before_detect:image_{capture.get('index')}")
+        report_progress(
+            params,
+            "detect",
+            (image_index - 1) * 100 / total_captures,
+            params.get("well_name"),
+            f"detecting image {image_index}/{total_captures}",
+        )
         image_path = capture.get("capture_result", {}).get("saved_path")
         if not image_path:
             continue
@@ -323,8 +333,16 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "clones": clones,
             }
         )
+        report_progress(
+            params,
+            "detect",
+            image_index * 100 / total_captures,
+            params.get("well_name"),
+            f"detected image {image_index}/{total_captures}",
+        )
         raise_if_cancel_requested(params, f"after_detect:image_{capture.get('index')}")
 
+    report_progress(params, "detect", 100, params.get("well_name"), "detect completed")
     total_clones = sum(int(x["clone_count"]) for x in images)
 
     result = {
