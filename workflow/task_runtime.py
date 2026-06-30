@@ -139,6 +139,67 @@ def cancel_task_request(task_id: str) -> Dict[str, Any]:
     }
 
 
+def _coerce_record_progress(value: Any, *, top_level: bool) -> int:
+    try:
+        progress = int(round(float(value)))
+    except Exception:
+        progress = 0
+    max_value = 99 if top_level else 100
+    return max(0, min(max_value, progress))
+
+
+def update_task_progress(
+    task_id: str,
+    stage: str,
+    progress: int | float,
+    well: str | None,
+    message: str,
+) -> Dict[str, Any]:
+    normalized = sanitize_task_id(task_id)
+    now = utc_now()
+    top_progress = _coerce_record_progress(progress, top_level=True)
+    well_progress = _coerce_record_progress(progress, top_level=False)
+
+    with TASK_RECORD_IO_LOCK:
+        record = read_task_record_unlocked(normalized)
+        if record.get("status") in TASK_TERMINAL_STATUSES:
+            return record
+
+        existing_progress = _coerce_record_progress(record.get("progress", 0), top_level=True)
+        record["progress"] = max(existing_progress, top_progress)
+        record["progress_source"] = "executor"
+        record["current_stage"] = str(stage)
+        record["current_well"] = well
+        record["message"] = str(message)
+        record["updated_at"] = now
+
+        wells = record.get("wells")
+        if well and isinstance(wells, dict):
+            item = dict(wells.get(well) or {})
+            if item.get("status") not in TASK_TERMINAL_STATUSES:
+                item["status"] = "running"
+                item["progress"] = well_progress
+                item["current_stage"] = str(stage)
+                item["message"] = str(message)
+                item["updated_at"] = now
+            wells = dict(wells)
+            wells[well] = item
+            record["wells"] = wells
+
+        write_task_record_unlocked(record)
+        return record
+
+
+def make_task_progress_callback(task_id: str) -> Callable[[str, int | float, str | None, str], None]:
+    def _callback(stage: str, progress: int | float, well: str | None, message: str) -> None:
+        try:
+            update_task_progress(task_id, stage, progress, well, message)
+        except Exception:
+            logger.exception("task progress update failed: task_id=%s stage=%s", task_id, stage)
+
+    return _callback
+
+
 def guess_current_progress(record: Dict[str, Any]) -> Dict[str, Any]:
     task_type = str(record.get("task_type") or "").lower()
     stage = "capture"
@@ -202,7 +263,11 @@ def monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
                 return
             if record.get("cancel_requested"):
                 return
+            if record.get("progress_source") == "executor":
+                stop_event.wait(1.0)
+                continue
             patch = guess_current_progress(record)
+            patch["progress_source"] = "fallback"
             update_task_record(task_id, patch)
         except Exception:
             logger.exception("monitor task failed: task_id=%s", task_id)
@@ -252,6 +317,7 @@ def run_task_async(
             dump_json=req.dump_json,
             persist_result=req.persist_result,
             cancel_check=lambda: cancel_event.is_set() or is_task_cancel_requested(task_id),
+            progress_callback=make_task_progress_callback(task_id),
         )
         stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
