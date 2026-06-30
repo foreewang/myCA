@@ -11,7 +11,7 @@ from workflow.camera_executor import (
 )
 from workflow.file_io import atomic_write_json
 from workflow.stage_executor import move_to_absolute
-from workflow.task_control import TaskCanceled, raise_if_cancel_requested
+from workflow.task_control import TaskCanceled, raise_if_cancel_requested, report_progress
 
 
 def _format_kwargs(params: Dict[str,Any], point: Dict[str,Any]) -> Dict[str,Any]:
@@ -219,8 +219,18 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     local_cam = cam
 
     try:
-        for point in plan["points"]:
+        points = list(plan["points"])
+        total_points = max(1, len(points))
+        report_progress(params, "capture", 0, params.get("well_name"), "capture started")
+        for point_index, point in enumerate(points, start=1):
             raise_if_cancel_requested(params, f"before_move:point_{int(point['index'])}")
+            report_progress(
+                params,
+                "capture",
+                (point_index - 1) * 100 / total_points,
+                params.get("well_name"),
+                f"moving to scan point {point_index}/{total_points}",
+            )
             motion_result = move_to_absolute(
                 port=motion.get("port", "COM3"),
                 x_target=int(point["stage_x_target"]),
@@ -240,11 +250,25 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
 
             _check_motion_guard(ctx["plate"], point, motion_result)
             raise_if_cancel_requested(params, f"after_move:point_{int(point['index'])}")
+            report_progress(
+                params,
+                "capture",
+                (point_index - 0.5) * 100 / total_points,
+                params.get("well_name"),
+                f"capturing scan point {point_index}/{total_points}",
+            )
 
             point_autofocus_result = None
             should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
             if should_autofocus:
                 raise_if_cancel_requested(params, f"before_autofocus:point_{int(point['index'])}")
+                report_progress(
+                    params,
+                    "autofocus",
+                    (point_index - 0.5) * 100 / total_points,
+                    params.get("well_name"),
+                    f"autofocus before scan point {point_index}/{total_points}",
+                )
                 # autofocus 会自行打开/关闭第三方配置中的相机。
                 # 因此本函数采用懒加载策略：先 autofocus，再打开正式采集相机，避免 MVS 设备句柄冲突。
                 if local_cam is not None and not owned_cam:
@@ -291,6 +315,13 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 capture_item["autofocus_result"] = point_autofocus_result
 
             captures.append(capture_item)
+            report_progress(
+                params,
+                "capture",
+                point_index * 100 / total_points,
+                params.get("well_name"),
+                f"captured scan point {point_index}/{total_points}",
+            )
             raise_if_cancel_requested(params, f"after_capture:point_{int(point['index'])}")
 
         result = {
