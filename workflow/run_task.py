@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
 from workflow.file_io import atomic_write_json, read_json_with_retry, read_text_with_retry
-from workflow.task_control import raise_if_cancel_requested
+from workflow.task_control import raise_if_cancel_requested, report_progress
 
 import yaml
 
@@ -318,6 +318,18 @@ def _default_result_paths(base_save_dir: Path, well_name: str) -> Dict[str, str]
     }
 
 
+def _set_progress_parent(params: Dict[str, Any], base: float, span: float) -> None:
+    params["_progress_parent_base"] = float(base)
+    params["_progress_parent_span"] = float(span)
+
+
+def _set_progress_window(params: Dict[str, Any], local_base: float, local_span: float) -> None:
+    parent_base = float(params.get("_progress_parent_base", 0.0) or 0.0)
+    parent_span = float(params.get("_progress_parent_span", 100.0) or 100.0)
+    params["_progress_base"] = parent_base + parent_span * (float(local_base) / 100.0)
+    params["_progress_span"] = parent_span * (float(local_span) / 100.0)
+
+
 def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any], well_name: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     well_ctx = copy.deepcopy(base_ctx)
     well_params = copy.deepcopy(base_params)
@@ -343,22 +355,33 @@ def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any
 def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=None) -> Dict[str, Any]:
     stages = params["stages"]
     stage_results: Dict[str, Any] = {}
+    if "_progress_parent_base" not in params:
+        _set_progress_parent(params, 5.0, 90.0)
 
     raise_if_cancel_requested(params, "before_capture")
     if "capture" in stages:
+        _set_progress_window(params, 0.0, 65.0)
+        report_progress(params, "capture", 0, params.get("well_name"), "capture started")
         stage_results["capture"] = run_single_well_capture(ctx, params, cam=cam)
+        report_progress(params, "capture", 100, params.get("well_name"), "capture completed")
     else:
         raise ValueError("当前 pipeline 版本要求 stages 至少包含 capture。")
 
     raise_if_cancel_requested(params, "after_capture")
     if "detect" in stages:
+        _set_progress_window(params, 65.0, 25.0)
+        report_progress(params, "detect", 0, params.get("well_name"), "detect started")
         stage_results["detect"] = run_single_well_detect(ctx, params, stage_results["capture"])
+        report_progress(params, "detect", 100, params.get("well_name"), "detect completed")
 
     raise_if_cancel_requested(params, "after_detect")
     if "compensate" in stages:
         if "detect" not in stage_results:
             raise ValueError("compensate 依赖 detect，请在 stages 中包含 detect。")
+        _set_progress_window(params, 90.0, 10.0)
+        report_progress(params, "compensate", 0, params.get("well_name"), "compensate started")
         stage_results["compensate"] = run_single_well_compensate(ctx, params, stage_results["detect"])
+        report_progress(params, "compensate", 100, params.get("well_name"), "compensate completed")
 
     return {
         "task_id": params["task_id"],
@@ -417,7 +440,13 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
             # deepcopy 会复制运行时状态；这里显式指回同一个对象，保证 scope=once_per_task 能跨孔生效。
             well_params["_autofocus_runtime_state"] = autofocus_runtime_state
             well_params["_cancel_check"] = params.get("_cancel_check")
+            well_params["_progress_callback"] = params.get("_progress_callback")
+            well_index = len(wells)
+            total_wells = max(1, len(well_list))
+            _set_progress_parent(well_params, 5.0 + 90.0 * well_index / total_wells, 90.0 / total_wells)
+            report_progress(well_params, "well", 0, well_name, f"well {well_name} started")
             well_result = _run_single_well_pipeline(well_ctx, well_params, cam=shared_cam)
+            report_progress(well_params, "well", 100, well_name, f"well {well_name} completed")
             wells.append(
                 {
                     "well_name": well_name,
@@ -494,6 +523,7 @@ def execute_task_request(
     dump_json: str | None = None,
     persist_result: bool = True,
     cancel_check: Callable[[], bool] | None = None,
+    progress_callback: Callable[[str, int | float, str | None, str], None] | None = None,
 ) -> Dict[str, Any]:
     if "task" not in raw_task_cfg:
         raise KeyError("task 文件缺少顶层字段 'task'")
@@ -503,12 +533,15 @@ def execute_task_request(
     if task_type not in {"capture", "pipeline", "compensate", "handoff"}:
         raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate / handoff")
 
-    cancel_params = {"_cancel_check": cancel_check}
+    cancel_params = {"_cancel_check": cancel_check, "_progress_callback": progress_callback}
+    report_progress(cancel_params, "task", 1, None, "task started")
     raise_if_cancel_requested(cancel_params, "before_task")
 
     if task_type == "handoff":
         raise_if_cancel_requested(cancel_params, "before_handoff")
+        report_progress(cancel_params, "handoff", 5, None, "handoff started")
         result = run_handoff_task(raw_task_cfg, handoff_path=handoff_path)
+        report_progress(cancel_params, "handoff", 95, None, "handoff completed")
         output_path = dump_json or ((task.get("output", {}) or {}).get("result_json"))
         if persist_result:
             write_result(result, output_path)
@@ -551,6 +584,7 @@ def execute_task_request(
 
     params = build_pipeline_params(ctx)
     params["_cancel_check"] = cancel_check
+    params["_progress_callback"] = progress_callback
 
     autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
     autofocus_should_run, autofocus_reason = should_run_autofocus(
@@ -575,12 +609,19 @@ def execute_task_request(
     params["objective_result"] = objective_result
     params["autofocus_cfg"] = autofocus_cfg
     params["autofocus_decision"] = autofocus_decision
+    report_progress(params, "objective", 5, params.get("well_name"), "objective ready")
 
     if task_type == "compensate":
         raise_if_cancel_requested(params, "before_compensate")
+        _set_progress_parent(params, 5.0, 90.0)
+        _set_progress_window(params, 0.0, 100.0)
+        report_progress(params, "compensate", 0, params.get("well_name"), "compensate started")
         result = run_compensate_task(ctx, params)
+        report_progress(params, "compensate", 100, params.get("well_name"), "compensate completed")
     else:
         raise_if_cancel_requested(params, "before_pipeline")
+        if str(params.get("observe_scope") or "").lower() == "single_well":
+            _set_progress_parent(params, 5.0, 90.0)
         result = run_pipeline_task(ctx, params)
 
     result = attach_objective_result(result, objective_result)
