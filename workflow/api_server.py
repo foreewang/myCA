@@ -84,7 +84,9 @@ from workflow.task_runtime import (
     register_task_cancel_event as _register_task_cancel_event_base,
     request_task_cancel as _request_task_cancel_base,
     run_task_async as _run_task_async_base,
+    start_task_runtime_manager as _start_task_runtime_manager,
     stop_monitor_thread as _stop_monitor_thread_base,
+    stop_task_runtime_manager as _stop_task_runtime_manager,
     submit_task_request as _submit_task_request,
     unregister_task_cancel_event as _unregister_task_cancel_event_base,
 )
@@ -110,7 +112,13 @@ _configure_api_file_logging()
 @asynccontextmanager
 async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _recover_interrupted_task_records()
-    yield
+    _start_task_runtime_manager()
+    try:
+        yield
+    finally:
+        stopped = _stop_task_runtime_manager()
+        if not stopped:
+            logger.warning("task runtime worker did not stop within timeout")
 
 
 app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)

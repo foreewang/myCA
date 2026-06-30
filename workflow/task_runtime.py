@@ -4,7 +4,9 @@ from __future__ import annotations
 import copy
 import logging
 import os
+import queue
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict
 
@@ -33,6 +35,8 @@ from workflow.task_store import (
 
 _TASK_CANCEL_LOCK = threading.RLock()
 _TASK_CANCEL_EVENTS: Dict[str, threading.Event] = {}
+DEFAULT_TASK_QUEUE_MAXSIZE = 16
+TASK_WORKER_STOP_TIMEOUT_S = 10.0
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +218,14 @@ def stop_monitor_thread(monitor: threading.Thread, stop_event: threading.Event, 
 TaskExecutor = Callable[..., Dict[str, Any]]
 
 
+@dataclass
+class QueuedTask:
+    task: Dict[str, Any]
+    req: ExecuteTaskRequest
+    cancel_event: threading.Event
+    task_executor: TaskExecutor
+
+
 def run_task_async(
     task: Dict[str, Any],
     req: ExecuteTaskRequest,
@@ -223,7 +235,7 @@ def run_task_async(
 ) -> None:
     task_id = str(task.get("task_id") or "").strip()
     stop_event = threading.Event()
-    monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event), daemon=True)
+    monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event), daemon=False)
     monitor_started = False
     try:
         update_task_record(
@@ -280,47 +292,203 @@ def run_task_async(
         release_hardware_operation("task", task_id)
 
 
+class TaskRuntimeManager:
+    def __init__(self, maxsize: int = DEFAULT_TASK_QUEUE_MAXSIZE) -> None:
+        self.maxsize = max(1, int(maxsize))
+        self._queue: queue.Queue[QueuedTask | None] = queue.Queue(maxsize=self.maxsize)
+        self._lock = threading.RLock()
+        self._stop_event = threading.Event()
+        self._worker: threading.Thread | None = None
+        self._accepting = False
+
+    def start(self) -> None:
+        with self._lock:
+            if self._worker is not None and self._worker.is_alive():
+                self._accepting = True
+                return
+            self._stop_event.clear()
+            self._accepting = True
+            self._worker = threading.Thread(
+                target=self._worker_loop,
+                name="TaskRuntimeWorker",
+                daemon=False,
+            )
+            self._worker.start()
+
+    def stop(self, timeout_s: float = TASK_WORKER_STOP_TIMEOUT_S) -> bool:
+        with self._lock:
+            self._accepting = False
+            self._stop_event.set()
+            worker = self._worker
+            if worker is None:
+                return True
+            if worker.is_alive():
+                try:
+                    self._queue.put_nowait(None)
+                except queue.Full:
+                    pass
+
+        worker.join(timeout=max(0.0, float(timeout_s)))
+        stopped = not worker.is_alive()
+        self._discard_pending_items()
+        if stopped:
+            with self._lock:
+                if self._worker is worker:
+                    self._worker = None
+        return stopped
+
+    def is_running(self) -> bool:
+        with self._lock:
+            return self._worker is not None and self._worker.is_alive() and self._accepting
+
+    def submit(
+        self,
+        req: ExecuteTaskRequest,
+        *,
+        task_executor: TaskExecutor = default_execute_task_request,
+        access_logger: logging.Logger | None = None,
+    ) -> Dict[str, Any]:
+        task = req.task or {}
+        task_id = str(task.get("task_id") or "").strip()
+        if access_logger is not None:
+            access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
+        if not task_id:
+            raise TaskRuntimeError(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
+
+        with self._lock:
+            if not self._accepting or self._worker is None or not self._worker.is_alive():
+                raise TaskRuntimeError(
+                    503,
+                    "TASK_RUNTIME_NOT_RUNNING",
+                    "任务运行队列未启动，请检查服务状态",
+                )
+            if self._queue.full():
+                raise TaskRuntimeError(
+                    429,
+                    "TASK_QUEUE_FULL",
+                    "任务队列已满，请稍后重试",
+                    log_detail=f"task_id={task_id} maxsize={self.maxsize}",
+                )
+
+            cancel_event = threading.Event()
+            register_task_cancel_event(task_id, cancel_event)
+            try:
+                record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
+                if access_logger is not None:
+                    access_logger.info("execute_task queued accepted record: task_id=%s", task_id)
+                self._queue.put_nowait(
+                    QueuedTask(
+                        task=copy.deepcopy(task),
+                        req=req,
+                        cancel_event=cancel_event,
+                        task_executor=task_executor,
+                    )
+                )
+            except queue.Full as exc:
+                unregister_task_cancel_event(task_id)
+                raise TaskRuntimeError(
+                    429,
+                    "TASK_QUEUE_FULL",
+                    "任务队列已满，请稍后重试",
+                    log_detail=f"task_id={task_id} maxsize={self.maxsize}",
+                ) from exc
+            except Exception:
+                unregister_task_cancel_event(task_id)
+                raise
+
+        if access_logger is not None:
+            access_logger.info("execute_task queued: task_id=%s queue_size=%s", task_id, self._queue.qsize())
+
+        return {
+            "task_id": task_id,
+            "status": "accepted",
+            "task_type": task.get("task_type"),
+            "observe_scope": task.get("observe_scope"),
+            "message": "task accepted",
+            "result_json_path": record.get("result_json_path"),
+        }
+
+    def _worker_loop(self) -> None:
+        while True:
+            if self._stop_event.is_set():
+                return
+            item = self._queue.get()
+            try:
+                if item is None:
+                    return
+                if item.cancel_event.is_set() or is_task_cancel_requested(str(item.task.get("task_id") or "")):
+                    self._mark_queued_task_canceled(item, "operator canceled before task started")
+                    continue
+                self._execute_queued_task(item)
+            finally:
+                self._queue.task_done()
+
+    def _discard_pending_items(self) -> None:
+        while True:
+            try:
+                item = self._queue.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                if item is not None:
+                    unregister_task_cancel_event(str(item.task.get("task_id") or ""))
+            finally:
+                self._queue.task_done()
+
+    def _execute_queued_task(self, item: QueuedTask) -> None:
+        task_id = str(item.task.get("task_id") or "").strip()
+        try:
+            acquire_hardware_operation("task", task_id)
+        except Exception as exc:
+            logger.exception("failed to acquire hardware for queued task: %s", task_id)
+            self._mark_queued_task_failed(item, "硬件正在执行其他任务，请稍后重试", "HARDWARE_BUSY")
+            unregister_task_cancel_event(task_id)
+            return
+        run_task_async(item.task, item.req, item.cancel_event, task_executor=item.task_executor)
+
+    def _mark_queued_task_canceled(self, item: QueuedTask, reason: str) -> None:
+        task_id = str(item.task.get("task_id") or "").strip()
+        try:
+            record = read_task_record(task_id)
+        except Exception:
+            record = build_accepted_record(item.task, item.req.dump_json, item.req.persist_result)
+        write_task_record(mark_record_canceled(record, reason))
+        unregister_task_cancel_event(task_id)
+
+    def _mark_queued_task_failed(self, item: QueuedTask, error: str, error_code: str) -> None:
+        task_id = str(item.task.get("task_id") or "").strip()
+        try:
+            existing_record = read_task_record(task_id)
+        except Exception:
+            existing_record = build_accepted_record(item.task, item.req.dump_json, item.req.persist_result)
+        record = finalize_failed_record(
+            existing_record,
+            item.task,
+            error,
+            item.req.dump_json,
+            item.req.persist_result,
+            error_code=error_code,
+        )
+        write_task_record(record)
+
+
+DEFAULT_TASK_RUNTIME_MANAGER = TaskRuntimeManager()
+
+
+def start_task_runtime_manager() -> None:
+    DEFAULT_TASK_RUNTIME_MANAGER.start()
+
+
+def stop_task_runtime_manager(timeout_s: float = TASK_WORKER_STOP_TIMEOUT_S) -> bool:
+    return DEFAULT_TASK_RUNTIME_MANAGER.stop(timeout_s=timeout_s)
+
+
 def submit_task_request(
     req: ExecuteTaskRequest,
     *,
     task_executor: TaskExecutor = default_execute_task_request,
     access_logger: logging.Logger | None = None,
+    manager: TaskRuntimeManager | None = None,
 ) -> Dict[str, Any]:
-    task = req.task or {}
-    task_id = str(task.get("task_id") or "").strip()
-    if access_logger is not None:
-        access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
-    if not task_id:
-        raise TaskRuntimeError(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
-
-    acquire_hardware_operation("task", task_id)
-    cancel_event = threading.Event()
-    register_task_cancel_event(task_id, cancel_event)
-    try:
-        record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
-        if access_logger is not None:
-            access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
-
-        worker = threading.Thread(
-            target=run_task_async,
-            args=(copy.deepcopy(task), req, cancel_event),
-            kwargs={"task_executor": task_executor},
-            daemon=True,
-        )
-        worker.start()
-    except Exception:
-        unregister_task_cancel_event(task_id)
-        release_hardware_operation("task", task_id)
-        raise
-
-    if access_logger is not None:
-        access_logger.info("execute_task worker started: task_id=%s thread=%s", task_id, worker.name)
-
-    return {
-        "task_id": task_id,
-        "status": "accepted",
-        "task_type": task.get("task_type"),
-        "observe_scope": task.get("observe_scope"),
-        "message": "task accepted",
-        "result_json_path": record.get("result_json_path"),
-    }
+    runtime_manager = manager or DEFAULT_TASK_RUNTIME_MANAGER
+    return runtime_manager.submit(req, task_executor=task_executor, access_logger=access_logger)
