@@ -11,7 +11,7 @@ from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_pulses_per_mm, get_view_signs
 from workflow.stage_executor import move_to_absolute_with_approach
-from workflow.task_control import raise_if_cancel_requested
+from workflow.task_control import raise_if_cancel_requested, report_progress
 
 
 def _image_center_distance2(image_item: Dict[str, Any], clone_item: Dict[str, Any]) -> float:
@@ -316,6 +316,13 @@ def _run_closed_loop(
 
     for iteration in range(1, max_iterations + 1):
         raise_if_cancel_requested(params, f"before_closed_loop_capture:{iteration}")
+        report_progress(
+            params,
+            "compensate",
+            min(95, 75 + iteration * 5),
+            params.get("well_name"),
+            f"closed-loop compensate iteration {iteration}/{max_iterations}",
+        )
         capture_result = _capture_closed_loop_image(params=params, iteration=iteration)
         raise_if_cancel_requested(params, f"after_closed_loop_capture:{iteration}")
         image_item = _build_image_item_from_capture(
@@ -377,21 +384,26 @@ def execute_compensate_on_detect_result(
 ) -> Dict[str, Any]:
     """根据选定克隆相对图像中心的偏差，计算并执行位移台补偿。"""
     selector_cfg = params.get("compensate_selector", {}) or {}
+    report_progress(params, "compensate", 5, params.get("well_name"), "selecting clone for compensation")
     raise_if_cancel_requested(params, "before_compensate_select")
     image_item, clone_item = select_clone_for_compensation(detect_result, selector_cfg)
+    report_progress(params, "compensate", 25, params.get("well_name"), "clone selected for compensation")
 
     calc = _calc_compensate_target(ctx=ctx, params=params, image_item=image_item, clone_item=clone_item)
     target = calc["compensate_target"]
     raise_if_cancel_requested(params, "before_initial_compensate_move")
+    report_progress(params, "compensate", 45, params.get("well_name"), "moving to compensate target")
     move_result = _move_to_compensate_target(
         ctx=ctx,
         params=params,
         target_x=int(target["x"]),
         target_y=int(target["y"]),
     )
+    report_progress(params, "compensate", 70, params.get("well_name"), "compensate target reached")
 
     closed_loop_result = None
     if bool((params.get("compensate_closed_loop") or {}).get("enabled", False)):
+        report_progress(params, "compensate", 75, params.get("well_name"), "closed-loop compensate started")
         closed_loop_result = _run_closed_loop(
             ctx=ctx,
             params=params,
@@ -399,6 +411,7 @@ def execute_compensate_on_detect_result(
             initial_target={"x": int(target["x"]), "y": int(target["y"])},
         )
 
+    report_progress(params, "compensate", 100, params.get("well_name"), "compensate completed")
     result = {
         "task_id": params["task_id"],
         "status": "success",
