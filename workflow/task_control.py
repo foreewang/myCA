@@ -24,3 +24,39 @@ def raise_if_cancel_requested(params: Mapping[str, Any] | None, stage: str = "")
         return
     suffix = f": {stage}" if stage else ""
     raise TaskCanceled(f"任务已请求取消{suffix}")
+
+
+def _coerce_progress(value: Any) -> int:
+    try:
+        progress = int(round(float(value)))
+    except Exception:
+        progress = 0
+    return max(0, min(100, progress))
+
+
+def report_progress(
+    params: Mapping[str, Any] | None,
+    stage: str,
+    progress: int | float,
+    well: str | None = None,
+    message: str | None = None,
+) -> None:
+    if not params:
+        return
+    callback = params.get("_progress_callback")
+    if not callable(callback):
+        return
+
+    local_progress = _coerce_progress(progress)
+    try:
+        base = float(params.get("_progress_base", 0.0) or 0.0)
+        span = float(params.get("_progress_span", 100.0) or 100.0)
+    except Exception:
+        base = 0.0
+        span = 100.0
+    task_progress = _coerce_progress(base + span * (local_progress / 100.0))
+    current_well = well or params.get("well_name")
+    try:
+        callback(str(stage), task_progress, str(current_well) if current_well else None, str(message or stage))
+    except Exception:
+        return
