@@ -158,12 +158,19 @@ def create_accepted_task_record_if_allowed(
         return record
 
 
-def mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, Any]:
+def mark_record_interrupted(
+    record: Dict[str, Any],
+    reason: str,
+    *,
+    interrupted_reason: str | None = None,
+) -> Dict[str, Any]:
     now = utc_now()
     previous_status = record.get("status")
     updated = dict(record)
     updated["status"] = "interrupted"
     updated["previous_status"] = previous_status
+    if interrupted_reason:
+        updated["interrupted_reason"] = interrupted_reason
     updated["updated_at"] = now
     updated["finished_at"] = now
     updated["interrupted_at"] = now
@@ -181,6 +188,8 @@ def mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, An
             if item.get("status") in TASK_ACTIVE_STATUSES:
                 item["previous_status"] = item.get("status")
                 item["status"] = "interrupted"
+                if interrupted_reason:
+                    item["interrupted_reason"] = interrupted_reason
                 item["message"] = reason
             updated_wells[well_name] = item
         updated["wells"] = updated_wells
@@ -242,7 +251,9 @@ def recover_interrupted_task_records() -> Dict[str, int]:
                     continue
                 if not str(record.get("task_id") or "").strip():
                     record["task_id"] = path.stem
-                write_task_record_unlocked(mark_record_interrupted(record, reason))
+                write_task_record_unlocked(
+                    mark_record_interrupted(record, reason, interrupted_reason="service_restarted")
+                )
                 stats["interrupted"] += 1
             except Exception:
                 stats["errors"] += 1
