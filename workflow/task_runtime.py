@@ -18,9 +18,9 @@ from workflow.task_store import (
     TASK_RECORD_IO_LOCK,
     TASK_TERMINAL_STATUSES,
     build_accepted_record,
-    build_failed_record,
-    build_task_record,
     create_accepted_task_record_if_allowed,
+    finalize_failed_record,
+    finalize_success_record,
     mark_record_canceled,
     read_task_record,
     read_task_record_unlocked,
@@ -243,7 +243,11 @@ def run_task_async(
         )
         stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
-        record = build_task_record(task, result, req.dump_json, req.persist_result)
+        try:
+            existing_record = read_task_record(task_id)
+        except Exception:
+            existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
+        record = finalize_success_record(existing_record, task, result, req.dump_json, req.persist_result)
         write_task_record(record)
     except TaskCanceled as exc:
         logger.info("task canceled: %s", task_id)
@@ -258,7 +262,12 @@ def run_task_async(
         logger.exception("task execution failed: %s", task_id)
         stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
-        record = build_failed_record(
+        try:
+            existing_record = read_task_record(task_id)
+        except Exception:
+            existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
+        record = finalize_failed_record(
+            existing_record,
             task,
             "任务执行失败，请查看本地日志或联系维护人员",
             req.dump_json,

@@ -395,34 +395,138 @@ def build_well_artifacts_from_result(result: Dict[str, Any], task: Dict[str, Any
     }
 
 
-def build_task_record(task: Dict[str, Any], result: Dict[str, Any], dump_json: str | None, persist_result: bool) -> Dict[str, Any]:
-    task_id = str(result.get("task_id") or task.get("task_id") or "")
-    output_cfg = task.get("output", {}) or {}
-    result_json_path = safe_str_path(dump_json) or safe_str_path(output_cfg.get("result_json"))
+def _merge_well_artifacts(existing_wells: Any, final_wells: Dict[str, Any]) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {}
+    if isinstance(existing_wells, dict):
+        for well_name, well_record in existing_wells.items():
+            merged[well_name] = dict(well_record) if isinstance(well_record, dict) else well_record
 
-    return {
-        "task_id": task_id,
-        "status": result.get("status"),
-        "task_type": result.get("task_type"),
-        "observe_scope": result.get("observe_scope"),
-        "plate_type": result.get("plate_type"),
-        "objective_name": result.get("objective_name"),
-        "stored_at_utc": utc_now(),
-        "created_at": utc_now(),
-        "started_at": None,
-        "updated_at": utc_now(),
-        "finished_at": utc_now(),
-        "persist_result": bool(persist_result),
-        "result_json_path": result_json_path,
-        "base_save_dir": safe_str_path(result.get("base_save_dir")),
-        "progress": 100,
-        "message": "task completed",
-        "current_stage": None,
-        "current_well": None,
-        "wells": build_well_artifacts_from_result(result, task),
-        "result": result,
-        "request_task": task,
-    }
+    for well_name, final_record in (final_wells or {}).items():
+        current = merged.get(well_name)
+        if isinstance(current, dict) and isinstance(final_record, dict):
+            item = dict(current)
+            for key, value in final_record.items():
+                if value is not None or key not in item:
+                    item[key] = value
+            merged[well_name] = item
+        else:
+            merged[well_name] = final_record
+    return merged
+
+
+def _mark_active_wells_failed(existing_wells: Any, fallback_wells: Dict[str, Any], error: str) -> Dict[str, Any]:
+    wells = existing_wells if isinstance(existing_wells, dict) and existing_wells else fallback_wells
+    updated_wells: Dict[str, Any] = {}
+    for well_name, well_record in (wells or {}).items():
+        if not isinstance(well_record, dict):
+            updated_wells[well_name] = well_record
+            continue
+        item = dict(well_record)
+        if item.get("status") in TASK_ACTIVE_STATUSES:
+            item["previous_status"] = item.get("status")
+            item["status"] = "failed"
+            item["message"] = error
+        updated_wells[well_name] = item
+    return updated_wells
+
+
+def finalize_success_record(
+    existing_record: Dict[str, Any],
+    task: Dict[str, Any],
+    result: Dict[str, Any],
+    dump_json: str | None,
+    persist_result: bool,
+) -> Dict[str, Any]:
+    now = utc_now()
+    task_id = str(result.get("task_id") or existing_record.get("task_id") or task.get("task_id") or "")
+    output_cfg = task.get("output", {}) or {}
+    result_json_path = (
+        safe_str_path(dump_json)
+        or safe_str_path(output_cfg.get("result_json"))
+        or safe_str_path(existing_record.get("result_json_path"))
+    )
+    final_wells = build_well_artifacts_from_result(result, task)
+
+    updated = dict(existing_record)
+    updated.setdefault("created_at", now)
+    updated.setdefault("started_at", None)
+    updated.update(
+        {
+            "task_id": task_id,
+            "status": result.get("status") or "success",
+            "task_type": result.get("task_type") or existing_record.get("task_type") or task.get("task_type"),
+            "observe_scope": result.get("observe_scope") or existing_record.get("observe_scope") or task.get("observe_scope"),
+            "plate_type": result.get("plate_type") or existing_record.get("plate_type") or task.get("plate_type"),
+            "objective_name": result.get("objective_name") or existing_record.get("objective_name") or task.get("objective"),
+            "stored_at_utc": now,
+            "updated_at": now,
+            "finished_at": now,
+            "persist_result": bool(persist_result),
+            "result_json_path": result_json_path,
+            "base_save_dir": safe_str_path(result.get("base_save_dir")) or safe_str_path(existing_record.get("base_save_dir")),
+            "progress": 100,
+            "message": "task completed",
+            "current_stage": None,
+            "current_well": None,
+            "wells": _merge_well_artifacts(existing_record.get("wells"), final_wells),
+            "result": result,
+            "request_task": task,
+        }
+    )
+    return updated
+
+
+def finalize_failed_record(
+    existing_record: Dict[str, Any],
+    task: Dict[str, Any],
+    error: str,
+    dump_json: str | None,
+    persist_result: bool,
+    *,
+    error_code: str = "TASK_EXECUTION_FAILED",
+) -> Dict[str, Any]:
+    now = utc_now()
+    output_cfg = task.get("output", {}) or {}
+    fallback_wells = guess_well_artifacts_from_task(task)
+    result_json_path = (
+        safe_str_path(dump_json)
+        or safe_str_path(output_cfg.get("result_json"))
+        or safe_str_path(existing_record.get("result_json_path"))
+    )
+
+    updated = dict(existing_record)
+    updated.setdefault("created_at", now)
+    updated.setdefault("started_at", None)
+    updated.update(
+        {
+            "task_id": str(existing_record.get("task_id") or task.get("task_id") or ""),
+            "status": "failed",
+            "task_type": existing_record.get("task_type") or task.get("task_type"),
+            "observe_scope": existing_record.get("observe_scope") or task.get("observe_scope"),
+            "plate_type": existing_record.get("plate_type") or task.get("plate_type"),
+            "objective_name": existing_record.get("objective_name") or task.get("objective"),
+            "stored_at_utc": now,
+            "updated_at": now,
+            "finished_at": now,
+            "persist_result": bool(persist_result),
+            "result_json_path": result_json_path,
+            "base_save_dir": safe_str_path(existing_record.get("base_save_dir")),
+            "progress": 100,
+            "message": error,
+            "current_stage": None,
+            "current_well": None,
+            "wells": _mark_active_wells_failed(existing_record.get("wells"), fallback_wells, error),
+            "error_code": error_code,
+            "error": error,
+            "request_task": task,
+        }
+    )
+    return updated
+
+
+def build_task_record(task: Dict[str, Any], result: Dict[str, Any], dump_json: str | None, persist_result: bool) -> Dict[str, Any]:
+    existing = build_accepted_record(task, dump_json, persist_result)
+    return finalize_success_record(existing, task, result, dump_json, persist_result)
 
 
 def build_failed_record(
@@ -433,32 +537,15 @@ def build_failed_record(
     *,
     error_code: str = "TASK_EXECUTION_FAILED",
 ) -> Dict[str, Any]:
-    task_id = str(task.get("task_id") or "")
-    output_cfg = task.get("output", {}) or {}
-    return {
-        "task_id": task_id,
-        "status": "failed",
-        "task_type": task.get("task_type"),
-        "observe_scope": task.get("observe_scope"),
-        "plate_type": task.get("plate_type"),
-        "objective_name": task.get("objective"),
-        "stored_at_utc": utc_now(),
-        "created_at": utc_now(),
-        "started_at": None,
-        "updated_at": utc_now(),
-        "finished_at": utc_now(),
-        "persist_result": bool(persist_result),
-        "result_json_path": safe_str_path(dump_json) or safe_str_path(output_cfg.get("result_json")),
-        "base_save_dir": None,
-        "progress": 100,
-        "message": error,
-        "current_stage": None,
-        "current_well": None,
-        "wells": guess_well_artifacts_from_task(task),
-        "error_code": error_code,
-        "error": error,
-        "request_task": task,
-    }
+    existing = build_accepted_record(task, dump_json, persist_result)
+    return finalize_failed_record(
+        existing,
+        task,
+        error,
+        dump_json,
+        persist_result,
+        error_code=error_code,
+    )
 
 
 def build_accepted_record(task: Dict[str, Any], dump_json: str | None, persist_result: bool) -> Dict[str, Any]:
