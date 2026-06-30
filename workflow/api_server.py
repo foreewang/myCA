@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -52,6 +53,7 @@ from workflow.path_guard import (
     OUTPUTS_ROOT,
     PROJECT_ROOT,
 )
+from workflow.process_guard import SingleInstanceLock, assert_single_worker_config
 from workflow.run_task import execute_task_request
 from workflow.task_store import (
     TASK_ACTIVE_STATUSES as _TASK_ACTIVE_STATUSES,
@@ -111,14 +113,26 @@ _configure_api_file_logging()
 
 @asynccontextmanager
 async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    _recover_interrupted_task_records()
-    _start_task_runtime_manager()
+    single_worker_lock: SingleInstanceLock | None = None
     try:
+        configured_workers = assert_single_worker_config()
+        if configured_workers is not None:
+            logger.info("api worker configuration accepted: %s=%s", *configured_workers)
+        single_worker_lock = SingleInstanceLock(
+            PROJECT_ROOT / "data" / "api_server.lock",
+            owner=f"pid={os.getpid()}",
+        )
+        single_worker_lock.acquire()
+        logger.info("api single-worker lock acquired: %s", single_worker_lock.path)
+        _recover_interrupted_task_records()
+        _start_task_runtime_manager()
         yield
     finally:
         stopped = _stop_task_runtime_manager()
         if not stopped:
             logger.warning("task runtime worker did not stop within timeout")
+        if single_worker_lock is not None:
+            single_worker_lock.release()
 
 
 app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)
