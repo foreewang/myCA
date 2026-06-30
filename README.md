@@ -210,13 +210,15 @@ python tools/test_camera_photo_video.py `
 uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
+生产部署必须保持 `--workers 1`。当前系统只控制一套相机、位移台、物镜和调焦硬件，`workflow/hardware_guard.py` 的硬件互斥锁是进程内锁，多 worker 会让每个 worker 各自持有一套内存锁，无法互相感知。API 服务启动时会检查 `COLONY_API_WORKERS`、`UVICORN_WORKERS`、`WEB_CONCURRENCY`；如果显式配置大于 1，会拒绝启动。同时服务会持有 `data/api_server.lock`，用于阻止多个 API worker/process 同时启动。
+
 开发时如果只改 Python 代码，可以使用自动重载：
 
 ```powershell
 uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-设备联调时不建议使用 `--reload`，因为 reload 会重启进程，可能中断相机、串口、电机任务。
+设备联调时不建议使用 `--reload`，因为 reload 会重启进程，可能中断相机、串口、电机任务。生产环境不要使用 `--reload`，也不要使用 `--workers 2` 或更高。
 
 ### 任务接口
 
