@@ -129,6 +129,35 @@ def task_exists(task_id: str) -> bool:
     return task_record_path(task_id).exists()
 
 
+def create_accepted_task_record_if_allowed(
+    task: Dict[str, Any],
+    dump_json: str | None,
+    persist_result: bool,
+) -> Dict[str, Any]:
+    task_id = str(task.get("task_id") or "").strip()
+    if not task_id:
+        raise TaskStoreError(
+            400,
+            "TASK_ID_REQUIRED",
+            "任务 ID 不能为空",
+        )
+
+    with TASK_RECORD_IO_LOCK:
+        if task_exists(task_id):
+            old = read_task_record_unlocked(task_id)
+            if old.get("status") in TASK_ACTIVE_STATUSES:
+                raise TaskStoreError(
+                    409,
+                    "TASK_ALREADY_RUNNING",
+                    "任务正在执行中，请勿重复提交",
+                    log_detail=f"task_id={task_id}",
+                )
+
+        record = build_accepted_record(task, dump_json, persist_result)
+        write_task_record_unlocked(record)
+        return record
+
+
 def mark_record_interrupted(record: Dict[str, Any], reason: str) -> Dict[str, Any]:
     now = utc_now()
     previous_status = record.get("status")

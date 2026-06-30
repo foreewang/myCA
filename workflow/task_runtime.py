@@ -15,17 +15,16 @@ from workflow.run_task import execute_task_request as default_execute_task_reque
 from workflow.task_artifacts import count_images
 from workflow.task_control import TaskCanceled
 from workflow.task_store import (
-    TASK_ACTIVE_STATUSES,
     TASK_RECORD_IO_LOCK,
     TASK_TERMINAL_STATUSES,
     build_accepted_record,
     build_failed_record,
     build_task_record,
+    create_accepted_task_record_if_allowed,
     mark_record_canceled,
     read_task_record,
     read_task_record_unlocked,
     sanitize_task_id,
-    task_exists,
     update_task_record,
     utc_now,
     write_task_record,
@@ -285,24 +284,13 @@ def submit_task_request(
     if not task_id:
         raise TaskRuntimeError(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
 
-    if task_exists(task_id):
-        old = read_task_record(task_id)
-        if old.get("status") in TASK_ACTIVE_STATUSES:
-            raise TaskRuntimeError(
-                409,
-                "TASK_ALREADY_RUNNING",
-                "任务正在执行中，请勿重复提交",
-                log_detail=f"task_id={task_id}",
-            )
-
     acquire_hardware_operation("task", task_id)
     cancel_event = threading.Event()
     register_task_cancel_event(task_id, cancel_event)
     try:
-        record = build_accepted_record(task, req.dump_json, req.persist_result)
+        record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
         if access_logger is not None:
             access_logger.info("execute_task writing accepted record: task_id=%s", task_id)
-        write_task_record(record)
 
         worker = threading.Thread(
             target=run_task_async,
