@@ -240,7 +240,7 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --reload
     "task_type": "pipeline",
     "stages": ["capture", "detect"],
     "plate_type": "24-well",
-    "objective": "4x",
+    "objective_name": "4x",
     "observe_scope": "well_list",
     "target": {
       "well_list": ["C5"]
@@ -333,7 +333,8 @@ Invoke-RestMethod `
 | `task_id` | 任务唯一标识，HTTP 任务索引会使用它作为文件名 |
 | `task_type` | `capture`、`pipeline`、`compensate` 或 `handoff` |
 | `plate_type` | 板型名称，如 `24-well` |
-| `objective` | 物镜名称，如 `4x`、`10x` |
+| `objective_name` | 物镜名称，如 `4x`、`10x` |
+| `objective` | 兼容旧任务文件的别名，已废弃；新任务请使用 `objective_name` |
 | `observe_scope` | `single_well`、`well_list`、`full_plate` |
 | `target.well_name` | 单孔任务目标孔位 |
 | `target.well_list` | 多孔任务孔位列表 |
@@ -356,7 +357,7 @@ Invoke-RestMethod `
 | `output.result_json` | 总结果 JSON 输出路径 |
 | `handoff.action` | `load_in` 或 `unload_out` |
 
-相机参数来自 `camera.yaml`，任务运行时会按当前物镜选择 `camera.objective_settings.<objective>` 中的曝光和增益。底层相机控制器会强制设置并校验 Mono8，录像逐帧也会校验帧格式和长度。
+相机参数来自 `camera.yaml`，任务运行时会按当前物镜选择 `camera.objective_settings.<objective_name>` 中的曝光和增益。底层相机控制器会强制设置并校验 Mono8，录像逐帧也会校验帧格式和长度。
 
 ### 补偿选择器
 
