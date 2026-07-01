@@ -7,6 +7,7 @@ from typing import Any, Dict
 from devices.motion.modbus import ModbusRTUClient
 from devices.motion.MotorManager import MotorManager
 from workflow.file_io import atomic_write_json, read_json_with_retry
+from workflow.task_store import task_objective_name
 
 
 class ObjectiveSwitchError(RuntimeError):
@@ -63,16 +64,17 @@ def ensure_objective_for_task(
     - 调焦轴: slave=3
 
     task_cfg 里只需要提供:
-      objective: "4x" / "10x"
+      objective_name: "4x" / "10x"
+    兼容旧字段 objective，但内部统一使用 objective_name。
     """
-    requested = task_cfg.get("objective")
+    requested = task_objective_name(task_cfg)
     if not requested:
         return {
             "requested_objective": None,
             "previous_objective": None,
             "current_objective": None,
             "switched": False,
-            "message": "任务未声明 objective，跳过物镜切换",
+            "message": "任务未声明 objective_name，跳过物镜切换",
         }
 
     obj_map, state_cfg, hw_cfg = _split_cfg(objectives_root_cfg)

@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from third_party.XWJJJ260511 import run_autofocus
 from workflow.config_validator import validate_autofocus_file
+from workflow.task_store import task_objective_name
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -50,9 +51,9 @@ def execute_autofocus_for_task(
     objective_result: Dict[str, Any],
     autofocus_cfg: Dict[str, Any],
 ) -> Dict[str, Any]:
-    objective_name = str(task_cfg.get("objective") or "").strip()
+    objective_name = str(task_objective_name(task_cfg) or "").strip()
     if not objective_name:
-        raise ValueError("autofocus 需要 task.objective 非空")
+        raise ValueError("autofocus 需要 task.objective_name 非空")
 
     config_path_value = autofocus_cfg.get("config_path")
     if not config_path_value:

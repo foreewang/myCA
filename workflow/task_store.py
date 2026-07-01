@@ -1,6 +1,7 @@
 """持久化任务记录并构造 queued、running、success、failed、canceled 和 interrupted 状态数据。"""
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import re
@@ -51,6 +52,19 @@ def safe_str_path(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def task_objective_name(task: Dict[str, Any]) -> str | None:
+    return safe_str_path(task.get("objective_name")) or safe_str_path(task.get("objective"))
+
+
+def normalize_task_objective_alias(task: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = copy.deepcopy(task or {})
+    objective_name = task_objective_name(normalized)
+    if objective_name:
+        normalized["objective_name"] = objective_name
+    normalized.pop("objective", None)
+    return normalized
 
 
 def task_index_dir() -> Path:
@@ -134,6 +148,7 @@ def create_accepted_task_record_if_allowed(
     dump_json: str | None,
     persist_result: bool,
 ) -> Dict[str, Any]:
+    task = normalize_task_objective_alias(task)
     task_id = str(task.get("task_id") or "").strip()
     if not task_id:
         raise TaskStoreError(
@@ -448,6 +463,7 @@ def finalize_success_record(
     dump_json: str | None,
     persist_result: bool,
 ) -> Dict[str, Any]:
+    task = normalize_task_objective_alias(task)
     now = utc_now()
     task_id = str(result.get("task_id") or existing_record.get("task_id") or task.get("task_id") or "")
     output_cfg = task.get("output", {}) or {}
@@ -468,7 +484,7 @@ def finalize_success_record(
             "task_type": result.get("task_type") or existing_record.get("task_type") or task.get("task_type"),
             "observe_scope": result.get("observe_scope") or existing_record.get("observe_scope") or task.get("observe_scope"),
             "plate_type": result.get("plate_type") or existing_record.get("plate_type") or task.get("plate_type"),
-            "objective_name": result.get("objective_name") or existing_record.get("objective_name") or task.get("objective"),
+            "objective_name": result.get("objective_name") or existing_record.get("objective_name") or task_objective_name(task),
             "stored_at_utc": now,
             "updated_at": now,
             "finished_at": now,
@@ -496,6 +512,7 @@ def finalize_failed_record(
     *,
     error_code: str = "TASK_EXECUTION_FAILED",
 ) -> Dict[str, Any]:
+    task = normalize_task_objective_alias(task)
     now = utc_now()
     output_cfg = task.get("output", {}) or {}
     fallback_wells = guess_well_artifacts_from_task(task)
@@ -515,7 +532,7 @@ def finalize_failed_record(
             "task_type": existing_record.get("task_type") or task.get("task_type"),
             "observe_scope": existing_record.get("observe_scope") or task.get("observe_scope"),
             "plate_type": existing_record.get("plate_type") or task.get("plate_type"),
-            "objective_name": existing_record.get("objective_name") or task.get("objective"),
+            "objective_name": existing_record.get("objective_name") or task_objective_name(task),
             "stored_at_utc": now,
             "updated_at": now,
             "finished_at": now,
@@ -560,6 +577,7 @@ def build_failed_record(
 
 
 def build_accepted_record(task: Dict[str, Any], dump_json: str | None, persist_result: bool) -> Dict[str, Any]:
+    task = normalize_task_objective_alias(task)
     output_cfg = task.get("output", {}) or {}
     return {
         "task_id": str(task.get("task_id") or ""),
@@ -567,7 +585,7 @@ def build_accepted_record(task: Dict[str, Any], dump_json: str | None, persist_r
         "task_type": task.get("task_type"),
         "observe_scope": task.get("observe_scope"),
         "plate_type": task.get("plate_type"),
-        "objective_name": task.get("objective"),
+        "objective_name": task_objective_name(task),
         "stored_at_utc": None,
         "created_at": utc_now(),
         "started_at": None,

@@ -7,6 +7,7 @@ from typing import Any, Dict
 import yaml
 
 from workflow.config_validator import validate_camera_file, validate_plates_file
+from workflow.task_store import normalize_task_objective_alias, task_objective_name
 
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
@@ -117,9 +118,12 @@ def load_runtime_context(
     if "plates" not in plates_cfg:
         raise KeyError(f"plates.yaml 缺少顶层字段 'plates': {plates_path}")
 
-    task = task_cfg["task"]
+    task = normalize_task_objective_alias(task_cfg["task"])
+    task_cfg["task"] = task
     plate_type = task["plate_type"]
-    objective_name = task["objective"]
+    objective_name = task_objective_name(task)
+    if not objective_name:
+        raise KeyError("任务缺少 objective_name")
 
     # 检查任务中声明的板型和物镜，是否真的存在于对应配置文件中。
     if plate_type not in plates_cfg["plates"]:

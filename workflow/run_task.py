@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from workflow.file_io import atomic_write_json, read_json_with_retry, read_text_with_retry
 from workflow.task_control import raise_if_cancel_requested, report_progress
+from workflow.task_store import normalize_task_objective_alias, task_objective_name
 
 import yaml
 
@@ -151,7 +152,7 @@ def should_run_autofocus(
     if _as_bool(trigger_cfg.get("always_before_capture"), default=False):
         return True, "always_before_capture"
 
-    objective_name = _normalize_objective_name(task_cfg.get("objective"))
+    objective_name = _normalize_objective_name(task_objective_name(task_cfg))
     always_objectives = {
         _normalize_objective_name(x)
         for x in (trigger_cfg.get("always_before_capture_objectives", []) or [])
@@ -208,6 +209,9 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
     compensate_cfg = task.get("compensate", {}) or {}
     target_cfg = task.get("target", {}) or {}
     output_cfg = task.get("output", {}) or {}
+    objective_name = task_objective_name(task)
+    if not objective_name:
+        raise KeyError("task.objective_name 不能为空")
 
     if scan_cfg.get("use_objective_fov", True):
         fov_w = objective["fov_mm"]["width"]
@@ -229,7 +233,7 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "plate_type": task["plate_type"],
         "well_name": task.get("well_name") or target_cfg.get("well_name"),
         "well_list": [str(x) for x in target_cfg.get("well_list", [])],
-        "objective_name": task["objective"],
+        "objective_name": objective_name,
         "fov_mm": {"width": fov_w, "height": fov_h},
         "resolution": camera["resolution"],
         "mvs_python_dir": resolve_mvs_python_dir(camera),
@@ -239,13 +243,13 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "pixel_format": camera.get("pixel_format", "mono8"),
         "exposure_us": _camera_setting_for_objective(
             camera,
-            task["objective"],
+            objective_name,
             "exposure_us",
             camera.get("exposure_us"),
         ),
         "gain": _camera_setting_for_objective(
             camera,
-            task["objective"],
+            objective_name,
             "gain",
             camera.get("gain"),
         ),
@@ -528,7 +532,9 @@ def execute_task_request(
     if "task" not in raw_task_cfg:
         raise KeyError("task 文件缺少顶层字段 'task'")
 
-    task = raw_task_cfg["task"]
+    raw_task_cfg = copy.deepcopy(raw_task_cfg)
+    task = normalize_task_objective_alias(raw_task_cfg["task"])
+    raw_task_cfg["task"] = task
     task_type = str(task.get("task_type") or "").strip().lower()
     if task_type not in {"capture", "pipeline", "compensate", "handoff"}:
         raise ValueError("当前版本要求 task_type 为 capture / pipeline / compensate / handoff")

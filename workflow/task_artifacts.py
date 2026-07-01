@@ -94,6 +94,7 @@ def build_task_result_response(
         return {
             "task_id": record.get("task_id"),
             "status": record.get("status"),
+            "objective_name": record.get("objective_name"),
             "progress": record.get("progress", 0),
             "message": record.get("message"),
             "current_stage": record.get("current_stage"),

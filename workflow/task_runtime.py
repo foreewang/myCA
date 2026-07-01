@@ -24,6 +24,7 @@ from workflow.task_store import (
     finalize_failed_record,
     finalize_success_record,
     mark_record_canceled,
+    normalize_task_objective_alias,
     read_task_record,
     read_task_record_unlocked,
     sanitize_task_id,
@@ -59,7 +60,7 @@ class TaskRuntimeError(RuntimeError):
 
 def normalize_execute_task_request(req: ExecuteTaskRequest) -> ExecuteTaskRequest:
     values = normalize_execute_task_values(
-        task=req.task or {},
+        task=normalize_task_objective_alias(req.task or {}),
         camera_path=req.camera_path,
         objectives_path=req.objectives_path,
         plates_path=req.plates_path,
@@ -470,6 +471,7 @@ class TaskRuntimeManager:
             "status": "accepted",
             "task_type": task.get("task_type"),
             "observe_scope": task.get("observe_scope"),
+            "objective_name": record.get("objective_name"),
             "message": "task accepted",
             "result_json_path": record.get("result_json_path"),
         }
