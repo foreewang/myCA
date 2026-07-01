@@ -56,7 +56,7 @@ camera:
   gain: 0.0
 
   # 不同物镜对应的相机参数。
-  # run_task.py 会根据 task.objective 选择对应物镜下的 exposure_us/gain。
+  # run_task.py 会根据 task.objective_name 选择对应物镜下的 exposure_us/gain。
   # 如果这里有调整，也需要同步到 third_party/camera_manager/config/camera.yaml，保持两套相机配置一致。
   objective_settings:
     # 4x 物镜拍照参数。

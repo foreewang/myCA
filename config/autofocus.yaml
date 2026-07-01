@@ -40,7 +40,7 @@ motor:
   baudrate: 115200
   focus_slave: 3
 
-  # Standalone fallback. The workflow overwrites this with task.objective.
+  # Standalone fallback. The workflow overwrites this with task.objective_name.
   objective: 4x
 
   # Software search limits for each objective, in focus-axis pulses.
