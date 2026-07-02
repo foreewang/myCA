@@ -9,6 +9,8 @@ from workflow.file_io import read_json_with_retry
 from workflow.path_guard import resolve_output_path, safe_str_path
 
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
+DEFAULT_IMAGE_LIMIT = 100
+MAX_IMAGE_LIMIT = 1000
 
 
 class TaskArtifactError(RuntimeError):
@@ -76,12 +78,31 @@ def count_images(image_dir: Path) -> int:
     return sum(1 for p in image_dir.iterdir() if is_image_file(p))
 
 
+def is_incomplete_artifact(path: Path) -> bool:
+    name = path.name.lower()
+    return path.suffix.lower() == ".part" or ".part." in name
+
+
 def is_image_file(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+    return path.is_file() and not is_incomplete_artifact(path) and path.suffix.lower() in IMAGE_SUFFIXES
 
 
 def list_image_names(image_dir: Path) -> list[str]:
     return sorted(p.name for p in image_dir.iterdir() if is_image_file(p))
+
+
+def _normalize_pagination(limit: int | None, offset: int | None) -> tuple[int, int]:
+    try:
+        normalized_limit = int(limit if limit is not None else DEFAULT_IMAGE_LIMIT)
+    except Exception:
+        normalized_limit = DEFAULT_IMAGE_LIMIT
+    try:
+        normalized_offset = int(offset if offset is not None else 0)
+    except Exception:
+        normalized_offset = 0
+    normalized_limit = max(1, min(MAX_IMAGE_LIMIT, normalized_limit))
+    normalized_offset = max(0, normalized_offset)
+    return normalized_limit, normalized_offset
 
 
 def build_task_result_response(
@@ -133,13 +154,22 @@ def build_task_result_response(
     return record
 
 
-def build_well_images_response(record: Dict[str, Any], well_name: str) -> Dict[str, Any]:
+def build_well_images_response(
+    record: Dict[str, Any],
+    well_name: str,
+    *,
+    limit: int | None = DEFAULT_IMAGE_LIMIT,
+    offset: int | None = 0,
+) -> Dict[str, Any]:
     task_id = record.get("task_id")
     image_dir = resolve_image_dir(record, well_name)
     well_record = ensure_well_record(record, well_name)
     capture_path = well_record.get("capture_result_json")
     detect_path = well_record.get("detect_result_json")
     compensate_path = well_record.get("compensate_result_json")
+    normalized_limit, normalized_offset = _normalize_pagination(limit, offset)
+    image_names = list_image_names(image_dir)
+    page_images = image_names[normalized_offset : normalized_offset + normalized_limit]
 
     return {
         "task_id": task_id,
@@ -151,7 +181,11 @@ def build_well_images_response(record: Dict[str, Any], well_name: str) -> Dict[s
             compensate_path,
             f"task.{task_id}.{well_name}.compensate_result_json",
         ),
-        "images": list_image_names(image_dir),
+        "images": page_images,
+        "total": len(image_names),
+        "limit": normalized_limit,
+        "offset": normalized_offset,
+        "has_more": normalized_offset + normalized_limit < len(image_names),
     }
 
 
@@ -161,6 +195,13 @@ def resolve_well_image_file(record: Dict[str, Any], well_name: str, filename: st
             400,
             "INVALID_IMAGE_FILENAME",
             "图片文件名非法",
+            log_detail=f"task_id={record.get('task_id')} well_name={well_name} filename={filename}",
+        )
+    if is_incomplete_artifact(Path(filename)):
+        raise TaskArtifactError(
+            409,
+            "INCOMPLETE_ARTIFACT_NOT_AVAILABLE",
+            "文件仍在写入中，暂不可下载",
             log_detail=f"task_id={record.get('task_id')} well_name={well_name} filename={filename}",
         )
     image_dir = resolve_image_dir(record, well_name)
