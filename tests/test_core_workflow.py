@@ -46,7 +46,7 @@ def test_api_server_hardware_guard_blocks_parallel_operations() -> None:
 
 
 def test_api_server_file_logging_is_configured_once() -> None:
-    from workflow import api_errors, api_server, path_guard
+    from workflow import api_errors, api_server, file_io, path_guard
 
     log_path = str(api_errors.API_LOG_PATH.resolve(strict=False))
 
@@ -59,9 +59,13 @@ def test_api_server_file_logging_is_configured_once() -> None:
     access_handlers = [
         handler for handler in api_errors.access_logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
     ]
+    file_io_handlers = [
+        handler for handler in file_io.logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
+    ]
 
     assert len(api_handlers) == 1
     assert len(access_handlers) == 1
+    assert len(file_io_handlers) == 1
     assert api_errors.API_LOG_PATH == path_guard.PROJECT_ROOT / "logs" / "api_server.log"
 
 
@@ -128,6 +132,54 @@ def test_atomic_write_json_retries_short_replace_contention(tmp_path, monkeypatc
     assert calls["count"] == 2
     assert json.loads(output.read_text(encoding="utf-8")) == {"status": "success"}
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_api_errors_sanitize_log_detail_redacts_paths_and_task_ids(monkeypatch) -> None:
+    from workflow import api_errors, path_guard
+
+    task_id = "patient-alpha-A1"
+    detail = f"task_id={task_id} path={path_guard.DATA_ROOT / 'captures' / task_id / 'result.json'}"
+
+    monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "0")
+    assert api_errors.sanitize_log_detail(detail) == detail
+
+    monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "1")
+    sanitized = api_errors.sanitize_log_detail(detail)
+
+    assert task_id not in sanitized
+    assert "result.json" not in sanitized
+    assert "task_id=<task:" in sanitized
+    assert "<DATA_ROOT>/<redacted>" in sanitized
+
+
+def test_file_io_logs_slow_retry_with_redacted_path(tmp_path, monkeypatch, caplog) -> None:
+    import logging
+
+    from workflow import file_io
+
+    output = tmp_path / "task_index" / "secret-task.json"
+    original_replace = file_io.os.replace
+    calls = {"count": 0}
+
+    def flaky_replace(src, dst):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise PermissionError("temporary handle contention")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(file_io.os, "replace", flaky_replace)
+    monkeypatch.setenv("COLONY_FILE_IO_SLOW_WARNING_MS", "0")
+    monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "1")
+
+    with caplog.at_level(logging.WARNING, logger="workflow.file_io"):
+        file_io.atomic_write_json(output, {"status": "success"}, attempts=2, sleep_s=0)
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert "FILE_IO_SLOW" in messages
+    assert "op=atomic_write_json" in messages
+    assert "path_kind=task_record" in messages
+    assert "last_error=PermissionError" in messages
+    assert "secret-task" not in messages
 
 
 def test_read_json_with_retry_recovers_from_partial_json(monkeypatch) -> None:
