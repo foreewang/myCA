@@ -11,7 +11,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.camera_record_service import CameraRecordServiceError
+from workflow.file_io import logger as file_io_logger
 from workflow.hardware_guard import HardwareGuardError, logger as hardware_guard_logger
+from workflow.log_sanitizer import log_redaction_enabled, sanitize_log_detail
 from workflow.path_guard import PROJECT_ROOT, PathGuardError
 from workflow.task_artifacts import TaskArtifactError
 from workflow.task_runtime import TaskRuntimeError
@@ -27,12 +29,27 @@ logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("uvicorn.error")
 
 
+def _log_warning(error_code: str, detail: Any) -> None:
+    logger.warning("%s: %s", error_code, sanitize_log_detail(detail))
+
+
+def _log_exception(error_code: str, detail: Any, exc: BaseException | None = None) -> None:
+    sanitized = sanitize_log_detail(detail)
+    if exc is not None and log_redaction_enabled():
+        logger.error("%s: %s exc_type=%s", error_code, sanitized, type(exc).__name__)
+        return
+    if exc is not None:
+        logger.error("%s: %s", error_code, sanitized, exc_info=(type(exc), exc, exc.__traceback__))
+    else:
+        logger.exception("%s: %s", error_code, sanitized)
+
+
 def configure_api_file_logging(extra_loggers: Iterable[logging.Logger] | None = None) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = str(API_LOG_PATH.resolve(strict=False))
     formatter = logging.Formatter(API_LOG_FORMAT)
 
-    target_loggers = [logger, access_logger, task_store_logger, hardware_guard_logger]
+    target_loggers = [logger, access_logger, task_store_logger, hardware_guard_logger, file_io_logger]
     if extra_loggers:
         for extra_logger in extra_loggers:
             if not any(existing is extra_logger for existing in target_loggers):
@@ -71,9 +88,9 @@ def api_error(
     exc: BaseException | None = None,
 ) -> HTTPException:
     if exc is not None:
-        logger.exception("%s: %s", error_code, log_detail or message)
+        _log_exception(error_code, log_detail or message, exc)
     elif log_detail is not None:
-        logger.warning("%s: %s", error_code, log_detail)
+        _log_warning(error_code, log_detail)
     return HTTPException(status_code=status_code, detail=error_detail(error_code, message))
 
 
@@ -112,7 +129,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
         )
 
     error_code = f"HTTP_{exc.status_code}"
-    logger.warning("%s: path=%s detail=%r", error_code, request.url.path, exc.detail)
+    _log_warning(error_code, f"path={request.url.path} detail={exc.detail!r}")
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(error_code, generic_http_message(exc.status_code))},
@@ -121,11 +138,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 
 
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    logger.warning(
-        "REQUEST_VALIDATION_FAILED: path=%s errors=%s body=%r",
-        request.url.path,
-        exc.errors(),
-        exc.body,
+    _log_warning(
+        "REQUEST_VALIDATION_FAILED",
+        f"path={request.url.path} errors={exc.errors()} body={exc.body!r}",
     )
     return JSONResponse(
         status_code=422,
@@ -135,9 +150,9 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 
 async def task_store_exception_handler(_request: Request, exc: TaskStoreError) -> JSONResponse:
     if exc.cause is not None:
-        logger.exception("%s: %s", exc.error_code, exc.log_detail or exc.message)
+        _log_exception(exc.error_code, exc.log_detail or exc.message, exc.cause)
     elif exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -146,7 +161,7 @@ async def task_store_exception_handler(_request: Request, exc: TaskStoreError) -
 
 async def hardware_guard_exception_handler(_request: Request, exc: HardwareGuardError) -> JSONResponse:
     if exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -155,7 +170,7 @@ async def hardware_guard_exception_handler(_request: Request, exc: HardwareGuard
 
 async def path_guard_exception_handler(_request: Request, exc: PathGuardError) -> JSONResponse:
     if exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -164,9 +179,9 @@ async def path_guard_exception_handler(_request: Request, exc: PathGuardError) -
 
 async def task_artifact_exception_handler(_request: Request, exc: TaskArtifactError) -> JSONResponse:
     if exc.cause is not None:
-        logger.exception("%s: %s", exc.error_code, exc.log_detail or exc.message)
+        _log_exception(exc.error_code, exc.log_detail or exc.message, exc.cause)
     elif exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -175,9 +190,9 @@ async def task_artifact_exception_handler(_request: Request, exc: TaskArtifactEr
 
 async def camera_record_service_exception_handler(_request: Request, exc: CameraRecordServiceError) -> JSONResponse:
     if exc.cause is not None and exc.log_exception:
-        logger.exception("%s: %s", exc.error_code, exc.log_detail or exc.message)
+        _log_exception(exc.error_code, exc.log_detail or exc.message, exc.cause)
     elif exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -186,7 +201,7 @@ async def camera_record_service_exception_handler(_request: Request, exc: Camera
 
 async def task_runtime_exception_handler(_request: Request, exc: TaskRuntimeError) -> JSONResponse:
     if exc.log_detail is not None:
-        logger.warning("%s: %s", exc.error_code, exc.log_detail)
+        _log_warning(exc.error_code, exc.log_detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": error_detail(exc.error_code, exc.message)},
@@ -194,7 +209,14 @@ async def task_runtime_exception_handler(_request: Request, exc: TaskRuntimeErro
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
+    if log_redaction_enabled():
+        logger.error(
+            "INTERNAL_SERVER_ERROR: %s exc_type=%s",
+            sanitize_log_detail(f"path={request.url.path}"),
+            type(exc).__name__,
+        )
+    else:
+        logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
     return JSONResponse(
         status_code=500,
         content={
