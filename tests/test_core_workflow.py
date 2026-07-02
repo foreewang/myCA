@@ -362,6 +362,103 @@ def test_task_artifacts_active_result_returns_objective_name_only() -> None:
     assert "objective" not in response
 
 
+def test_well_images_endpoint_paginates_and_hides_part_files(tmp_path, monkeypatch) -> None:
+    from workflow import api_server, path_guard
+    from workflow.task_artifacts import TaskArtifactError, resolve_well_image_file
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path / "task_index"))
+    monkeypatch.setattr(path_guard, "DATA_ROOT", tmp_path)
+    monkeypatch.setattr(path_guard, "OUTPUTS_ROOT", tmp_path / "outputs")
+    image_dir = tmp_path / "captures" / "A1" / "images"
+    image_dir.mkdir(parents=True)
+    for name in ("001.bmp", "002.bmp", "003.png", "004.part.bmp", "recording.part.avi"):
+        (image_dir / name).write_bytes(b"x")
+
+    api_server._write_task_record(
+        {
+            "task_id": "images-task",
+            "status": "success",
+            "updated_at": api_server._utc_now(),
+            "wells": {"A1": {"image_dir": str(image_dir)}},
+        }
+    )
+
+    first_page = api_server.list_well_images("images-task", "A1", limit=2, offset=0)
+    assert first_page["images"] == ["001.bmp", "002.bmp"]
+    assert first_page["total"] == 3
+    assert first_page["limit"] == 2
+    assert first_page["offset"] == 0
+    assert first_page["has_more"] is True
+
+    second_page = api_server.list_well_images("images-task", "A1", page=2, page_size=2)
+    assert second_page["images"] == ["003.png"]
+    assert second_page["offset"] == 2
+    assert second_page["has_more"] is False
+
+    with pytest.raises(TaskArtifactError) as exc:
+        resolve_well_image_file(api_server._read_task_record("images-task"), "A1", "004.part.bmp")
+    assert exc.value.error_code == "INCOMPLETE_ARTIFACT_NOT_AVAILABLE"
+
+
+def test_camera_executor_records_to_part_file_then_promotes(tmp_path) -> None:
+    from workflow import camera_executor
+
+    class FakeVideo:
+        def __init__(self, saved_path: str) -> None:
+            self.saved_path = saved_path
+            self.width = 640
+            self.height = 480
+            self.pixel_type = 0
+            self.frame_rate = 10.0
+            self.bitrate_kbps = 1000
+            self.frame_count = 1
+            self.duration_s = 1.0
+            self.timestamp_started = 1.0
+            self.timestamp_finished = 2.0
+
+    class FakeCamera:
+        def __init__(self, expected_part_path: Path) -> None:
+            self.expected_part_path = expected_part_path
+            self.requested_save_path = ""
+
+        def record_video(self, *, save_path, duration_s, fps, bitrate_kbps, timeout_ms):
+            self.requested_save_path = str(save_path)
+            assert duration_s == 1.0
+            part_path = self.expected_part_path
+            assert str(part_path) == self.requested_save_path
+            part_path.write_bytes(b"video")
+            return FakeVideo(str(part_path))
+
+    final_path = tmp_path / "record.avi"
+    result = camera_executor.record_video_with_opened_camera(
+        cam=FakeCamera(tmp_path / "record.part.avi"),
+        save_path=str(final_path),
+        duration_s=1.0,
+        fps=10.0,
+        bitrate_kbps=1000,
+    )
+
+    assert result["saved_path"] == str(final_path)
+    assert result["video"]["saved_path"] == str(final_path)
+    assert final_path.read_bytes() == b"video"
+    assert not (tmp_path / "record.part.avi").exists()
+
+    explicit_part_input = tmp_path / "explicit.part.avi"
+    explicit_final_path = tmp_path / "explicit.avi"
+    explicit_result = camera_executor.record_video_with_opened_camera(
+        cam=FakeCamera(explicit_part_input),
+        save_path=str(explicit_part_input),
+        duration_s=1.0,
+        fps=10.0,
+        bitrate_kbps=1000,
+    )
+
+    assert explicit_result["saved_path"] == str(explicit_final_path)
+    assert explicit_result["video"]["saved_path"] == str(explicit_final_path)
+    assert explicit_final_path.read_bytes() == b"video"
+    assert not explicit_part_input.exists()
+
+
 def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
     from workflow import api_server, hardware_guard
 
