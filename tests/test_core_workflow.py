@@ -30,25 +30,25 @@ from workflow.stage_reciprocation import StageReciprocationController, StageReci
 
 
 def test_api_server_hardware_guard_blocks_parallel_operations() -> None:
-    from workflow import api_server, hardware_guard
+    from workflow import hardware_guard
 
     hardware_guard.reset_hardware_owners()
 
-    api_server._acquire_hardware_operation("task", "task-a")
+    hardware_guard.acquire_hardware_operation("task", "task-a")
     try:
         with pytest.raises(hardware_guard.HardwareGuardError) as exc:
-            api_server._acquire_hardware_operation("stage_reciprocation", "stage_reciprocation")
+            hardware_guard.acquire_hardware_operation("stage_reciprocation", "stage_reciprocation")
         assert exc.value.status_code == 409
         assert exc.value.error_code == "HARDWARE_BUSY"
         assert exc.value.message
     finally:
-        api_server._release_hardware_operation("task", "task-a")
+        hardware_guard.release_hardware_operation("task", "task-a")
 
 
 def test_api_server_file_logging_is_configured_once() -> None:
-    from workflow import api_server
+    from workflow import api_errors, api_server, path_guard
 
-    log_path = str(api_server.API_LOG_PATH.resolve(strict=False))
+    log_path = str(api_errors.API_LOG_PATH.resolve(strict=False))
 
     api_server._configure_api_file_logging()
     api_server._configure_api_file_logging()
@@ -57,12 +57,12 @@ def test_api_server_file_logging_is_configured_once() -> None:
         handler for handler in api_server.logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
     ]
     access_handlers = [
-        handler for handler in api_server.access_logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
+        handler for handler in api_errors.access_logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
     ]
 
     assert len(api_handlers) == 1
     assert len(access_handlers) == 1
-    assert api_server.API_LOG_PATH == api_server.PROJECT_ROOT / "logs" / "api_server.log"
+    assert api_errors.API_LOG_PATH == path_guard.PROJECT_ROOT / "logs" / "api_server.log"
 
 
 def test_process_guard_rejects_multi_worker_configuration() -> None:
@@ -316,18 +316,18 @@ def test_task_store_finalize_failed_preserves_timeline_and_marks_active_wells() 
 
 
 def test_api_server_get_task_result_uses_retry_json_reader(tmp_path, monkeypatch) -> None:
-    from workflow import api_server, path_guard
+    from workflow import api_server, path_guard, task_store
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path / "task_index"))
     monkeypatch.setattr(path_guard, "DATA_ROOT", tmp_path)
     monkeypatch.setattr(path_guard, "OUTPUTS_ROOT", tmp_path / "outputs")
     result_path = tmp_path / "result.json"
-    api_server._write_task_record(
+    task_store.write_task_record(
         {
             "task_id": "result-task",
             "status": "success",
             "result_json_path": str(result_path),
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
         }
     )
     result_path.write_text('{"status": "success"}', encoding="utf-8")
@@ -364,7 +364,7 @@ def test_task_artifacts_active_result_returns_objective_name_only() -> None:
 
 
 def test_well_images_endpoint_paginates_and_hides_part_files(tmp_path, monkeypatch) -> None:
-    from workflow import api_server, path_guard
+    from workflow import api_server, path_guard, task_store
     from workflow.task_artifacts import TaskArtifactError, resolve_well_image_file
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path / "task_index"))
@@ -375,11 +375,11 @@ def test_well_images_endpoint_paginates_and_hides_part_files(tmp_path, monkeypat
     for name in ("001.bmp", "002.bmp", "003.png", "004.part.bmp", "recording.part.avi"):
         (image_dir / name).write_bytes(b"x")
 
-    api_server._write_task_record(
+    task_store.write_task_record(
         {
             "task_id": "images-task",
             "status": "success",
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
             "wells": {"A1": {"image_dir": str(image_dir)}},
         }
     )
@@ -397,7 +397,7 @@ def test_well_images_endpoint_paginates_and_hides_part_files(tmp_path, monkeypat
     assert second_page["has_more"] is False
 
     with pytest.raises(TaskArtifactError) as exc:
-        resolve_well_image_file(api_server._read_task_record("images-task"), "A1", "004.part.bmp")
+        resolve_well_image_file(task_store.read_task_record("images-task"), "A1", "004.part.bmp")
     assert exc.value.error_code == "INCOMPLETE_ARTIFACT_NOT_AVAILABLE"
 
 
@@ -461,54 +461,54 @@ def test_camera_executor_records_to_part_file_then_promotes(tmp_path) -> None:
 
 
 def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
-    from workflow import api_server, hardware_guard
+    from workflow import hardware_guard
 
     hardware_guard.reset_hardware_owners()
 
-    api_server._acquire_hardware_operation("camera_record", "recording.avi")
+    hardware_guard.acquire_hardware_operation("camera_record", "recording.avi")
     try:
-        api_server._acquire_hardware_operation("task", "allowed-task")
-        owners = api_server._current_hardware_owners()
+        hardware_guard.acquire_hardware_operation("task", "allowed-task")
+        owners = hardware_guard.current_hardware_owners()
         assert {owner["kind"] for owner in owners} == {"camera_record", "task"}
         assert {owner["operation_id"] for owner in owners} == {"recording.avi", "allowed-task"}
     finally:
-        api_server._release_hardware_operation("task", "allowed-task")
-        api_server._release_hardware_operation("camera_record", "recording.avi")
+        hardware_guard.release_hardware_operation("task", "allowed-task")
+        hardware_guard.release_hardware_operation("camera_record", "recording.avi")
 
 
 def test_api_server_hardware_guard_releases_terminal_task_record(tmp_path, monkeypatch) -> None:
-    from workflow import api_server, hardware_guard
+    from workflow import hardware_guard, task_store
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
     hardware_guard.reset_hardware_owners()
-    api_server._write_task_record(
+    task_store.write_task_record(
         {
             "task_id": "finished-task",
             "status": "success",
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
         }
     )
     with hardware_guard._HARDWARE_OPERATION_LOCK:
         hardware_guard._HARDWARE_OWNER = {
             "kind": "task",
             "operation_id": "finished-task",
-            "started_at": api_server._utc_now(),
+            "started_at": task_store.utc_now(),
             "sync_after_monotonic": 0.0,
         }
 
-    assert api_server._current_hardware_owner() is None
+    assert hardware_guard.current_hardware_owner() is None
 
 
 def test_api_server_startup_recovery_marks_active_tasks_interrupted(tmp_path, monkeypatch) -> None:
-    from workflow import api_server
+    from workflow import task_store
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
-    api_server._write_task_record(
+    task_store.write_task_record(
         {
             "task_id": "running-task",
             "status": "running",
             "progress": 25,
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
             "wells": {
                 "A1": {"status": "running", "message": "capturing"},
                 "A2": {"status": "queued", "message": "waiting"},
@@ -516,19 +516,19 @@ def test_api_server_startup_recovery_marks_active_tasks_interrupted(tmp_path, mo
             },
         }
     )
-    api_server._write_task_record(
+    task_store.write_task_record(
         {
             "task_id": "success-task",
             "status": "success",
             "message": "task completed",
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
         }
     )
 
-    stats = api_server._recover_interrupted_task_records()
+    stats = task_store.recover_interrupted_task_records()
 
     assert stats["interrupted"] == 1
-    running = api_server._read_task_record("running-task")
+    running = task_store.read_task_record("running-task")
     assert running["status"] == "interrupted"
     assert running["previous_status"] == "running"
     assert running["interrupted_reason"] == "service_restarted"
@@ -543,15 +543,16 @@ def test_api_server_startup_recovery_marks_active_tasks_interrupted(tmp_path, mo
     assert running["wells"]["A2"]["interrupted_reason"] == "service_restarted"
     assert running["wells"]["A3"]["status"] == "success"
 
-    success = api_server._read_task_record("success-task")
+    success = task_store.read_task_record("success-task")
     assert success["status"] == "success"
     assert "previous_status" not in success
 
 
 def test_api_server_request_paths_are_normalized_under_project_roots() -> None:
-    from workflow import api_server
+    from workflow import path_guard, task_runtime
+    from workflow.api_models import ExecuteTaskRequest
 
-    req = api_server.ExecuteTaskRequest(
+    req = ExecuteTaskRequest(
         task={
             "task_id": "path-task",
             "capture": {"save_dir": "data/captures/path-task"},
@@ -576,25 +577,26 @@ def test_api_server_request_paths_are_normalized_under_project_roots() -> None:
         dump_json="data/captures/path-task/api_result.json",
     )
 
-    normalized = api_server._normalize_execute_task_request(req)
+    normalized = task_runtime.normalize_execute_task_request(req)
 
-    assert normalized.camera_path == str((api_server.CONFIG_ROOT / "camera.yaml").resolve(strict=False))
-    assert normalized.objectives_path == str((api_server.CONFIG_ROOT / "objectives.yaml").resolve(strict=False))
-    assert normalized.plates_path == str((api_server.CONFIG_ROOT / "plates.yaml").resolve(strict=False))
-    assert normalized.dump_json == str((api_server.DATA_ROOT / "captures" / "path-task" / "api_result.json").resolve(strict=False))
-    assert normalized.task["capture"]["save_dir"] == str((api_server.DATA_ROOT / "captures" / "path-task").resolve(strict=False))
-    assert normalized.task["scan"]["output_json"] == str((api_server.OUTPUTS_ROOT / "path-task" / "scan_result.json").resolve(strict=False))
+    assert normalized.camera_path == str((path_guard.CONFIG_ROOT / "camera.yaml").resolve(strict=False))
+    assert normalized.objectives_path == str((path_guard.CONFIG_ROOT / "objectives.yaml").resolve(strict=False))
+    assert normalized.plates_path == str((path_guard.CONFIG_ROOT / "plates.yaml").resolve(strict=False))
+    assert normalized.dump_json == str((path_guard.DATA_ROOT / "captures" / "path-task" / "api_result.json").resolve(strict=False))
+    assert normalized.task["capture"]["save_dir"] == str((path_guard.DATA_ROOT / "captures" / "path-task").resolve(strict=False))
+    assert normalized.task["scan"]["output_json"] == str((path_guard.OUTPUTS_ROOT / "path-task" / "scan_result.json").resolve(strict=False))
     assert normalized.task["compensate"]["closed_loop"]["save_dir"] == str(
-        (api_server.DATA_ROOT / "captures" / "path-task" / "closed_loop").resolve(strict=False)
+        (path_guard.DATA_ROOT / "captures" / "path-task" / "closed_loop").resolve(strict=False)
     )
 
 
 def test_api_server_request_paths_reject_outside_project_roots() -> None:
-    from workflow import api_server, path_guard
+    from workflow import path_guard, task_runtime
+    from workflow.api_models import ExecuteTaskRequest
 
     with pytest.raises(path_guard.PathGuardError) as config_exc:
-        api_server._normalize_execute_task_request(
-            api_server.ExecuteTaskRequest(
+        task_runtime.normalize_execute_task_request(
+            ExecuteTaskRequest(
                 task={"task_id": "bad-config"},
                 camera_path="C:/Windows/camera.yaml",
             )
@@ -603,8 +605,8 @@ def test_api_server_request_paths_reject_outside_project_roots() -> None:
     assert config_exc.value.error_code == "PATH_OUT_OF_ALLOWED_ROOT"
 
     with pytest.raises(path_guard.PathGuardError) as output_exc:
-        api_server._normalize_execute_task_request(
-            api_server.ExecuteTaskRequest(
+        task_runtime.normalize_execute_task_request(
+            ExecuteTaskRequest(
                 task={
                     "task_id": "bad-output",
                     "capture": {"save_dir": "../outside-captures"},
@@ -615,46 +617,46 @@ def test_api_server_request_paths_reject_outside_project_roots() -> None:
     assert output_exc.value.error_code == "PATH_OUT_OF_ALLOWED_ROOT"
 
 
-def test_api_server_camera_record_config_error_returns_400(monkeypatch) -> None:
-    from workflow import api_server, hardware_guard
+def test_camera_record_service_config_error_returns_400() -> None:
+    from workflow import camera_record_service, hardware_guard
+    from workflow.api_models import CameraRecordStartRequest
 
     hardware_guard.reset_hardware_owners()
 
     def fail_load_settings(_req):
         raise ValueError("bad camera config")
 
-    monkeypatch.setattr(api_server, "_load_camera_settings_for_recording", fail_load_settings)
-
-    with pytest.raises(HTTPException) as exc:
-        api_server.start_camera_record(
-            api_server.CameraRecordStartRequest(save_path="data/camera_records/config-error.avi")
+    with pytest.raises(camera_record_service.CameraRecordServiceError) as exc:
+        camera_record_service.start_camera_recording(
+            CameraRecordStartRequest(save_path="data/camera_records/config-error.avi"),
+            settings_loader=fail_load_settings,
         )
 
     assert exc.value.status_code == 400
-    assert exc.value.detail["error_code"] == "CAMERA_RECORD_CONFIG_INVALID"
-    assert exc.value.detail["message"] == "相机录像配置无效，请检查 camera.yaml 或请求参数"
-    assert api_server._current_hardware_owners() == []
+    assert exc.value.error_code == "CAMERA_RECORD_CONFIG_INVALID"
+    assert exc.value.message
+    assert hardware_guard.current_hardware_owners() == []
 
 
 def test_api_server_camera_record_request_rejects_invalid_ranges() -> None:
-    from workflow import api_server
+    from workflow.api_models import CameraRecordStartRequest
 
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(fps=0)
+        CameraRecordStartRequest(fps=0)
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(bitrate_kbps=0)
+        CameraRecordStartRequest(bitrate_kbps=0)
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(timeout_ms=-1)
+        CameraRecordStartRequest(timeout_ms=-1)
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(device_index=-1)
+        CameraRecordStartRequest(device_index=-1)
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(exposure_us=0)
+        CameraRecordStartRequest(exposure_us=0)
     with pytest.raises(ValidationError):
-        api_server.CameraRecordStartRequest(gain=-0.1)
+        CameraRecordStartRequest(gain=-0.1)
 
 
 def test_api_server_request_validation_error_returns_public_error() -> None:
-    from workflow import api_server
+    from workflow import api_errors
 
     class RequestStub:
         class UrlStub:
@@ -663,7 +665,7 @@ def test_api_server_request_validation_error_returns_public_error() -> None:
         url = UrlStub()
 
     response = asyncio.run(
-        api_server._request_validation_exception_handler(
+        api_errors.request_validation_exception_handler(
             RequestStub(),
             RequestValidationError(
                 [{"type": "greater_than", "loc": ("body", "fps"), "msg": "Input should be greater than 0"}],
@@ -680,7 +682,7 @@ def test_api_server_request_validation_error_returns_public_error() -> None:
 
 
 def test_api_server_http_error_handler_sanitizes_plain_detail() -> None:
-    from workflow import api_server
+    from workflow import api_errors
 
     class RequestStub:
         class UrlStub:
@@ -689,9 +691,9 @@ def test_api_server_http_error_handler_sanitizes_plain_detail() -> None:
         url = UrlStub()
 
     response = asyncio.run(
-        api_server._http_exception_handler(
+        api_errors.http_exception_handler(
             RequestStub(),
-            api_server.HTTPException(status_code=404, detail="C:/secret/config.yaml"),
+            HTTPException(status_code=404, detail="C:/secret/config.yaml"),
         )
     )
 
@@ -703,75 +705,74 @@ def test_api_server_http_error_handler_sanitizes_plain_detail() -> None:
 
 
 def test_api_server_stage_reciprocation_request_rejects_invalid_ranges() -> None:
-    from workflow import api_server
+    from workflow.api_models import StageReciprocationStartRequest
 
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(profile_vel=0)
+        StageReciprocationStartRequest(profile_vel=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(profile_acc=0)
+        StageReciprocationStartRequest(profile_acc=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(profile_dec=0)
+        StageReciprocationStartRequest(profile_dec=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(poll_s=0)
+        StageReciprocationStartRequest(poll_s=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(move_timeout_s=0)
+        StageReciprocationStartRequest(move_timeout_s=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(max_cycles=0)
+        StageReciprocationStartRequest(max_cycles=0)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(x_min=10, x_max=10)
+        StageReciprocationStartRequest(x_min=10, x_max=10)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(safety_margin=10_000_000)
+        StageReciprocationStartRequest(safety_margin=10_000_000)
     with pytest.raises(ValidationError):
-        api_server.StageReciprocationStartRequest(point_a_x=999_999_999)
+        StageReciprocationStartRequest(point_a_x=999_999_999)
 
 
-def test_api_server_cancel_task_marks_record_and_sets_event(tmp_path, monkeypatch) -> None:
-    from workflow import api_server
+def test_task_runtime_cancel_request_marks_record_and_sets_event(tmp_path, monkeypatch) -> None:
+    from workflow import task_runtime, task_store
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
     cancel_event = threading.Event()
-    with api_server._TASK_CANCEL_LOCK:
-        api_server._TASK_CANCEL_EVENTS.clear()
-    api_server._register_task_cancel_event("cancel-me", cancel_event)
-    api_server._write_task_record(
+    with task_runtime._TASK_CANCEL_LOCK:
+        task_runtime._TASK_CANCEL_EVENTS.clear()
+    task_runtime.register_task_cancel_event("cancel-me", cancel_event)
+    task_store.write_task_record(
         {
             "task_id": "cancel-me",
             "status": "running",
             "progress": 40,
-            "updated_at": api_server._utc_now(),
+            "updated_at": task_store.utc_now(),
         }
     )
 
-    result = api_server.cancel_task("cancel-me")
+    result = task_runtime.cancel_task_request("cancel-me")
 
     assert result["status"] == "cancel_requested"
     assert result["cancel_requested"] is True
     assert cancel_event.is_set()
-    record = api_server._read_task_record("cancel-me")
+    record = task_store.read_task_record("cancel-me")
     assert record["status"] == "running"
     assert record["cancel_requested"] is True
     assert record["cancel_requested_at"]
 
-    api_server._unregister_task_cancel_event("cancel-me")
+    task_runtime.unregister_task_cancel_event("cancel-me")
 
 
-def test_api_server_run_task_async_writes_canceled_record(tmp_path, monkeypatch) -> None:
-    from workflow import api_server
+def test_task_runtime_run_task_async_writes_canceled_record(tmp_path, monkeypatch) -> None:
+    from workflow import task_runtime, task_store
+    from workflow.api_models import ExecuteTaskRequest
     from workflow.task_control import TaskCanceled
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
     task = {"task_id": "worker-cancel", "task_type": "capture"}
-    req = api_server.ExecuteTaskRequest(task=task)
-    api_server._write_task_record(api_server._build_accepted_record(task, None, True))
+    req = ExecuteTaskRequest(task=task)
+    task_store.write_task_record(task_store.build_accepted_record(task, None, True))
 
     def fake_execute_task_request(*_args, **_kwargs):
         raise TaskCanceled("operator canceled")
 
-    monkeypatch.setattr(api_server, "execute_task_request", fake_execute_task_request)
+    task_runtime.run_task_async(task, req, threading.Event(), task_executor=fake_execute_task_request)
 
-    api_server._run_task_async(task, req, threading.Event())
-
-    record = api_server._read_task_record("worker-cancel")
+    record = task_store.read_task_record("worker-cancel")
     assert record["status"] == "canceled"
     assert record["cancel_requested"] is True
     assert record["canceled_at"]
