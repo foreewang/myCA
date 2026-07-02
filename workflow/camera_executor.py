@@ -1,8 +1,10 @@
 """封装海康相机打开、拍照、录像和共享录像相机状态管理能力。"""
 from __future__ import annotations
 
+import os
 import sys
 import threading
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict
 
@@ -33,6 +35,35 @@ def _is_recording_camera(cam: HikCameraController | None) -> bool:
 
 def _recording_is_active() -> bool:
     return _RECORDING_CAMERA is not None and bool(getattr(_RECORDING_CAMERA, "recording", False))
+
+
+def _final_video_path(save_path: str | Path) -> Path:
+    path = Path(save_path)
+    if path.suffix.lower() != ".avi":
+        path = path.with_suffix(".avi")
+    if path.name.lower().endswith(".part.avi"):
+        path = path.with_name(f"{path.stem[:-5]}{path.suffix}")
+    return path
+
+
+def _part_video_path(final_path: str | Path) -> Path:
+    final = _final_video_path(final_path)
+    return final.with_name(f"{final.stem}.part{final.suffix}")
+
+
+def _video_record_paths(save_path: str | Path) -> tuple[Path, Path]:
+    final = _final_video_path(save_path)
+    return final, _part_video_path(final)
+
+
+def _promote_completed_video(part_path: str | Path, final_path: str | Path) -> Path:
+    part = Path(part_path)
+    final = _final_video_path(final_path)
+    if part.resolve(strict=False) == final.resolve(strict=False):
+        return final
+    final.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(str(part), str(final))
+    return final
 
 
 def _normalize_pixel_format(pixel_format: str | None) -> str:
@@ -427,13 +458,19 @@ def record_video_with_opened_camera(
     bitrate_kbps: int = 1000,
     timeout_ms: int | None = None,
 ) -> Dict[str, Any]:
+    final_path, part_path = _video_record_paths(save_path)
     raw_video = cam.record_video(
-        save_path=save_path,
+        save_path=str(part_path),
         duration_s=duration_s,
         fps=fps,
         bitrate_kbps=bitrate_kbps,
         timeout_ms=timeout_ms,
     )
+    promoted_path = _promote_completed_video(raw_video.saved_path, final_path)
+    try:
+        raw_video = replace(raw_video, saved_path=str(promoted_path))
+    except TypeError:
+        raw_video.saved_path = str(promoted_path)
     return {
         "saved_path": str(raw_video.saved_path),
         "video": videoinfo_to_dict(raw_video),
@@ -459,6 +496,7 @@ def start_recording_camera(
     with _SHARED_CAMERA_LOCK:
         if _recording_is_active():
             raise RuntimeError(f"录像已在进行中: {_RECORDING_CAMERA_SETTINGS.get('save_path')}")
+        final_path, part_path = _video_record_paths(save_path)
 
         cam = HikCameraController(
             mvs_python_dir=mvs_python_dir,
@@ -474,7 +512,7 @@ def start_recording_camera(
             if gain is not None:
                 cam.set_gain(float(gain))
             cam.start_background_recording(
-                save_path=save_path,
+                save_path=str(part_path),
                 fps=fps,
                 bitrate_kbps=bitrate_kbps,
                 timeout_ms=timeout_ms,
@@ -485,7 +523,8 @@ def start_recording_camera(
 
         _RECORDING_CAMERA = cam
         _RECORDING_CAMERA_SETTINGS = {
-            "save_path": str(cam.recording_status().get("saved_path") or save_path),
+            "save_path": str(final_path),
+            "recording_path": str(part_path),
             "mvs_python_dir": mvs_python_dir,
             "device_index": int(device_index),
             "serial_number": serial_number,
@@ -509,10 +548,19 @@ def stop_recording_camera() -> Dict[str, Any]:
             raise RuntimeError("当前没有正在进行的录像")
         try:
             info = cam.stop_background_recording()
+            final_path = Path(str(_RECORDING_CAMERA_SETTINGS.get("save_path") or info.saved_path))
+            promoted_path = _promote_completed_video(info.saved_path, final_path)
+            try:
+                info = replace(info, saved_path=str(promoted_path))
+            except TypeError:
+                info.saved_path = str(promoted_path)
+            settings = dict(_RECORDING_CAMERA_SETTINGS)
+            settings["save_path"] = str(promoted_path)
+            settings.pop("recording_path", None)
             return {
                 "status": "stopped",
                 "video": videoinfo_to_dict(info),
-                "settings": dict(_RECORDING_CAMERA_SETTINGS),
+                "settings": settings,
             }
         finally:
             cam.close()
@@ -530,7 +578,11 @@ def recording_camera_status() -> Dict[str, Any]:
                 "settings": {},
             }
         status = cam.recording_status()
-        status["settings"] = dict(_RECORDING_CAMERA_SETTINGS)
+        settings = dict(_RECORDING_CAMERA_SETTINGS)
+        final_path = settings.get("save_path")
+        if final_path:
+            status["saved_path"] = str(final_path)
+        status["settings"] = {k: v for k, v in settings.items() if k != "recording_path"}
         return status
 
 
