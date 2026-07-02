@@ -6,9 +6,9 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict
+from typing import Annotated, Any, AsyncIterator, Dict
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from workflow.api_errors import (
@@ -359,9 +359,18 @@ def get_task_result(task_id: str) -> Dict[str, Any]:
 
 
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images")
-def list_well_images(task_id: str, well_name: str) -> Dict[str, Any]:
+def list_well_images(
+    task_id: str,
+    well_name: str,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    page: Annotated[int | None, Query(ge=1)] = None,
+    page_size: Annotated[int | None, Query(ge=1, le=1000)] = None,
+) -> Dict[str, Any]:
     record = _read_task_record(task_id)
-    return _build_well_images_response(record, well_name)
+    effective_limit = int(page_size if page_size is not None else limit)
+    effective_offset = int((page - 1) * effective_limit if page is not None else offset)
+    return _build_well_images_response(record, well_name, limit=effective_limit, offset=effective_offset)
 
 
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images/{filename}")
