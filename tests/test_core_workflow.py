@@ -29,19 +29,17 @@ from workflow.stage_reciprocation import StageReciprocationController, StageReci
 
 
 def test_api_server_hardware_guard_blocks_parallel_operations() -> None:
-    from workflow import api_server
+    from workflow import api_server, hardware_guard
 
-    with api_server._HARDWARE_OPERATION_LOCK:
-        api_server._HARDWARE_OWNER = None
-        api_server._CAMERA_RECORD_OWNER = None
+    hardware_guard.reset_hardware_owners()
 
     api_server._acquire_hardware_operation("task", "task-a")
     try:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(hardware_guard.HardwareGuardError) as exc:
             api_server._acquire_hardware_operation("stage_reciprocation", "stage_reciprocation")
         assert exc.value.status_code == 409
-        assert exc.value.detail["error_code"] == "HARDWARE_BUSY"
-        assert exc.value.detail["message"] == "硬件正在执行其他任务，请稍后重试"
+        assert exc.value.error_code == "HARDWARE_BUSY"
+        assert exc.value.message
     finally:
         api_server._release_hardware_operation("task", "task-a")
 
@@ -64,6 +62,49 @@ def test_api_server_file_logging_is_configured_once() -> None:
     assert len(api_handlers) == 1
     assert len(access_handlers) == 1
     assert api_server.API_LOG_PATH == api_server.PROJECT_ROOT / "logs" / "api_server.log"
+
+
+def test_process_guard_rejects_multi_worker_configuration() -> None:
+    from workflow.process_guard import SingleWorkerGuardError, assert_single_worker_config
+
+    assert assert_single_worker_config({"COLONY_API_WORKERS": "1"}) == ("COLONY_API_WORKERS", 1)
+
+    with pytest.raises(SingleWorkerGuardError) as exc:
+        assert_single_worker_config({"COLONY_API_WORKERS": "2"})
+    assert exc.value.error_code == "MULTI_WORKER_NOT_SUPPORTED"
+    assert "COLONY_API_WORKERS=2" in str(exc.value.log_detail)
+
+    with pytest.raises(SingleWorkerGuardError) as conflict_exc:
+        assert_single_worker_config({"COLONY_API_WORKERS": "1", "WEB_CONCURRENCY": "2"})
+    assert conflict_exc.value.error_code == "MULTI_WORKER_NOT_SUPPORTED"
+    assert "WEB_CONCURRENCY=2" in str(conflict_exc.value.log_detail)
+
+    with pytest.raises(SingleWorkerGuardError) as invalid_exc:
+        assert_single_worker_config({"WEB_CONCURRENCY": "two"})
+    assert invalid_exc.value.error_code == "INVALID_WORKER_COUNT"
+
+
+def test_process_guard_single_instance_lock_blocks_second_holder(tmp_path) -> None:
+    from workflow.process_guard import SingleInstanceLock, SingleWorkerGuardError
+
+    lock_path = tmp_path / "api_server.lock"
+    first = SingleInstanceLock(lock_path, owner="first")
+    second = SingleInstanceLock(lock_path, owner="second")
+
+    first.acquire()
+    try:
+        assert first.acquired
+        with pytest.raises(SingleWorkerGuardError) as exc:
+            second.acquire()
+        assert exc.value.error_code == "API_SERVER_ALREADY_RUNNING"
+    finally:
+        first.release()
+
+    second.acquire()
+    try:
+        assert second.acquired
+    finally:
+        second.release()
 
 
 def test_atomic_write_json_retries_short_replace_contention(tmp_path, monkeypatch) -> None:
@@ -101,12 +142,184 @@ def test_read_json_with_retry_recovers_from_partial_json(monkeypatch) -> None:
     assert file_io.read_json_with_retry("result.json", attempts=2, sleep_s=0) == {"status": "success"}
 
 
+def test_task_store_create_accepted_record_is_single_locked_entrypoint(tmp_path, monkeypatch) -> None:
+    from workflow import task_store
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    task = {"task_id": "atomic-task", "task_type": "capture", "objective": "10x"}
+
+    first = task_store.create_accepted_task_record_if_allowed(task, None, True)
+
+    assert first["status"] == "queued"
+    assert first["task_id"] == "atomic-task"
+    assert first["objective_name"] == "10x"
+    assert first["request_task"]["objective_name"] == "10x"
+    assert "objective" not in first["request_task"]
+
+    with pytest.raises(task_store.TaskStoreError) as exc:
+        task_store.create_accepted_task_record_if_allowed(task, None, True)
+    assert exc.value.status_code == 409
+    assert exc.value.error_code == "TASK_ALREADY_RUNNING"
+
+    terminal = dict(first)
+    terminal["status"] = "success"
+    task_store.write_task_record(terminal)
+
+    second = task_store.create_accepted_task_record_if_allowed(task, None, True)
+
+    assert second["status"] == "queued"
+    assert task_store.read_task_record("atomic-task")["status"] == "queued"
+
+
+def test_task_runtime_normalizes_objective_alias_in_execute_request() -> None:
+    from workflow import task_runtime
+    from workflow.api_models import ExecuteTaskRequest
+
+    req = ExecuteTaskRequest(
+        task={
+            "task_id": "objective-alias",
+            "task_type": "capture",
+            "objective": "10x",
+            "capture": {"save_dir": "data/captures/objective-alias"},
+        }
+    )
+
+    normalized = task_runtime.normalize_execute_task_request(req)
+
+    assert normalized.task["objective_name"] == "10x"
+    assert "objective" not in normalized.task
+
+
+def test_run_task_build_pipeline_params_uses_objective_name() -> None:
+    from workflow import run_task
+
+    ctx = {
+        "task": {
+            "task_id": "objective-name-task",
+            "task_type": "capture",
+            "plate_type": "24-well",
+            "objective_name": "10x",
+            "capture": {"save_dir": "data/captures/objective-name-task"},
+        },
+        "objective": {"fov_mm": {"width": 1.2, "height": 0.8}},
+        "camera": {
+            "resolution": {"width": 1920, "height": 1200},
+            "objective_settings": {"10x": {"exposure_us": 12000, "gain": 1.5}},
+            "mvs_python_dir": "C:/MVS/Development/Samples/Python/MvImport",
+        },
+    }
+
+    params = run_task.build_pipeline_params(ctx)
+
+    assert params["objective_name"] == "10x"
+    assert params["exposure_us"] == 12000
+    assert params["gain"] == 1.5
+
+
+def test_objective_executor_accepts_objective_name() -> None:
+    from workflow import objective_executor
+
+    result = objective_executor.ensure_objective_for_task(
+        {"task_id": "objective-name-task", "objective_name": "10x"},
+        {"objectives": {"10x": {"switch": {"enabled": False}}}},
+    )
+
+    assert result["requested_objective"] == "10x"
+    assert result["switched"] is False
+    assert "10x 未启用 switch.enabled" in result["message"]
+
+
+def test_task_store_finalize_success_preserves_existing_timeline_and_wells() -> None:
+    from workflow import task_store
+
+    task = {
+        "task_id": "finish-success",
+        "task_type": "pipeline",
+        "observe_scope": "well_list",
+        "plate_type": "24-well",
+        "objective": "10x",
+        "target": {"well_list": ["A1", "A2"]},
+        "capture": {"save_dir": "data/captures/finish-success"},
+    }
+    existing = task_store.build_accepted_record(task, None, True)
+    existing.update(
+        {
+            "status": "running",
+            "created_at": "created-at",
+            "started_at": "started-at",
+            "cancel_requested_at": "cancel-at",
+        }
+    )
+    existing["wells"]["A2"]["operator_note"] = "keep me"
+    result = {
+        "status": "success",
+        "task_id": "finish-success",
+        "task_type": "pipeline",
+        "observe_scope": "well_list",
+        "plate_type": "24-well",
+        "objective_name": "10x",
+        "wells": [
+            {
+                "well_name": "A1",
+                "capture_result_json": "data/captures/finish-success/A1/scan_result.json",
+                "detect_result_json": "data/captures/finish-success/A1/detect_result.json",
+            }
+        ],
+    }
+
+    record = task_store.finalize_success_record(existing, task, result, None, True)
+
+    assert record["status"] == "success"
+    assert record["created_at"] == "created-at"
+    assert record["started_at"] == "started-at"
+    assert record["cancel_requested_at"] == "cancel-at"
+    assert record["wells"]["A1"]["status"] == "success"
+    assert record["wells"]["A2"]["operator_note"] == "keep me"
+    assert record["wells"]["A2"]["image_dir"] == existing["wells"]["A2"]["image_dir"]
+
+
+def test_task_store_finalize_failed_preserves_timeline_and_marks_active_wells() -> None:
+    from workflow import task_store
+
+    task = {
+        "task_id": "finish-failed",
+        "task_type": "capture",
+        "observe_scope": "well_list",
+        "plate_type": "24-well",
+        "objective": "10x",
+        "target": {"well_list": ["A1", "A2"]},
+        "capture": {"save_dir": "data/captures/finish-failed"},
+    }
+    existing = task_store.build_accepted_record(task, None, True)
+    existing.update(
+        {
+            "status": "running",
+            "created_at": "created-at",
+            "started_at": "started-at",
+            "cancel_requested_at": "cancel-at",
+        }
+    )
+    existing["wells"]["A1"]["status"] = "running"
+    existing["wells"]["A2"]["status"] = "success"
+
+    record = task_store.finalize_failed_record(existing, task, "camera failed", None, True)
+
+    assert record["status"] == "failed"
+    assert record["created_at"] == "created-at"
+    assert record["started_at"] == "started-at"
+    assert record["cancel_requested_at"] == "cancel-at"
+    assert record["wells"]["A1"]["status"] == "failed"
+    assert record["wells"]["A1"]["previous_status"] == "running"
+    assert record["wells"]["A2"]["status"] == "success"
+    assert record["error"] == "camera failed"
+
+
 def test_api_server_get_task_result_uses_retry_json_reader(tmp_path, monkeypatch) -> None:
-    from workflow import api_server
+    from workflow import api_server, path_guard
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path / "task_index"))
-    monkeypatch.setattr(api_server, "DATA_ROOT", tmp_path)
-    monkeypatch.setattr(api_server, "OUTPUTS_ROOT", tmp_path / "outputs")
+    monkeypatch.setattr(path_guard, "DATA_ROOT", tmp_path)
+    monkeypatch.setattr(path_guard, "OUTPUTS_ROOT", tmp_path / "outputs")
     result_path = tmp_path / "result.json"
     api_server._write_task_record(
         {
@@ -131,12 +344,28 @@ def test_api_server_get_task_result_uses_retry_json_reader(tmp_path, monkeypatch
     assert any(path.endswith("result.json") for path in calls)
 
 
-def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
-    from workflow import api_server
+def test_task_artifacts_active_result_returns_objective_name_only() -> None:
+    from workflow.task_artifacts import build_task_result_response
 
-    with api_server._HARDWARE_OPERATION_LOCK:
-        api_server._HARDWARE_OWNER = None
-        api_server._CAMERA_RECORD_OWNER = None
+    response = build_task_result_response(
+        {
+            "task_id": "active-objective",
+            "status": "running",
+            "objective_name": "10x",
+            "progress": 20,
+            "message": "running",
+        },
+        {"queued", "running"},
+    )
+
+    assert response["objective_name"] == "10x"
+    assert "objective" not in response
+
+
+def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> None:
+    from workflow import api_server, hardware_guard
+
+    hardware_guard.reset_hardware_owners()
 
     api_server._acquire_hardware_operation("camera_record", "recording.avi")
     try:
@@ -150,12 +379,10 @@ def test_api_server_hardware_guard_allows_task_with_active_camera_record() -> No
 
 
 def test_api_server_hardware_guard_releases_terminal_task_record(tmp_path, monkeypatch) -> None:
-    from workflow import api_server
+    from workflow import api_server, hardware_guard
 
     monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
-    with api_server._HARDWARE_OPERATION_LOCK:
-        api_server._HARDWARE_OWNER = None
-        api_server._CAMERA_RECORD_OWNER = None
+    hardware_guard.reset_hardware_owners()
     api_server._write_task_record(
         {
             "task_id": "finished-task",
@@ -163,8 +390,8 @@ def test_api_server_hardware_guard_releases_terminal_task_record(tmp_path, monke
             "updated_at": api_server._utc_now(),
         }
     )
-    with api_server._HARDWARE_OPERATION_LOCK:
-        api_server._HARDWARE_OWNER = {
+    with hardware_guard._HARDWARE_OPERATION_LOCK:
+        hardware_guard._HARDWARE_OWNER = {
             "kind": "task",
             "operation_id": "finished-task",
             "started_at": api_server._utc_now(),
@@ -206,13 +433,16 @@ def test_api_server_startup_recovery_marks_active_tasks_interrupted(tmp_path, mo
     running = api_server._read_task_record("running-task")
     assert running["status"] == "interrupted"
     assert running["previous_status"] == "running"
+    assert running["interrupted_reason"] == "service_restarted"
     assert running["progress"] == 25
     assert running["finished_at"]
     assert running["interrupted_at"]
     assert "API 服务启动" in running["message"]
     assert running["wells"]["A1"]["status"] == "interrupted"
     assert running["wells"]["A1"]["previous_status"] == "running"
+    assert running["wells"]["A1"]["interrupted_reason"] == "service_restarted"
     assert running["wells"]["A2"]["status"] == "interrupted"
+    assert running["wells"]["A2"]["interrupted_reason"] == "service_restarted"
     assert running["wells"]["A3"]["status"] == "success"
 
     success = api_server._read_task_record("success-task")
@@ -262,9 +492,9 @@ def test_api_server_request_paths_are_normalized_under_project_roots() -> None:
 
 
 def test_api_server_request_paths_reject_outside_project_roots() -> None:
-    from workflow import api_server
+    from workflow import api_server, path_guard
 
-    with pytest.raises(HTTPException) as config_exc:
+    with pytest.raises(path_guard.PathGuardError) as config_exc:
         api_server._normalize_execute_task_request(
             api_server.ExecuteTaskRequest(
                 task={"task_id": "bad-config"},
@@ -272,9 +502,9 @@ def test_api_server_request_paths_reject_outside_project_roots() -> None:
             )
         )
     assert config_exc.value.status_code == 400
-    assert config_exc.value.detail["error_code"] == "PATH_OUT_OF_ALLOWED_ROOT"
+    assert config_exc.value.error_code == "PATH_OUT_OF_ALLOWED_ROOT"
 
-    with pytest.raises(HTTPException) as output_exc:
+    with pytest.raises(path_guard.PathGuardError) as output_exc:
         api_server._normalize_execute_task_request(
             api_server.ExecuteTaskRequest(
                 task={
@@ -284,15 +514,13 @@ def test_api_server_request_paths_reject_outside_project_roots() -> None:
             )
         )
     assert output_exc.value.status_code == 400
-    assert output_exc.value.detail["error_code"] == "PATH_OUT_OF_ALLOWED_ROOT"
+    assert output_exc.value.error_code == "PATH_OUT_OF_ALLOWED_ROOT"
 
 
 def test_api_server_camera_record_config_error_returns_400(monkeypatch) -> None:
-    from workflow import api_server
+    from workflow import api_server, hardware_guard
 
-    with api_server._HARDWARE_OPERATION_LOCK:
-        api_server._HARDWARE_OWNER = None
-        api_server._CAMERA_RECORD_OWNER = None
+    hardware_guard.reset_hardware_owners()
 
     def fail_load_settings(_req):
         raise ValueError("bad camera config")
@@ -452,6 +680,100 @@ def test_api_server_run_task_async_writes_canceled_record(tmp_path, monkeypatch)
     assert record["cancel_reason"] == "operator canceled"
 
 
+def test_task_runtime_progress_callback_updates_task_and_well_record(tmp_path, monkeypatch) -> None:
+    from workflow import task_runtime, task_store
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    task = {
+        "task_id": "progress-task",
+        "task_type": "pipeline",
+        "observe_scope": "single_well",
+        "plate_type": "24-well",
+        "objective": "10x",
+        "target": {"well_name": "A1"},
+        "capture": {"save_dir": "data/captures/progress-task"},
+    }
+    record = task_store.build_accepted_record(task, None, True)
+    record["status"] = "running"
+    task_store.write_task_record(record)
+
+    callback = task_runtime.make_task_progress_callback("progress-task")
+    callback("detect", 42, "A1", "detecting image 1/2")
+
+    updated = task_store.read_task_record("progress-task")
+    assert updated["progress"] == 42
+    assert updated["progress_source"] == "executor"
+    assert updated["current_stage"] == "detect"
+    assert updated["current_well"] == "A1"
+    assert updated["message"] == "detecting image 1/2"
+    assert updated["wells"]["A1"]["status"] == "running"
+    assert updated["wells"]["A1"]["progress"] == 42
+    assert updated["wells"]["A1"]["current_stage"] == "detect"
+
+
+def test_task_runtime_manager_runs_tasks_with_single_worker_queue(tmp_path, monkeypatch) -> None:
+    from workflow import hardware_guard, task_runtime
+    from workflow.api_models import ExecuteTaskRequest
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    hardware_guard.reset_hardware_owners()
+    manager = task_runtime.TaskRuntimeManager(maxsize=4)
+    seen = []
+
+    def fake_executor(*, raw_task_cfg, **_kwargs):
+        task_id = raw_task_cfg["task"]["task_id"]
+        seen.append(task_id)
+        return {"status": "success", "task_id": task_id, "task_type": "capture"}
+
+    manager.start()
+    try:
+        first = manager.submit(ExecuteTaskRequest(task={"task_id": "queue-1", "task_type": "capture"}), task_executor=fake_executor)
+        second = manager.submit(ExecuteTaskRequest(task={"task_id": "queue-2", "task_type": "capture"}), task_executor=fake_executor)
+        manager._queue.join()
+    finally:
+        manager.stop(timeout_s=2)
+        hardware_guard.reset_hardware_owners()
+
+    assert first["status"] == "accepted"
+    assert second["status"] == "accepted"
+    assert seen == ["queue-1", "queue-2"]
+
+
+def test_task_runtime_manager_rejects_when_queue_is_full(tmp_path, monkeypatch) -> None:
+    from workflow import hardware_guard, task_runtime
+    from workflow.api_models import ExecuteTaskRequest
+
+    monkeypatch.setenv("TASK_INDEX_DIR", str(tmp_path))
+    hardware_guard.reset_hardware_owners()
+    manager = task_runtime.TaskRuntimeManager(maxsize=1)
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_executor(*, raw_task_cfg, **_kwargs):
+        started.set()
+        release.wait(timeout=5)
+        task_id = raw_task_cfg["task"]["task_id"]
+        return {"status": "success", "task_id": task_id, "task_type": "capture"}
+
+    manager.start()
+    try:
+        manager.submit(ExecuteTaskRequest(task={"task_id": "queue-full-1", "task_type": "capture"}), task_executor=blocking_executor)
+        assert started.wait(timeout=2)
+        manager.submit(ExecuteTaskRequest(task={"task_id": "queue-full-2", "task_type": "capture"}), task_executor=blocking_executor)
+        with pytest.raises(task_runtime.TaskRuntimeError) as exc:
+            manager.submit(
+                ExecuteTaskRequest(task={"task_id": "queue-full-3", "task_type": "capture"}),
+                task_executor=blocking_executor,
+            )
+        assert exc.value.status_code == 429
+        assert exc.value.error_code == "TASK_QUEUE_FULL"
+    finally:
+        release.set()
+        manager._queue.join()
+        manager.stop(timeout_s=2)
+        hardware_guard.reset_hardware_owners()
+
+
 def test_scan_executor_checks_cancel_before_stage_move() -> None:
     from workflow import scan_executor
     from workflow.task_control import TaskCanceled
@@ -483,6 +805,64 @@ def test_scan_executor_checks_cancel_before_stage_move() -> None:
         scan_executor.execute_scan_capture({"plate": {}}, params, plan)
 
 
+def test_scan_executor_reports_real_progress_events(monkeypatch) -> None:
+    from workflow import scan_executor
+
+    events = []
+
+    def fake_move_to_absolute(**kwargs):
+        return {
+            "target": {"x": kwargs["x_target"], "y": kwargs["y_target"]},
+            "before": {"x": {"current_pos": 0}, "y": {"current_pos": 0}},
+            "after": {
+                "x": {"current_pos": kwargs["x_target"]},
+                "y": {"current_pos": kwargs["y_target"]},
+            },
+            "err_to_target": {"x": 0, "y": 0},
+        }
+
+    monkeypatch.setattr(scan_executor, "move_to_absolute", fake_move_to_absolute)
+    monkeypatch.setattr(
+        scan_executor,
+        "capture_with_opened_camera",
+        lambda **_kwargs: {"saved_path": "data/captures/progress/A1/images/image_1.bmp"},
+    )
+
+    params = {
+        "task_id": "scan-progress",
+        "task_type": "capture",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "motion": {"profile_vel": 1, "profile_acc": 1, "profile_dec": 1},
+        "settle_s": 0,
+        "save_dir": "data/captures/progress/A1/images",
+        "filename_pattern": "image_{index}.bmp",
+        "_progress_callback": lambda stage, progress, well, message: events.append((stage, progress, well, message)),
+    }
+    plan = {
+        "points": [
+            {
+                "index": 1,
+                "row_index": 0,
+                "col_index": 0,
+                "view_down_mm": 0.0,
+                "view_right_mm": 0.0,
+                "stage_x_target": 10,
+                "stage_y_target": 20,
+            }
+        ],
+        "reference": {},
+        "scan_config": {},
+    }
+
+    scan_executor.execute_scan_capture({"plate": {}}, params, plan, cam=object())
+
+    assert events[0] == ("capture", 0, "A1", "capture started")
+    assert any(event[3] == "moving to scan point 1/1" for event in events)
+    assert events[-1] == ("capture", 100, "A1", "captured scan point 1/1")
+
+
 def test_detect_executor_checks_cancel_before_image_detection() -> None:
     from workflow import detect_executor
     from workflow.task_control import TaskCanceled
@@ -508,6 +888,51 @@ def test_detect_executor_checks_cancel_before_image_detection() -> None:
         detect_executor.execute_detect_on_scan_result({"task": {}}, params, scan_result)
 
 
+def test_detect_executor_reports_real_progress_events(tmp_path, monkeypatch) -> None:
+    from PIL import Image
+    from workflow import detect_executor
+
+    image_path = tmp_path / "image_1.bmp"
+    Image.new("L", (8, 6), color=0).save(image_path)
+    events = []
+
+    monkeypatch.setattr(
+        detect_executor,
+        "run_detect_on_image",
+        lambda *_args, **_kwargs: {"clone_count": 0, "clones": []},
+    )
+
+    scan_result = {
+        "scan_config": {"fov_mm": {"width": 1.0, "height": 1.0}},
+        "captures": [
+            {
+                "index": 1,
+                "row_index": 0,
+                "col_index": 0,
+                "stage_x_target": 10,
+                "stage_y_target": 20,
+                "motion_result": {
+                    "after": {"x": {"current_pos": 10}, "y": {"current_pos": 20}},
+                },
+                "capture_result": {"saved_path": str(image_path)},
+            }
+        ],
+    }
+    params = {
+        "task_id": "detect-progress",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "_progress_callback": lambda stage, progress, well, message: events.append((stage, progress, well, message)),
+    }
+
+    detect_executor.execute_detect_on_scan_result({"task": {"detect": {"save_overlay": False}}}, params, scan_result)
+
+    assert events[0] == ("detect", 0, "A1", "detect started")
+    assert any(event[3] == "detecting image 1/1" for event in events)
+    assert events[-1] == ("detect", 100, "A1", "detect completed")
+
+
 def test_compensate_executor_checks_cancel_before_selection() -> None:
     from workflow import compensate_executor
     from workflow.task_control import TaskCanceled
@@ -522,6 +947,58 @@ def test_compensate_executor_checks_cancel_before_selection() -> None:
 
     with pytest.raises(TaskCanceled):
         compensate_executor.execute_compensate_on_detect_result({}, params, {"images": []})
+
+
+def test_compensate_executor_reports_real_progress_events(monkeypatch) -> None:
+    from workflow import compensate_executor
+
+    events = []
+    monkeypatch.setattr(
+        compensate_executor,
+        "_move_to_compensate_target",
+        lambda **_kwargs: {
+            "after": {"x": {"current_pos": 100}, "y": {"current_pos": 200}},
+        },
+    )
+
+    ctx = {
+        "plate": {
+            "pulses_per_mm": 1,
+            "x_stage_sign_for_view_down": 1,
+            "y_stage_sign_for_view_right": 1,
+        }
+    }
+    params = {
+        "task_id": "compensate-progress",
+        "plate_type": "24-well",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "motion": {"profile_vel": 1, "profile_acc": 1, "profile_dec": 1},
+        "_progress_callback": lambda stage, progress, well, message: events.append((stage, progress, well, message)),
+    }
+    detect_result = {
+        "images": [
+            {
+                "index": 1,
+                "stage_x_actual": 100,
+                "stage_y_actual": 200,
+                "mm_per_pixel": {"x": 0.1, "y": 0.1},
+                "clones": [
+                    {
+                        "clone_id": "clone-1",
+                        "offset_from_image_center_px": [1, 1],
+                        "is_pickable": True,
+                    }
+                ],
+            }
+        ]
+    }
+
+    compensate_executor.execute_compensate_on_detect_result(ctx, params, detect_result)
+
+    assert events[0] == ("compensate", 5, "A1", "selecting clone for compensation")
+    assert any(event[3] == "moving to compensate target" for event in events)
+    assert events[-1] == ("compensate", 100, "A1", "compensate completed")
 
 
 def test_stage_executor_move_uses_timeout_and_arrival_tolerance(monkeypatch) -> None:
