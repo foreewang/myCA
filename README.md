@@ -228,7 +228,7 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --reload
 | `POST` | `/api/tasks/execute` | 异步提交任务，返回 accepted |
 | `GET` | `/api/tasks/{task_id}/status` | 查询任务状态、进度和当前阶段 |
 | `GET` | `/api/tasks/{task_id}/result` | 查询任务结果，运行中时返回进度摘要 |
-| `GET` | `/api/tasks/{task_id}/wells/{well_name}/images` | 列出孔位图片和结果文件 |
+| `GET` | `/api/tasks/{task_id}/wells/{well_name}/images` | 分页列出孔位图片和结果文件，支持 `limit/offset` 或 `page/page_size` |
 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/images/{filename}` | 下载孔位图片 |
 
 任务请求体示例：
@@ -306,6 +306,8 @@ Invoke-RestMethod `
 录像期间可以继续提交 `capture` / `pipeline` 任务。相机拍照会复用正在录像的相机对象，通过录像线程提供的帧保存快照，避免重复打开海康相机造成冲突。
 
 录像接口读取 `camera.yaml` 前会执行机器校验。请求体里的 `mvs_python_dir`、`serial_number`、`ip`、`device_index`、`pixel_format` 会覆盖配置文件中的对应字段，并再次校验后才打开相机。
+
+后台录像会先写入同目录的 `.part.avi` 临时文件，停止录像成功后再替换为正式 `.avi`。图片列表和下载接口会过滤或拒绝 `.part` 文件，避免前端读取到未完成产物。
 
 停止录像：
 
