@@ -220,6 +220,43 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --reload
 
 设备联调时不建议使用 `--reload`，因为 reload 会重启进程，可能中断相机、串口、电机任务。生产环境不要使用 `--reload`，也不要使用 `--workers 2` 或更高。
 
+### 日志与文件 IO 观测
+
+API 日志默认写入：
+
+```text
+C:/colony_system/logs/api_server.log
+```
+
+内网调试默认保留详细日志，方便定位任务 ID、配置路径和产物路径。生产部署时建议开启日志脱敏：
+
+```powershell
+$env:COLONY_LOG_REDACT_SENSITIVE="1"
+```
+
+开启后，API 错误日志中的绝对路径和 `task_id` 会被脱敏，例如：
+
+```text
+task_id=<task:8f3a21c9> path=<DATA_ROOT>/<redacted>
+```
+
+可选开关：
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `COLONY_LOG_REDACT_SENSITIVE` | `0` | 是否启用生产脱敏 |
+| `COLONY_LOG_REDACT_PATHS` | `1` | 脱敏路径 |
+| `COLONY_LOG_REDACT_TASK_ID` | `1` | 脱敏任务 ID |
+| `COLONY_FILE_IO_SLOW_WARNING_MS` | `500` | JSON/Text 文件读写重试超过该毫秒数时记录 warning |
+
+任务索引和结果 JSON 使用原子写入与短暂重试读取。若 Windows 文件锁、杀毒软件或高频轮询导致读写短暂阻塞，日志会出现：
+
+```text
+FILE_IO_SLOW: op=read_json path_kind=task_record path=<DATA_ROOT>/<redacted> elapsed_ms=1050.3 attempts=22 last_error=PermissionError
+```
+
+这类日志表示文件最终可能已经读写成功，但耗时超过阈值。不要先盲目缩短重试时间；应先根据该日志判断是否需要降低前端轮询频率、排查杀毒扫描，或后续改用 SQLite/数据库队列。
+
 ### 任务接口
 
 | 方法 | 路径 | 说明 |
