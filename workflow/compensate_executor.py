@@ -107,7 +107,7 @@ def _calc_compensate_target(
 ) -> Dict[str, Any]:
     plate_cfg = ctx["plate"]
     ppm = float(get_pulses_per_mm(plate_cfg))
-    x_sign, y_sign = get_view_signs(plate_cfg)
+    x_sign_for_right, y_sign_for_down = get_view_signs(plate_cfg)
 
     offset_px = clone_item.get("offset_from_image_center_px", [0, 0])
     mm_per_pixel = image_item["mm_per_pixel"]
@@ -127,8 +127,9 @@ def _calc_compensate_target(
     x_scale = float(scale_cfg.get("x", 1.0))
     y_scale = float(scale_cfg.get("y", 1.0))
 
-    target_x = int(round(float(base_x) - x_sign * offset_down_mm * ppm * x_scale))
-    target_y = int(round(float(base_y) - y_sign * offset_right_mm * ppm * y_scale))
+    # 标准坐标映射：图像水平偏移由 X/电机 1 补偿，图像垂直偏移由 Y/电机 2 补偿。
+    target_x = int(round(float(base_x) - x_sign_for_right * offset_right_mm * ppm * x_scale))
+    target_y = int(round(float(base_y) - y_sign_for_down * offset_down_mm * ppm * y_scale))
 
     return {
         "base_stage": {

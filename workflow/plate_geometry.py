@@ -344,19 +344,19 @@ def get_view_signs(plate_cfg: Dict[str, Any]) -> Tuple[int, int]:
     返回
     ----
     Tuple[int, int]
-        (x_stage_sign_for_view_down, y_stage_sign_for_view_right)
+        (x_stage_sign_for_view_right, y_stage_sign_for_view_down)
 
     说明
     ----
     这两个符号用于处理“图像坐标方向”和“位移台运动方向”之间的映射关系：
-    - 图像向下时，位移台 X 轴应按哪个方向变化
-    - 图像向右时，位移台 Y 轴应按哪个方向变化
+    - 图像向右时，位移台 X 轴（电机 1）应按哪个方向变化
+    - 图像向下时，位移台 Y 轴（电机 2）应按哪个方向变化
 
     这里要求显式配置，不再允许隐式默认值，以避免方向搞反。
     """
     return (
-        require_sign(plate_cfg.get('x_stage_sign_for_view_down'), 'x_stage_sign_for_view_down'),
-        require_sign(plate_cfg.get('y_stage_sign_for_view_right'), 'y_stage_sign_for_view_right'),
+        require_sign(plate_cfg.get('x_stage_sign_for_view_right'), 'x_stage_sign_for_view_right'),
+        require_sign(plate_cfg.get('y_stage_sign_for_view_down'), 'y_stage_sign_for_view_down'),
     )
 
 
@@ -436,9 +436,10 @@ def compute_well_start(plate_cfg: Dict[str, Any], well_name: str) -> Dict[str, i
     ppm = get_pulses_per_mm(plate_cfg)
     row_sign, col_sign = get_grid_signs(plate_cfg)
 
-    # 从 A1 到目标孔的位移量，先在物理空间(mm)上计算，再乘以脉冲系数转成设备坐标
-    dx = round(row_idx * pitch_mm * ppm * row_sign)
-    dy = round(col_idx * pitch_mm * ppm * col_sign)
+    # 标准坐标映射：孔板列变化对应 X/电机 1，孔板行变化对应 Y/电机 2。
+    # 从 A1 到目标孔的位移量先在物理空间(mm)计算，再乘以脉冲系数转成设备坐标。
+    dx = round(col_idx * pitch_mm * ppm * col_sign)
+    dy = round(row_idx * pitch_mm * ppm * row_sign)
 
     return {
         'x': int(a1_start['x'] + dx),

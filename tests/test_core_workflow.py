@@ -1115,8 +1115,8 @@ def test_compensate_executor_reports_real_progress_events(monkeypatch) -> None:
     ctx = {
         "plate": {
             "pulses_per_mm": 1,
-            "x_stage_sign_for_view_down": 1,
-            "y_stage_sign_for_view_right": 1,
+            "x_stage_sign_for_view_right": 1,
+            "y_stage_sign_for_view_down": 1,
         }
     }
     params = {
@@ -1375,7 +1375,7 @@ def test_well_name_round_trip_supports_multi_letter_rows() -> None:
     assert well_name_from_index(26, 11) == "AA12"
 
 
-def test_compute_well_start_uses_plate_pitch_and_axis_signs() -> None:
+def test_compute_well_start_maps_columns_to_x_and_rows_to_y() -> None:
     plate_cfg = {
         "rows": 4,
         "cols": 6,
@@ -1394,6 +1394,20 @@ def test_compute_well_start_uses_plate_pitch_and_axis_signs() -> None:
         "col_index": 0,
         "well_name": "A1",
     }
+    assert compute_well_start(plate_cfg, "A2") == {
+        "x": 6328800,
+        "y": 6185500,
+        "row_index": 0,
+        "col_index": 1,
+        "well_name": "A2",
+    }
+    assert compute_well_start(plate_cfg, "B1") == {
+        "x": 8865800,
+        "y": 3648500,
+        "row_index": 1,
+        "col_index": 0,
+        "well_name": "B1",
+    }
     assert compute_well_start(plate_cfg, "B2") == {
         "x": 6328800,
         "y": 3648500,
@@ -1401,6 +1415,65 @@ def test_compute_well_start_uses_plate_pitch_and_axis_signs() -> None:
         "col_index": 1,
         "well_name": "B2",
     }
+
+
+def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
+    from workflow.scan_planner import plan_single_well_scan
+
+    plate_cfg = {
+        "rows": 1,
+        "cols": 1,
+        "a1_start": {"x": 1000, "y": 2000},
+        "well_diameter_mm": 2.0,
+        "well_gap_mm": 0.0,
+        "pulses_per_mm": 100,
+        "row_stage_sign": 1,
+        "col_stage_sign": 1,
+        "x_stage_sign_for_view_right": 1,
+        "y_stage_sign_for_view_down": 1,
+        "stage_limits": {"enabled": False},
+    }
+    params = {
+        "task_id": "axis-standard",
+        "task_type": "capture",
+        "plate_type": "test-plate",
+        "well_name": "A1",
+        "objective_name": "4x",
+        "fov_mm": {"width": 1.0, "height": 1.0},
+        "overlap": 0.0,
+    }
+
+    plan = plan_single_well_scan({"plate": plate_cfg}, params)
+
+    for point in plan["points"]:
+        assert point["stage_x_target"] == round(1000 + point["view_right_mm"] * 100)
+        assert point["stage_y_target"] == round(2000 + point["view_down_mm"] * 100)
+    assert plan["reference"]["x_stage_sign_for_view_right"] == 1
+    assert plan["reference"]["y_stage_sign_for_view_down"] == 1
+
+
+def test_compensate_maps_horizontal_offset_to_x_and_vertical_offset_to_y() -> None:
+    from workflow.compensate_executor import _calc_compensate_target
+
+    result = _calc_compensate_target(
+        ctx={
+            "plate": {
+                "pulses_per_mm": 100,
+                "x_stage_sign_for_view_right": 1,
+                "y_stage_sign_for_view_down": 1,
+            }
+        },
+        params={"compensate_scale": {"x": 1.0, "y": 1.0}},
+        image_item={
+            "stage_x_actual": 1000,
+            "stage_y_actual": 2000,
+            "mm_per_pixel": {"x": 0.1, "y": 0.2},
+        },
+        clone_item={"offset_from_image_center_px": [10, 20]},
+    )
+
+    assert result["offset_mm"] == {"view_right_mm": 1.0, "view_down_mm": 4.0}
+    assert result["compensate_target"] == {"x": 900, "y": 1600}
 
 
 def test_normalize_detect_result_preserves_pickability_fields() -> None:
@@ -1483,7 +1556,18 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
         "x": 6328800,
         "y": 3648500,
     }
-    assert cfg["targets"][-1]["well_name"] == "C4"
+    assert cfg["targets"][1] == {
+        "index": 2,
+        "well_name": "B3",
+        "x": 3791800,
+        "y": 3648500,
+    }
+    assert cfg["targets"][-1] == {
+        "index": 6,
+        "well_name": "C4",
+        "x": 1254800,
+        "y": 1111500,
+    }
 
 
 def test_stage_reciprocation_rejects_invalid_limits() -> None:
@@ -2179,8 +2263,8 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
         "pulses_per_mm": 100,
         "row_stage_sign": -1,
         "col_stage_sign": -1,
-        "x_stage_sign_for_view_down": -1,
-        "y_stage_sign_for_view_right": -1,
+        "x_stage_sign_for_view_right": -1,
+        "y_stage_sign_for_view_down": -1,
         "stage_limits": {
             "enabled": True,
             "x_min": 0,
@@ -2201,7 +2285,11 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
         "plates": {
             "runtime_guard": {"enabled": True},
             "6-well": {**base_plate, "row_stage_sign": 0},
-            "12-well": {**base_plate, "point_12": [0, 0]},
+            "12-well": {
+                **base_plate,
+                "point_12": [0, 0],
+                "x_stage_sign_for_view_down": -1,
+            },
             "24-well": base_plate,
             "48-well": base_plate,
         }
@@ -2214,6 +2302,7 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
     assert "plates.runtime_guard" in message
     assert "plates.6-well.row_stage_sign" in message
     assert "plates.12-well.point_12" in message
+    assert "plates.12-well.x_stage_sign_for_view_down" in message
 
 
 def test_handoff_arrival_tolerance_rejects_large_error() -> None:

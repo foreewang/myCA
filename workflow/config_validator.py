@@ -26,6 +26,8 @@ LEGACY_PLATE_FIELDS = {
     "point_12_gap",
     "rpm_mm",
     "axis_mapping",
+    "x_stage_sign_for_view_down",
+    "y_stage_sign_for_view_right",
 }
 LEGACY_AUTOFOCUS_MOTOR_FIELDS = {"min_pos", "max_pos"}
 
@@ -717,8 +719,8 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
     for key in (
         "row_stage_sign",
         "col_stage_sign",
-        "x_stage_sign_for_view_down",
-        "y_stage_sign_for_view_right",
+        "x_stage_sign_for_view_right",
+        "y_stage_sign_for_view_down",
     ):
         _require_sign(plate, key, f"{base}.{key}", issues)
 

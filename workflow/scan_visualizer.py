@@ -185,8 +185,17 @@ def visualize_plan_stage(
     well_start_x = int(reference["well_start"]["x"])
     well_start_y = int(reference["well_start"]["y"])
     ppm = float(reference["pulses_per_mm"])
-    x_sign = int(reference["x_stage_sign_for_view_down"])
-    y_sign = int(reference["y_stage_sign_for_view_right"])
+    if "x_stage_sign_for_view_right" in reference and "y_stage_sign_for_view_down" in reference:
+        sign_summary = (
+            f"x_right_sign={int(reference['x_stage_sign_for_view_right'])} | "
+            f"y_down_sign={int(reference['y_stage_sign_for_view_down'])}"
+        )
+    else:
+        # 历史扫描结果仍可视化，但明确标出它使用的是旧轴映射，避免误解为当前标准。
+        sign_summary = (
+            f"legacy_x_down_sign={int(reference['x_stage_sign_for_view_down'])} | "
+            f"legacy_y_right_sign={int(reference['y_stage_sign_for_view_right'])}"
+        )
 
     xs = [int(p["stage_x_target"]) for p in points]
     ys = [int(p["stage_y_target"]) for p in points]
@@ -222,7 +231,7 @@ def visualize_plan_stage(
     ax.set_ylabel("stage_y_target (pulse)")
     ax.set_title(
         f"Stage scan path | well={plan['well_name']} | "
-        f"points={len(points)} | ppm={ppm} | x_sign={x_sign} | y_sign={y_sign}"
+        f"points={len(points)} | ppm={ppm} | {sign_summary}"
     )
     ax.grid(True)
 

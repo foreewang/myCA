@@ -29,16 +29,16 @@ plates:
     pulses_per_mm: 147500
 
     # 换孔方向符号。
-    # A1 -> B1 属于行方向变化，当前对应 X 轴减小。
+    # A1 -> B1 属于行方向变化，当前对应 Y 轴（电机 2）减小。
     row_stage_sign: -1
-    # A1 -> A2 属于列方向变化，当前对应 Y 轴减小。
+    # A1 -> A2 属于列方向变化，当前对应 X 轴（电机 1）减小。
     col_stage_sign: -1
 
     # 孔内扫描方向符号。
-    # 图像视野向下移动时，位移台 X 轴的运动方向。
-    x_stage_sign_for_view_down: -1
-    # 图像视野向右移动时，位移台 Y 轴的运动方向。
-    y_stage_sign_for_view_right: -1
+    # 图像视野向右移动时，位移台 X 轴（电机 1）的运动方向。
+    x_stage_sign_for_view_right: -1
+    # 图像视野向下移动时，位移台 Y 轴（电机 2）的运动方向。
+    y_stage_sign_for_view_down: -1
 
     # 扫描前的位移台安全限位检查。
     stage_limits:
@@ -92,16 +92,16 @@ plates:
     pulses_per_mm: 147500
 
     # 换孔方向符号。
-    # A1 -> B1 属于行方向变化，当前对应 X 轴减小。
+    # A1 -> B1 属于行方向变化，当前对应 Y 轴（电机 2）减小。
     row_stage_sign: -1
-    # A1 -> A2 属于列方向变化，当前对应 Y 轴减小。
+    # A1 -> A2 属于列方向变化，当前对应 X 轴（电机 1）减小。
     col_stage_sign: -1
 
     # 孔内扫描方向符号。
-    # 图像视野向下移动时，位移台 X 轴的运动方向。
-    x_stage_sign_for_view_down: -1
-    # 图像视野向右移动时，位移台 Y 轴的运动方向。
-    y_stage_sign_for_view_right: -1
+    # 图像视野向右移动时，位移台 X 轴（电机 1）的运动方向。
+    x_stage_sign_for_view_right: -1
+    # 图像视野向下移动时，位移台 Y 轴（电机 2）的运动方向。
+    y_stage_sign_for_view_down: -1
 
     # 扫描前的位移台安全限位检查。
     stage_limits:
@@ -156,14 +156,14 @@ plates:
     # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
     pulses_per_mm: 147500
 
-    # 换孔方向符号，使用前应按现场实测确认。
+    # 换孔方向符号，使用前应按现场实测确认；行对应 Y/电机 2，列对应 X/电机 1。
     row_stage_sign: -1
     # 换列方向符号，使用前应按现场实测确认。
     col_stage_sign: -1
-    # 图像视野向下移动时，位移台 X 轴的运动方向。
-    x_stage_sign_for_view_down: -1
-    # 图像视野向右移动时，位移台 Y 轴的运动方向。
-    y_stage_sign_for_view_right: -1
+    # 图像视野向右移动时，位移台 X 轴（电机 1）的运动方向。
+    x_stage_sign_for_view_right: -1
+    # 图像视野向下移动时，位移台 Y 轴（电机 2）的运动方向。
+    y_stage_sign_for_view_down: -1
 
     # 扫描前的位移台安全限位检查。
     stage_limits:
@@ -216,14 +216,14 @@ plates:
     # 位移台换算系数，表示 1 mm 对应多少电机脉冲。
     pulses_per_mm: 147500
 
-    # 换孔方向符号，使用前应按现场实测确认。
+    # 换孔方向符号，使用前应按现场实测确认；行对应 Y/电机 2，列对应 X/电机 1。
     row_stage_sign: -1
     # 换列方向符号，使用前应按现场实测确认。
     col_stage_sign: -1
-    # 图像视野向下移动时，位移台 X 轴的运动方向。
-    x_stage_sign_for_view_down: -1
-    # 图像视野向右移动时，位移台 Y 轴的运动方向。
-    y_stage_sign_for_view_right: -1
+    # 图像视野向右移动时，位移台 X 轴（电机 1）的运动方向。
+    x_stage_sign_for_view_right: -1
+    # 图像视野向下移动时，位移台 Y 轴（电机 2）的运动方向。
+    y_stage_sign_for_view_down: -1
 
     # 扫描前的位移台安全限位检查。
     stage_limits:
