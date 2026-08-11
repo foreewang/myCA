@@ -252,7 +252,7 @@ if __name__ == "__main__":
         # 调整焦距为 4 倍镜下指定焦距
         # focus.pp_absolute_move(x4_focal,100000,100000,100000)
         # 调整焦距为 10 倍镜下指定焦距
-        # focus.pp_absolute_move(x10_focal,100000,100000,100000)
+        #focus.pp_absolute_move(x10_focal,100000,100000,100000)
 
         # 移动到位移台和自控对接home点位
         # x.pp_absolute_move(target_pos=point_home[0], profile_vel=500000, profile_acc=100000, profile_dec=100000)
@@ -312,7 +312,7 @@ if __name__ == "__main__":
         # x.pp_absolute_move(4206434+(2331-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         # y.pp_absolute_move(109746+(2110-2560)*86, profile_vel=500000, profile_acc=500000, profile_dec=500000)
         
-        x.pp_absolute_move(5722392, profile_vel=800000, profile_acc=800000, profile_dec=800000)
+        x.pp_absolute_move(722392, profile_vel=800000, profile_acc=800000, profile_dec=800000)
         y.pp_absolute_move(-19586, profile_vel=800000, profile_acc=800000, profile_dec=800000)
         
         # x.pp_absolute_move(0, profile_vel=800000, profile_acc=800000, profile_dec=800000)
