@@ -9,6 +9,8 @@
 - 可选自动对焦
 - 基于识别结果的目标补偿定位
 - 机械臂上下料对接位置移动
+- API 单工作线程任务队列、进度查询和协作式取消
+- 位移台固定孔位往复扫描与硬件占用状态查询
 
 系统既支持命令行本地执行，也支持 FastAPI HTTP 服务提交任务。核心入口是 `workflow/run_task.py` 中的 `execute_task_request`。
 
@@ -18,12 +20,22 @@
 colony_system/
 ├─ workflow/                  # 任务编排与执行层
 │  ├─ run_task.py              # CLI 入口与 execute_task_request
-│  ├─ api_server.py            # FastAPI 服务，任务、结果、图片、录像接口
+│  ├─ api_server.py            # FastAPI 服务，任务、硬件、图片、录像接口
+│  ├─ api_models.py            # HTTP 请求体模型与参数范围校验
+│  ├─ task_runtime.py           # 单工作线程任务队列、进度和取消生命周期
+│  ├─ task_store.py             # 任务账本、状态恢复和结果索引
+│  ├─ task_artifacts.py         # 任务结果、孔位图片和文件下载
+│  ├─ hardware_guard.py         # 任务、录像和位移台操作的进程内互斥
+│  ├─ process_guard.py          # 单 worker 与单 API 进程保护
+│  ├─ path_guard.py             # HTTP 请求配置/输出路径边界检查
+│  ├─ file_io.py               # JSON/Text 原子写入与重试读取
 │  ├─ config_validator.py      # YAML 机器校验，提前拦截配置错误
 │  ├─ camera_executor.py       # 相机打开、拍照、共享录像相机管理
 │  ├─ autofocus_executor.py    # 第三方自动对焦适配
 │  ├─ scan_planner.py          # 孔内扫描点规划与限位预检查
 │  ├─ scan_executor.py         # 位移台移动、自动对焦、相机拍照
+│  ├─ stage_executor.py        # XY 同步绝对运动、停止、限位和到位检查
+│  ├─ stage_reciprocation.py   # 后台位移台往复扫描控制器
 │  ├─ detect_api.py            # vision 检测入口动态加载与结果归一化
 │  ├─ detect_executor.py       # 批量检测、overlay 输出、detect_result 生成
 │  ├─ compensate_executor.py   # 按检测目标计算补偿位移
@@ -41,14 +53,16 @@ colony_system/
 │  ├─ objectives.yaml          # 物镜视野、切换点、状态文件
 │  ├─ plates.yaml              # 板型几何参数和安全限位
 │  ├─ autofocus.yaml           # 自动对焦策略与第三方模块配置
-│  ├─ handoff.yaml             # 机械臂上下料对接点
-│  └─ task_*.json              # 任务模板
+│  └─ handoff.yaml             # 机械臂上下料对接点
 ├─ data/                       # 任务索引、运行输出、测试输出
 │  └─ objective_state.json     # 当前物镜状态，应与真实硬件状态一致
 ├─ third_party/XWJJJ260511/    # 第三方自动对焦模块
 ├─ tools/                      # 测试和辅助脚本
+├─ tests/test_core_workflow.py # 核心工作流自动化测试
 └─ README.md
 ```
+
+仓库当前不附带可直接运行的 `task_*.json` 任务模板。CLI 任务文件需要按下文格式自行创建；HTTP 调用则直接在请求体的 `task` 字段中提交相同结构。
 
 ## 主要能力
 
@@ -71,11 +85,13 @@ colony_system/
 
 ### 检测与补偿
 
-当前默认检测入口是：
+当前仓库中的检测实现入口是：
 
 ```text
-vision.detect_pipeline:process_image
+vision.vision.detect_pipeline:process_image
 ```
+
+`workflow.detect_api` 同时兼容历史写法 `vision.detect_pipeline:process_image`，未显式配置 `detect.entrypoint` 时也会自动查找内置入口。
 
 workflow 会通过 `workflow.detect_api` 调用 vision 算法，并将结果归一化为 `detect_result.json`。检测 overlay 默认使用 vision 自身输出的 `06_overlay.bmp`，路径会写入每张图片的 `overlay_image_path`。
 
@@ -90,11 +106,20 @@ vision 当前采用 OpenCV 规则算法：
 - 保留 `contour_center_pixel` 便于对比最终轮廓质心
 - 每个 component 输出 `confidence` 和 `is_valid_for_compensation`
 
-补偿阶段会优先使用 `is_pickable=true` 的候选，并跳过 `is_valid_for_compensation=false` 的候选，避免孔边缘、触边、低置信度或异常候选参与补偿。
+补偿阶段只会把 `is_pickable=true` 的候选加入选择器。当前内置 vision 算法仅在候选有效且不靠近孔边缘时设置该字段，因此孔边缘、触边、低置信度或异常候选不会进入补偿选择。
 
 ## 环境准备
 
-建议使用 Python 虚拟环境。当前代码主要依赖：
+代码使用 `X | None` 等类型语法，要求 Python 3.10 或更高版本。建议在项目根目录创建虚拟环境并安装锁定在 `requirements.txt` 中的运行依赖：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+当前运行依赖包括：
 
 ```text
 fastapi
@@ -105,6 +130,15 @@ numpy
 opencv-python
 pillow
 pymodbus
+pyserial
+matplotlib
+```
+
+运行测试还需要安装 pytest：
+
+```powershell
+python -m pip install pytest
+python -m pytest -q
 ```
 
 硬件和 SDK 依赖：
@@ -113,10 +147,15 @@ pymodbus
 - `camera.mvs_python_dir` 是 MVS Python SDK 导入目录的标准字段；旧字段 `mvs_sdk_path` 仅作为兼容别名
 - 相机选择优先级为 `serial_number > ip > device_index`
 - 当前生产采集链路要求 `pixel_format: mono8`
-- Modbus RTU 串口设备，默认常见端口为 `COM3`
-- XY 位移台从站默认 `x_slave=1`、`y_slave=2`
-- 调焦轴默认从站 `3`
-- 物镜轴默认从站 `4`
+- Modbus RTU 默认通信参数为 `COM3`、`115200 bps`、8 数据位、1 停止位、无校验（8N1）
+- 电机 1 默认为软件 X 轴，负责培养板行方向 `A1 -> B1` 和图像上下方向
+- 电机 2 默认为软件 Y 轴，负责培养板列方向 `A1 -> A2` 和图像左右方向
+- 电机 3 为细准焦调焦轴
+- 电机 4 为物镜切换轴
+
+X/Y 是软件业务坐标，不按丝杆或位移台机械长短自动判断。任务中的 `motion.x_slave/y_slave`、`config/handoff.yaml` 和位移台往复接口都允许覆盖默认从站号；一旦交换 X/Y，从站、A1 坐标、X/Y 限位、handoff 点位、扫描方向和补偿方向必须一起重新标定。
+
+当前电机驱动假设设备使用项目中硬编码的 Modbus 寄存器映射、32 位高字在前字序和 CiA-402 PP 位置控制序列。更换驱动器时，应先核对 `devices/motion/modbus.py`；协议、寄存器或单位不同不能仅靠修改 YAML 适配。
 
 ## 配置文件与机器校验
 
@@ -144,29 +183,86 @@ python -m workflow.config_validator --handoff config/handoff.yaml
 
 ## 命令行使用
 
+CLI 支持 JSON 或 YAML 任务文件。先自行创建一个任务文件，例如 `data/task_capture_single_well.json`：
+
+```json
+{
+  "task": {
+    "task_id": "capture_A1_local_001",
+    "task_type": "capture",
+    "plate_type": "24-well",
+    "objective_name": "4x",
+    "observe_scope": "single_well",
+    "target": {
+      "well_name": "A1"
+    },
+    "capture": {
+      "save_dir": "C:/colony_system/data/local_tasks/capture_A1_local_001/images",
+      "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
+    },
+    "motion": {
+      "port": "COM3",
+      "baudrate": 115200,
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 800000,
+      "profile_acc": 800000,
+      "profile_dec": 800000,
+      "timeout_s": 120.0
+    },
+    "scan": {
+      "overlap": 0.1,
+      "use_objective_fov": true,
+      "settle_s": 0.8,
+      "output_json": "C:/colony_system/data/local_tasks/capture_A1_local_001/scan_result.json"
+    },
+    "output": {
+      "result_json": "C:/colony_system/data/local_tasks/capture_A1_local_001/result.json"
+    }
+  }
+}
+```
+
+示例中的运动速度、坐标、限位和从站号来自当前旧设备配置。接入新电机前必须完成低速单轴测试和重新标定，不能直接把这些数值用于首次运动。
+
 在项目根目录执行：
 
 ```powershell
 cd C:\colony_system
-python workflow/run_task.py --task config/task_pipeline_well_list_detect.json
+python workflow/run_task.py --task data/task_capture_single_well.json
 ```
 
 可覆盖配置路径：
 
 ```powershell
 python workflow/run_task.py `
-  --task config/task_capture_single_well.json `
+  --task data/task_capture_single_well.json `
   --camera config/camera.yaml `
   --objectives config/objectives.yaml `
   --plates config/plates.yaml `
   --dump-json data/my_result.json
 ```
 
-handoff 示例：
+`handoff` 任务文件只需要提供 handoff 任务字段；例如先创建 `data/task_handoff_load_in.json`：
+
+```json
+{
+  "task": {
+    "task_id": "handoff_load_in_local_001",
+    "task_type": "handoff",
+    "plate_type": "24-well",
+    "handoff": {
+      "action": "load_in"
+    },
+    "output": {
+      "result_json": "C:/colony_system/data/local_tasks/handoff_load_in_local_001/result.json"
+    }
+  }
+}
+```
 
 ```powershell
-python workflow/run_task.py --task config/task_handoff_load_in.json --handoff config/handoff.yaml
-python workflow/run_task.py --task config/task_handoff_unload_out.json --handoff config/handoff.yaml
+python workflow/run_task.py --task data/task_handoff_load_in.json --handoff config/handoff.yaml
 ```
 
 单图 vision 检测调试：
@@ -189,18 +285,7 @@ python vision/run_detect.py path\to\image.bmp `
   --edge_refine_iterations 2
 ```
 
-相机拍照和录像测试脚本：
-
-```powershell
-python tools/test_camera_photo_video.py `
-  --photo-path data/camera_tests/test_capture.bmp `
-  --video-path data/camera_tests/test_record.avi `
-  --duration-s 5 `
-  --fps 10 `
-  --bitrate-kbps 1000
-```
-
-不加 `--skip-photo` 和 `--skip-video` 时，脚本会测试“后台录像中拍照”。
+仓库当前没有独立的相机拍照/录像测试脚本。拍照通过 `capture` 任务测试；后台录像通过下文的 HTTP 录像接口测试。
 
 ## HTTP 服务
 
@@ -219,6 +304,21 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 设备联调时不建议使用 `--reload`，因为 reload 会重启进程，可能中断相机、串口、电机任务。生产环境不要使用 `--reload`，也不要使用 `--workers 2` 或更高。
+
+API 普通任务由一个后台工作线程串行执行，队列默认最多容纳 16 个待执行任务。`POST /api/tasks/execute` 返回 202 只表示任务已进入队列，不表示硬件动作已经完成。任务记录状态包括：
+
+| status | 说明 |
+| --- | --- |
+| `queued` | 已受理，等待后台工作线程执行 |
+| `running` | 正在执行 |
+| `success` | 执行成功 |
+| `failed` | 执行失败 |
+| `canceled` | 已在安全检查点响应取消 |
+| `interrupted` | 服务异常退出或重启时发现原任务未正常结束 |
+
+取消是协作式取消：`POST /api/tasks/{task_id}/cancel` 会设置取消标记，任务在下一处安全检查点停止，不保证请求返回瞬间硬件已经停止。服务启动时会把遗留的 `queued/running` 记录恢复为 `interrupted`。
+
+HTTP 请求中的配置路径只能位于项目 `config/` 下；任务输入/输出路径只能位于项目 `data/` 或 `outputs/` 下。相对路径按项目根目录解析。CLI 入口不经过这层 HTTP 路径边界检查，但仍应使用项目目录内的配置和产物路径。
 
 ### 日志与文件 IO 观测
 
@@ -262,11 +362,16 @@ FILE_IO_SLOW: op=read_json path_kind=task_record path=<DATA_ROOT>/<redacted> ela
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/health` | 健康检查 |
+| `GET` | `/api/hardware/status` | 查询任务、录像或位移台操作的硬件占用状态 |
 | `POST` | `/api/tasks/execute` | 异步提交任务，返回 accepted |
+| `POST` | `/api/tasks/{task_id}/cancel` | 请求在下一处安全检查点取消任务 |
 | `GET` | `/api/tasks/{task_id}/status` | 查询任务状态、进度和当前阶段 |
 | `GET` | `/api/tasks/{task_id}/result` | 查询任务结果，运行中时返回进度摘要 |
 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/images` | 分页列出孔位图片和结果文件，支持 `limit/offset` 或 `page/page_size` |
 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/images/{filename}` | 下载孔位图片 |
+| `POST` | `/api/stage/reciprocation/start` | 启动后台位移台往复扫描，返回 202 |
+| `POST` | `/api/stage/reciprocation/stop` | 请求停止位移台往复扫描 |
+| `GET` | `/api/stage/reciprocation/status` | 查询往复扫描状态、当前位置和进度 |
 
 任务请求体示例：
 
@@ -302,8 +407,9 @@ FILE_IO_SLOW: op=read_json path_kind=task_record path=<DATA_ROOT>/<redacted> ela
       "settle_s": 0.8
     },
     "detect": {
-      "entrypoint": "vision.detect_pipeline:process_image",
-      "output_json": "C:/colony_system/data/http_tests/pipeline_C5_detect_http_001/detect_result.json"
+      "entrypoint": "vision.vision.detect_pipeline:process_image",
+      "save_overlay": true,
+      "overlay_source": "vision"
     },
     "output": {
       "result_json": "C:/colony_system/data/http_tests/pipeline_C5_detect_http_001/result.json"
@@ -312,6 +418,8 @@ FILE_IO_SLOW: op=read_json path_kind=task_record path=<DATA_ROOT>/<redacted> ela
   "persist_result": true
 }
 ```
+
+对于 `well_list` 和 `full_plate`，每个孔位的 `scan_result.json`、`detect_result.json` 和 `compensate_result.json` 会由 workflow 自动改写到 `<capture.save_dir>/<well_name>/`，因此不要依赖任务中单个 `detect.output_json` 作为多孔任务的最终路径。顶层 `output.result_json` 仍用于保存总结果。
 
 ### 录像接口
 
@@ -354,6 +462,37 @@ Invoke-RestMethod `
   -Method Post
 ```
 
+### 位移台往复接口
+
+当前往复控制器不是任意两点往复：它固定读取 `config/plates.yaml` 中的 `24-well` 配置，并依次移动到 `B2`、`B3`、`B4`、`C2`、`C3`、`C4`，完成后从头循环。省略 `max_cycles` 时会持续运行，直到调用 stop。
+
+`StageReciprocationStartRequest` 目前仍保留 `point_a_x/point_a_y/point_b_x/point_b_y` 兼容字段，但控制器不会使用这些字段生成目标点。需要自定义路径时应先扩展 `workflow/stage_reciprocation.py`，不要把该接口当作通用两点运动接口。
+
+示例仅适用于已经完成坐标、限位和运动参数标定的设备：
+
+```powershell
+$body = @{
+  port = "COM3"
+  baudrate = 115200
+  x_slave = 1
+  y_slave = 2
+  profile_vel = 800000
+  profile_acc = 800000
+  profile_dec = 800000
+  arrival_tolerance = 80
+  move_timeout_s = 120
+  max_cycles = 1
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/api/stage/reciprocation/start" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+新电机首次联调不要使用该接口；应先完成只读通信、单轴低速小位移、方向、脉冲/mm、绝对零点和软硬限位验证。
+
 ## 自动对焦
 
 - `workflow/run_task.py` 会读取 `config/autofocus.yaml` 生成 `autofocus_decision`。
@@ -378,13 +517,17 @@ Invoke-RestMethod `
 | `target.well_name` | 单孔任务目标孔位 |
 | `target.well_list` | 多孔任务孔位列表 |
 | `stages` | 流水线阶段，如 `["capture", "detect"]` |
-| `capture.save_dir` | 图片和单孔结果保存目录 |
+| `capture.save_dir` | 单孔图片目录；多孔任务的基础保存目录 |
 | `capture.filename_pattern` | 图片命名模板 |
-| `motion` | 串口、从站、速度、加减速等运动参数 |
+| `motion.port/baudrate` | XY 位移台 Modbus 串口和波特率 |
+| `motion.x_slave/y_slave` | 软件 X/Y 轴从站号，默认分别为 1/2 |
+| `motion.profile_vel/profile_acc/profile_dec` | PP 位置模式速度、加速度和减速度；采集/补偿时必须提供 |
+| `motion.timeout_s` | 单次 XY 移动超时，默认 120 秒 |
 | `scan.overlap` | 扫描重叠率，要求 `0 <= overlap < 1` |
 | `scan.use_objective_fov` | 是否使用当前物镜视野生成扫描步长 |
+| `scan.output_json` | 单孔采集结果 `scan_result.json` 输出路径 |
 | `detect.entrypoint` | 检测入口，格式为 `模块路径:函数名` |
-| `detect.output_json` | 检测结果 JSON 输出路径 |
+| `detect.output_json` | 单孔检测结果 JSON 输出路径；多孔任务会改写为孔位子目录 |
 | `detect.save_overlay` | 是否保存检测标注图，默认开启 |
 | `detect.overlay_source` | `vision` 或 `workflow`，默认 `vision` |
 | `detect.detect_well_border` | 是否启用可见孔边界检测，默认开启 |
@@ -393,6 +536,7 @@ Invoke-RestMethod `
 | `compensate.selector` | 补偿目标选择策略 |
 | `compensate.scale` | 补偿倍率修正，例如 `{ "x": 0.79, "y": 1.0 }` |
 | `compensate.closed_loop` | 闭环补偿配置 |
+| `compensate.input_detect_json` | 独立补偿任务读取的已有检测结果 |
 | `output.result_json` | 总结果 JSON 输出路径 |
 | `handoff.action` | `load_in` 或 `unload_out` |
 
@@ -434,7 +578,7 @@ Invoke-RestMethod `
   "filename_pattern": "closed_loop_{task_id}_{well}_iter{iteration:02d}.bmp",
   "max_iterations": 2,
   "tolerance_px": 10,
-  "detect_entrypoint": "vision.detect_pipeline:process_image",
+  "detect_entrypoint": "vision.vision.detect_pipeline:process_image",
   "selector": {
     "mode": "nearest_image_center"
   }
@@ -465,9 +609,10 @@ Invoke-RestMethod `
 - 克隆中心、面积、边框、相对图像中心偏移
 - `confidence` 和 `is_valid_for_compensation`
 - `is_pickable`、`near_well_border`、`distance_to_well_edge_px/mm`
-- `refine_method`、`edge_refine_success`、`edge_refine_reason`，用于追踪轮廓边缘细化是否成功
 - 原图中心和 `mm_per_pixel` 换算
 - `overlay_image_path`
+
+workflow 归一化后的 `detect_result.json` 当前不会透传 `refine_method`、`edge_refine_success`、`edge_refine_reason`。这些轮廓细化诊断字段保存在 vision 输出目录的 `07_result.json` 中；需要排查径向轮廓或 GrabCut 回退原因时应查看该文件。
 
 vision 输出目录中常见文件：
 
@@ -499,6 +644,20 @@ data/some_task/
 ```
 
 ## 安全机制
+
+### 电机与坐标安全
+
+当前运动代码使用绝对脉冲坐标，但仓库没有自动回零/Homing 流程。启动任何正式任务前，必须由驱动器或现场流程保证坐标零点有效，并确认 `data/objective_state.json` 与真实物镜状态一致。更换电机、编码器、电子齿轮或驱动器后，旧的 `pulses_per_mm`、A1 坐标、物镜/焦点位置、handoff 点位和软件限位均不能直接复用。
+
+电机首次联调建议按以下顺序进行：
+
+1. 使用厂家工具验证硬件急停、正负限位、站号和低速点动。
+2. 程序只读状态字、模式和当前位置，不发送运动命令。
+3. 一次只测试一个轴，执行低速、小距离正反向运动并测量实际距离。
+4. 标定 X/Y 方向、脉冲/mm、绝对零点、机械行程和安全边距。
+5. 依次测试 XY、物镜、细准焦、单孔采集、补偿、handoff，最后才测试整板和往复运动。
+
+软件停止不能替代安全等级合格的硬件急停。当前底层 `quick_stop()` 实际发送的是 Shutdown 控制字；更换驱动器时必须根据新驱动器手册重新核对控制字、状态字、寄存器映射和停止行为。
 
 `config/plates.yaml` 中的板型配置包含两类安全控制：
 
