@@ -1,69 +1,106 @@
 # C:/colony_system/config/autofocus.yaml
-# Production autofocus configuration.
-# This file is both the workflow policy file and the hardware/algorithm
-# configuration consumed by third_party.XWJJJ260511.run_autofocus.
+# 生产环境自动对焦配置。
+# 本文件同时承担两类用途：
+# 1. workflow 层读取其中的启用状态和触发策略；
+# 2. third_party.XWJJJ260511.run_autofocus 读取相机、电机、算法和输出参数。
 
+# 是否启用自动对焦总开关。
 enabled: true
 
+# 自动对焦触发策略。
 trigger:
-  # Run autofocus after an objective switch before the next observation capture.
+  # 切换物镜后，是否在下一次观察拍照前执行自动对焦。
   after_objective_switch: true
 
-  # Keep false in batch scanning. The scan executor still limits autofocus to
-  # the first scan point according to scope.
+  # 是否每次采集前都满足自动对焦决策。批量扫描通常保持为 false。
+  # 即使设为 true，scan_executor 仍会根据 scope 限制实际执行频率。
   always_before_capture: false
+  # 指定始终在采集前自动对焦的物镜名称，例如 ["10x"]。
   always_before_capture_objectives: []
 
-  # Supported workflow scopes: once_per_well, once_per_task, disabled.
+  # 实际执行范围：once_per_well（每孔一次）、once_per_task（每任务一次）、disabled（不执行）。
   scope: once_per_well
+  # 自动对焦执行时机；当前 workflow 只支持移动到首个扫描点并稳定后、首次拍照前执行。
   run_at: before_first_capture_after_stage_move
 
+# 自动对焦使用的相机配置。
 camera:
+  # 相机后端；当前只支持海康 MVS。
   backend: mvs
+  # 相机 IP；序列号未参与自动对焦模块的相机选择。
   ip: "192.168.0.253"
+  # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
   net_export_ip: "192.168.0.10"
+  # 海康 MVS Python SDK 的导入目录。
   mvs_python_dir: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
 
-  # Lock exposure during autofocus so focus scores are comparable.
+  # 关闭自动曝光，使不同焦点位置的清晰度分数具有可比性。
   exposure_auto: false
+  # 不同物镜下的自动对焦相机参数。
   objective_settings:
     4x:
+      # 4x 自动对焦关闭自动曝光。
       exposure_auto: false
+      # 4x 自动对焦曝光时间，单位：微秒。
       exposure_time_us: 5000
     10x:
+      # 10x 自动对焦关闭自动曝光。
       exposure_auto: false
+      # 10x 自动对焦曝光时间，单位：微秒。
       exposure_time_us: 20000
 
+# 自动对焦使用的细准焦电机配置。
 motor:
+  # 电机后端类型；当前只支持 Modbus。
   type: modbus
+  # 调焦轴 Modbus 串口。
   port: COM3
+  # 调焦轴 Modbus 波特率。
   baudrate: 115200
+  # 调焦细准焦电机从站号。
   focus_slave: 3
 
-  # Standalone fallback. The workflow overwrites this with task.objective_name.
+  # 独立运行第三方自动对焦时使用的默认物镜；workflow 会用 task.objective_name 覆盖它。
   objective: 4x
 
-  # Software search limits for each objective, in focus-axis pulses.
+  # 各物镜对应的调焦轴软件搜索范围，单位：pulse。
   objective_ranges:
     4x:
+      # 4x 搜索最小位置。
       min_pos: -2063120
+      # 4x 搜索最大位置。
       max_pos: -1769500
     10x:
+      # 10x 搜索最小位置。
       min_pos: -2095551
+      # 10x 搜索最大位置。
       max_pos: -2028750
 
+  # 调焦轴 PP 位置模式轮廓速度。
   profile_vel: 50000
+  # 调焦轴 PP 位置模式轮廓加速度。
   profile_acc: 50000
+  # 调焦轴 PP 位置模式轮廓减速度。
   profile_dec: 50000
 
+# 自动对焦搜索算法参数。
 focus:
+  # 搜索收敛容差，单位由第三方自动对焦算法定义。
   tol: 100
+  # 最大搜索迭代次数。
   max_iter: 10
+  # 每次移动后的稳定等待时间，单位：毫秒。
   settle_ms: 300
+  # 用于计算清晰度的中心 ROI 比例。
   center_roi: 0.6
+  # 清晰度计算前的图像缩放比例。
   downsample: 0.5
 
+# 自动对焦产物配置。
 output:
+  # 是否为每次运行创建带时间戳的输出目录。
   timestamp_folder: true
+  # 最清晰图像保存路径；启用时间戳目录时会在派生目录中保存。
   image_path: C:/colony_system/data/autofocus/sharpest.png
+  # 对焦过程日志保存路径；启用时间戳目录时会在派生目录中保存。
   log_path: C:/colony_system/data/autofocus/focus_log.csv
