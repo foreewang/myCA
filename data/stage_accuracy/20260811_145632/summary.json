@@ -1,0 +1,148 @@
+{
+  "status": "stopped",
+  "message": "测试已由用户停止",
+  "updated_at": "2026-08-11T15:07:21+08:00",
+  "config": {
+    "axis": "xy",
+    "point_a": {
+      "x": 4602126,
+      "y": 425000
+    },
+    "point_b": {
+      "x": 0,
+      "y": 0
+    },
+    "cycles": 20,
+    "warmup_cycles": 2,
+    "motion": {
+      "port": "COM3",
+      "baudrate": 115200,
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 100000,
+      "profile_acc": 100000,
+      "profile_dec": 100000,
+      "arrival_tolerance_pulse": 3000,
+      "settle_s": 1.0,
+      "timeout_s": 120.0,
+      "poll_s": 0.05
+    },
+    "plates_path": "C:\\colony_system\\config\\plates.yaml",
+    "plate_type": "24-well",
+    "stage_limits": {
+      "enabled": true,
+      "x_min": -800000,
+      "x_max": 10400000,
+      "y_min": -8900000,
+      "y_max": 7700000,
+      "safety_margin": 147500
+    },
+    "safe_bounds": {
+      "x_min": -652500,
+      "x_max": 10252500,
+      "y_min": -8752500,
+      "y_max": 7552500
+    },
+    "pulses_per_mm": {
+      "x": 147500.0,
+      "y": 147500.0
+    },
+    "travel": {
+      "x_pulse": -4602126,
+      "y_pulse": -425000,
+      "x_mm": -31.200854237288137,
+      "y_mm": -2.8813559322033897
+    },
+    "output_dir": "C:\\colony_system\\data\\stage_accuracy\\20260811_145632"
+  },
+  "summary": {
+    "measurement_move_count": 8,
+    "completed_cycles": 4,
+    "endpoints": {
+      "A": {
+        "x": {
+          "count": 4,
+          "mean_error_pulse": -110.75,
+          "stddev_pulse": 17.383541066192468,
+          "range_pulse": 47.0,
+          "max_abs_error_pulse": 130.0,
+          "rmse_pulse": 112.10597664709942,
+          "mean_error_mm": -0.0007508474576271186,
+          "stddev_mm": 0.00011785451570299978,
+          "range_mm": 0.00031864406779661016,
+          "max_abs_error_mm": 0.0008813559322033898,
+          "rmse_mm": 0.000760040519641352
+        },
+        "y": {
+          "count": 4,
+          "mean_error_pulse": -2.25,
+          "stddev_pulse": 0.82915619758885,
+          "range_pulse": 2.0,
+          "max_abs_error_pulse": 3.0,
+          "rmse_pulse": 2.3979157616563596,
+          "mean_error_mm": -1.5254237288135594e-05,
+          "stddev_mm": 5.621397949754915e-06,
+          "range_mm": 1.3559322033898305e-05,
+          "max_abs_error_mm": 2.033898305084746e-05,
+          "rmse_mm": 1.6257056011229556e-05
+        }
+      },
+      "B": {
+        "x": {
+          "count": 4,
+          "mean_error_pulse": 73.5,
+          "stddev_pulse": 10.712142642814275,
+          "range_pulse": 26.0,
+          "max_abs_error_pulse": 83.0,
+          "rmse_pulse": 74.27651041883968,
+          "mean_error_mm": 0.0004983050847457627,
+          "stddev_mm": 7.26246958834866e-05,
+          "range_mm": 0.00017627118644067795,
+          "max_abs_error_mm": 0.0005627118644067797,
+          "rmse_mm": 0.0005035695621616249
+        },
+        "y": {
+          "count": 4,
+          "mean_error_pulse": 6.5,
+          "stddev_pulse": 1.118033988749895,
+          "range_pulse": 3.0,
+          "max_abs_error_pulse": 8.0,
+          "rmse_pulse": 6.59545297913646,
+          "mean_error_mm": 4.406779661016949e-05,
+          "stddev_mm": 7.57989144915183e-06,
+          "range_mm": 2.033898305084746e-05,
+          "max_abs_error_mm": 5.423728813559322e-05,
+          "rmse_mm": 4.471493545177261e-05
+        }
+      }
+    },
+    "overall": {
+      "x": {
+        "count": 8,
+        "mean_error_pulse": -18.625,
+        "stddev_pulse": 93.24958109825481,
+        "range_pulse": 213.0,
+        "max_abs_error_pulse": 130.0,
+        "rmse_pulse": 95.09140339694225,
+        "mean_error_mm": -0.00012627118644067796,
+        "stddev_mm": 0.0006322005498186767,
+        "range_mm": 0.0014440677966101696,
+        "max_abs_error_mm": 0.0008813559322033898,
+        "rmse_mm": 0.0006446874806572356
+      },
+      "y": {
+        "count": 8,
+        "mean_error_pulse": 2.125,
+        "stddev_pulse": 4.484347778663024,
+        "range_pulse": 11.0,
+        "max_abs_error_pulse": 8.0,
+        "rmse_pulse": 4.962358310319802,
+        "mean_error_mm": 1.440677966101695e-05,
+        "stddev_mm": 3.0402357821444232e-05,
+        "range_mm": 7.457627118644068e-05,
+        "max_abs_error_mm": 5.423728813559322e-05,
+        "rmse_mm": 3.364310718860883e-05
+      }
+    }
+  }
+}
