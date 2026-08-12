@@ -493,6 +493,29 @@ Invoke-RestMethod `
 
 新电机首次联调不要使用该接口；应先完成只读通信、单轴低速小位移、方向、脉冲/mm、绝对零点和软硬限位验证。
 
+### 位移台两点往复精度测试
+
+`tools/stage_reciprocation_accuracy.py` 用于测试任意已标定 A/B 点之间的往复精度。一个周期为 `A -> B -> A`，脚本分别统计两个端点的平均误差、标准差、极差、最大绝对误差和 RMSE，并输出：
+
+- `moves.csv`：每次运动的目标、运动前后位置、到位误差和耗时
+- `summary.json`：测试参数以及 pulse/mm 两种单位的统计结果
+
+脚本默认是 dry-run，不连接硬件。下面的坐标仅用于展示命令格式，必须替换为当前设备已经标定且位于软件安全限位内的点位：
+
+```powershell
+python tools/stage_reciprocation_accuracy.py `
+  --axis x `
+  --plate-type 24-well `
+  --point-a-x 1000000 --point-a-y 1000000 `
+  --point-b-x 1200000 --point-b-y 1000000 `
+  --cycles 20 `
+  --warmup-cycles 2
+```
+
+确认 dry-run 输出中的端点、行程、从站号和安全范围后，在同一命令末尾追加 `--execute`。测试X轴时两个点的Y必须相同；测试Y轴时两个点的X必须相同；`--axis xy` 允许两个坐标同时变化。默认保持当前标准映射：软件X/电机1使用 `slave=1`，软件Y/电机2使用 `slave=2`。
+
+该脚本统计的是驱动器返回的位置误差。验证丝杆间隙和真实物理重复定位精度时，还需要同步记录量表、光栅尺或视觉标定板读数。
+
 ## 自动对焦
 
 - `workflow/run_task.py` 会读取 `config/autofocus.yaml` 生成 `autofocus_decision`。
