@@ -113,8 +113,8 @@ result = run_realtime_autofocus(
     focus_slave=3,
     objective="10x",
     focus_ranges={
-        "4x": {"min_pos": -2063120, "max_pos": -1769500},
-        "10x": {"min_pos": -2095551, "max_pos": -2028750},
+        "4x": {"min_pos": -3082685, "max_pos": -2922685},
+        "10x": {"min_pos": -3078604, "max_pos": -2918604},
     },
     profile_vel=50000,
     profile_acc=50000,
@@ -177,11 +177,11 @@ focus_slave: 3
 objective: 4x
 objective_ranges:
   4x:
-    min_pos: -2063120
-    max_pos: -1769500
+    min_pos: -3082685
+    max_pos: -2922685
   10x:
-    min_pos: -2095551
-    max_pos: -2028750
+    min_pos: -3078604
+    max_pos: -2918604
 profile_vel: 50000
 profile_acc: 50000
 profile_dec: 50000
@@ -204,12 +204,13 @@ camera:
 ```yaml
 camera:
   backend: mvs
-  ip: 192.168.1.253
-  net_export_ip: 192.168.1.168
-  mvs_sdk_path: D:/app/mvs/MVS/Development/Samples/Python/MvImport
+  serial_number: DA8583237
+  ip: 192.168.0.66
+  net_export_ip: 192.168.0.10
+  mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
 ```
 
-`ip` 是相机 IP，`net_export_ip` 是连接相机的电脑有线网卡 IP。只调相机时建议先运行 `python run.py --preview`，这样不会进入电机自动对焦流程。
+`serial_number` 是相机身份校验值，`ip` 是相机 IP，`net_export_ip` 是连接相机的电脑有线网卡 IP。只调相机时建议先运行 `python run.py --preview`，这样不会进入电机自动对焦流程。
 
 曝光控制：
 

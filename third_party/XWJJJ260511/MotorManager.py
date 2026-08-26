@@ -98,7 +98,7 @@ class MotorManager:
         profile_vel: int,
         profile_acc: int,
         profile_dec: int,
-        timeout: float = 1200.0
+        timeout: float = 120.0
     ) -> Optional[int]:
         """
         轮廓位置模式下的绝对运动。
@@ -125,7 +125,7 @@ class MotorManager:
         profile_vel: int,
         profile_acc: int,
         profile_dec: int,
-        timeout: float = 1200.0
+        timeout: float = 120.0
     ) -> Optional[int]:
         """
         轮廓位置模式下的相对运动。
@@ -237,11 +237,11 @@ rpm_mm = 14750
 
 # 镜片电机旋转参数
 x4 = 166347
-x10 = -165903
+x10 = 332695
 
 # 调教电机点位参数
-x4_focal= -2019367
-x10_focal = -2053794
+x4_focal = -3002685
+x10_focal = -2998604
 
 # ========== 使用示例 ==========
 if __name__ == "__main__":

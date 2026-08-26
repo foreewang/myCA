@@ -53,7 +53,7 @@ class ModbusFocusMotor(MotorBase):
         # PP 绝对位置模式下的减速度。
         profile_dec: int = 100000,
         # 单次移动最多等待多久，超过后认为运动失败。
-        timeout: float = 1200.0,
+        timeout: float = 120.0,
         # 可选的外部 Modbus 客户端；如果传入，就复用外部连接。
         client: Optional[ModbusRTUClient] = None,
     ):

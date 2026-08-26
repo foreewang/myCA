@@ -16,7 +16,8 @@ camera:
   # opencv: 用 cv2.VideoCapture 打开摄像头
   # mvs: 使用海康 MVS 打开网口工业相机
   backend: mvs
-  ip: 192.168.0.253
+  serial_number: DA8583237
+  ip: 192.168.0.66
   net_export_ip: 192.168.0.10
   mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
   opencv_index: 0
@@ -51,15 +52,15 @@ motor:
   objective: 4x
   objective_ranges:
     4x:
-      min_pos: -2510646
-      max_pos: -1465906
+      min_pos: -3082685
+      max_pos: -2922685
     10x:
-      min_pos: -2202860
-      max_pos: -1901466
+      min_pos: -3078604
+      max_pos: -2918604
 
   # 兼容旧调用：如果没有配置 objective/objective_ranges，仍然会读取下面这组范围。
-  min_pos: -2063120
-  max_pos: -1769500
+  min_pos: -3082685
+  max_pos: -2922685
 
   # PP 位置模式运动参数
   profile_vel: 50000

@@ -408,7 +408,7 @@ class ModbusRTUClient:
     # ------------------ 轮廓位置模式控制逻辑 ---------------------------
     def move_absolute_pp(self, slave: int, target_pos: int,
                          profile_vel: int, profile_acc: int, profile_dec: int,
-                         timeout: float = 1200.0) -> int | None:
+                         timeout: float = 120.0) -> int | None:
         """轮廓位置模式（PP）下的绝对位置运动。"""
         # 运动前先确认状态字可读。
         status = self._read_statusword(slave)
@@ -492,7 +492,7 @@ class ModbusRTUClient:
 
     def move_relative_pp(self, slave: int, offset: int,
                          profile_vel: int, profile_acc: int, profile_dec: int,
-                         timeout: float = 1200.0) -> int | None:
+                         timeout: float = 120.0) -> int | None:
         """轮廓位置模式（PP）下的相对位置运动。"""
         # 相对运动前同样先检查状态字和使能状态。
         status = self._read_statusword(slave)

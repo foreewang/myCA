@@ -41,6 +41,7 @@ class HikrobotCamera(CameraBase):
     def __init__(
         self,
         device: Optional[str] = None,
+        serial_number: Optional[str] = None,
         use_mvs: bool = True,
         opencv_index: int = 0,
         net_export_ip: Optional[str] = None,
@@ -50,6 +51,7 @@ class HikrobotCamera(CameraBase):
     ):
         """
         device: MVS 模式下为相机 IP，例如 192.168.1.253；OpenCV 模式下忽略。
+        serial_number: MVS 相机序列号；配置后优先按序列号枚举并选择设备。
         use_mvs: True 时尝试用 MVS 采图；False 或 MVS 不可用时用 OpenCV。
         opencv_index: use_mvs=False 时，OpenCV 打开的相机索引（0 为默认摄像头）。
         net_export_ip: 连接相机的电脑网卡 IP，例如 192.168.1.168。
@@ -61,6 +63,7 @@ class HikrobotCamera(CameraBase):
             raise ValueError("exposure_auto=True 时不能同时设置 exposure_time_us")
 
         self._device = device
+        self._serial_number = str(serial_number).strip() if serial_number else None
         # 保存是否使用 MVS；False 时走 OpenCV。
         self._use_mvs = use_mvs
         # 保存 OpenCV 相机索引。
@@ -97,7 +100,8 @@ class HikrobotCamera(CameraBase):
                 # 打开失败时先释放已初始化的资源。
                 self.close()
                 raise RuntimeError(
-                    f"MVS 打开相机失败，ip={self._device}, net_export_ip={self._net_export_ip}"
+                    f"MVS 打开相机失败，serial_number={self._serial_number}, "
+                    f"ip={self._device}, net_export_ip={self._net_export_ip}"
                 ) from exc
         # 非 MVS 模式使用 OpenCV 打开摄像头。
         self._open_opencv()
@@ -144,7 +148,12 @@ class HikrobotCamera(CameraBase):
             self._mvs_handle = cam
             # 标记已经开始采流。
             self._mvs_grabbing = True
-            logger.info("MVS 相机已打开: ip=%s, net_export_ip=%s", self._device, self._net_export_ip)
+            logger.info(
+                "MVS 相机已打开: serial_number=%s, ip=%s, net_export_ip=%s",
+                self._serial_number,
+                self._device,
+                self._net_export_ip,
+            )
         except Exception:
             # 如果打开过程中失败，销毁句柄，避免资源泄漏。
             cam.MV_CC_CloseDevice()
@@ -346,6 +355,9 @@ class HikrobotCamera(CameraBase):
         return None
 
     def _make_mvs_device_info(self, mvs):
+        # 配置序列号时优先枚举并选择对应设备，避免多相机环境连接错误。
+        if self._serial_number:
+            return self._make_mvs_device_info_from_serial(mvs, self._serial_number)
         # 如果配置了 IP，就按指定 IP 构造设备信息。
         if self._device:
             return self._make_mvs_device_info_from_ip(mvs, str(self._device))
@@ -365,6 +377,48 @@ class HikrobotCamera(CameraBase):
             raise RuntimeError("MVS 未枚举到相机")
         # 默认使用第一个枚举到的设备。
         return cast(device_list.pDeviceInfo[0], POINTER(mvs.MV_CC_DEVICE_INFO)).contents
+
+    def _make_mvs_device_info_from_serial(self, mvs, serial_number: str):
+        device_list = mvs.MV_CC_DEVICE_INFO_LIST()
+        tlayer_type = mvs.MV_GIGE_DEVICE | mvs.MV_USB_DEVICE
+        if hasattr(mvs, "MV_GENTL_GIGE_DEVICE"):
+            tlayer_type |= mvs.MV_GENTL_GIGE_DEVICE
+        ret = mvs.MvCamera.MV_CC_EnumDevices(tlayer_type, device_list)
+        self._check_mvs(ret, "enum devices")
+
+        available = []
+        for index in range(int(device_list.nDeviceNum)):
+            device_info = cast(
+                device_list.pDeviceInfo[index],
+                POINTER(mvs.MV_CC_DEVICE_INFO),
+            ).contents
+            discovered_serial = self._get_mvs_device_serial(mvs, device_info)
+            if discovered_serial:
+                available.append(discovered_serial)
+            if discovered_serial == serial_number:
+                return device_info
+
+        available_text = ", ".join(available) if available else "<none>"
+        raise RuntimeError(
+            f"MVS 未找到序列号为 {serial_number} 的相机；已发现序列号: {available_text}"
+        )
+
+    @classmethod
+    def _get_mvs_device_serial(cls, mvs, device_info) -> str:
+        layer_type = int(device_info.nTLayerType)
+        gige_types = {
+            int(mvs.MV_GIGE_DEVICE),
+            int(getattr(mvs, "MV_GENTL_GIGE_DEVICE", -1)),
+        }
+        if layer_type in gige_types:
+            return cls._decode_mvs_text(device_info.SpecialInfo.stGigEInfo.chSerialNumber)
+        if layer_type == int(getattr(mvs, "MV_USB_DEVICE", -1)):
+            return cls._decode_mvs_text(device_info.SpecialInfo.stUsb3VInfo.chSerialNumber)
+        return ""
+
+    @staticmethod
+    def _decode_mvs_text(raw_value) -> str:
+        return bytes(raw_value).split(b"\x00", 1)[0].decode("utf-8", errors="ignore").strip()
 
     def _make_mvs_device_info_from_ip(self, mvs, camera_ip: str):
         # 使用配置的网卡 IP；没配时尝试自动推断。

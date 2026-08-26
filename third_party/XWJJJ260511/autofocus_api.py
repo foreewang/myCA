@@ -128,9 +128,9 @@ def run_realtime_autofocus(
     # 聚焦轴 Modbus 从站号。
     focus_slave: int = 3,
     # 自动对焦搜索最小位置，也是软件限位。
-    min_pos: float = -2100000,
+    min_pos: float = -3082685,
     # 自动对焦搜索最大位置，也是软件限位。
-    max_pos: float = -1900000,
+    max_pos: float = -2922685,
     # 当前倍镜，例如 4x、10x。传了 focus_ranges 时，会按这个值自动选择搜索范围。
     objective: Optional[Any] = None,
     # 倍镜到搜索范围的映射，例如 {"4x": {"min_pos": ..., "max_pos": ...}}。
@@ -159,6 +159,8 @@ def run_realtime_autofocus(
     camera_index: int = 0,
     # MVS 网口相机 IP。
     camera_ip: Optional[str] = None,
+    # MVS 相机序列号；配置后优先按序列号选择设备。
+    camera_serial_number: Optional[str] = None,
     # 连接相机的电脑网卡 IP。
     camera_net_export_ip: Optional[str] = None,
     # MVS Python SDK 的 MvImport 目录。
@@ -178,8 +180,8 @@ def run_realtime_autofocus(
             focus_slave=3,
             objective="4x",
             focus_ranges={
-                "4x": {"min_pos": -2063120, "max_pos": -1769500},
-                "10x": {"min_pos": -2095551, "max_pos": -2028750},
+                "4x": {"min_pos": -3082685, "max_pos": -2922685},
+                "10x": {"min_pos": -3078604, "max_pos": -2918604},
             },
         )
 
@@ -197,7 +199,7 @@ def run_realtime_autofocus(
     - center_roi: 只计算图像中心区域的清晰度，0 表示全图。
     - downsample: 算清晰度前的下采样比例，用来降低噪点影响。
     - output_path: 最清晰图片保存路径；传 None 则不保存。
-    - use_mvs/camera_index: 自动创建相机时使用。MVS 可按 camera_ip 打开网口相机。
+    - use_mvs/camera_index: 自动创建相机时使用。MVS 可按序列号或 camera_ip 打开网口相机。
     - camera_exposure_auto/camera_exposure_time_us: 自动创建相机时的曝光配置。
     """
 
@@ -214,6 +216,7 @@ def run_realtime_autofocus(
     if camera is None:
         camera = HikrobotCamera(
             device=camera_ip,
+            serial_number=camera_serial_number,
             use_mvs=use_mvs,
             opencv_index=camera_index,
             net_export_ip=camera_net_export_ip,

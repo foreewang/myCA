@@ -236,6 +236,7 @@ def _create_camera(cfg: Mapping[str, Any]) -> Any:
     # 创建统一相机对象，后续代码只调用 capture()。
     return HikrobotCamera(
         device=camera_settings.get("ip"),
+        serial_number=camera_settings.get("serial_number"),
         use_mvs=backend == "mvs",
         opencv_index=int(camera_settings.get("opencv_index", 0)),
         net_export_ip=camera_settings.get("net_export_ip"),
@@ -666,6 +667,7 @@ def _print_config_summary(config_path: Path, cfg: Mapping[str, Any]) -> None:
     print(f"配置文件: {config_path}")
     print(f"相机: {camera_settings.get('backend', 'opencv')}")
     if str(camera_settings.get("backend", "opencv")).lower() == "mvs":
+        print(f"相机序列号: {camera_settings.get('serial_number', '未配置')}")
         print(f"相机 IP: {camera_settings.get('ip', '自动枚举')}")
         print(f"电脑网卡 IP: {camera_settings.get('net_export_ip', '自动选择')}")
     exposure_auto = _optional_bool(camera_settings, "exposure_auto", "camera.exposure_auto")
