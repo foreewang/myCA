@@ -1,0 +1,2 @@
+# CPU-only fallback/development runtime. Do not install with onnxruntime-gpu.
+onnxruntime==1.23.2
