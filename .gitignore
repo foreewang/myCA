@@ -1,4 +1,3 @@
-@"
 .vscode/
 __pycache__/
 *.pyc
@@ -16,4 +15,8 @@ __pycache__/
 env/
 dist/
 build/
-"@ | Set-Content .gitignore
+
+# Vision model binaries are deployed artifacts. Keep manifests/docs in Git.
+vision/models/**/*.onnx
+vision/models/**/*.pt
+vision/models/**/*.pth
