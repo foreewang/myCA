@@ -13,6 +13,7 @@ import pytest
 
 from workflow.config_validator import (
     ConfigValidationError,
+    load_yaml_unique,
     resolve_mvs_python_dir,
     validate_autofocus_config,
     validate_autofocus_file,
@@ -280,6 +281,215 @@ def test_objective_executor_accepts_objective_name() -> None:
     assert result["requested_objective"] == "10x"
     assert result["switched"] is False
     assert "10x 未启用 switch.enabled" in result["message"]
+
+
+def _objective_switch_test_config(*, state: dict | None = None) -> dict:
+    return {
+        "objectives": {
+            "10x": {
+                "switch": {
+                    "enabled": True,
+                    "mode": "motor_manager",
+                    "objective_target_pos": 332695,
+                    "focus_target_pos": -2998604,
+                    "focus_collision_limit_pos": -3229262,
+                }
+            }
+        },
+        "state": {"enabled": False} if state is None else state,
+        "hardware": {
+            "modbus": {"port": "COM3", "baudrate": 115200},
+            "objective_axis": {"slave": 4},
+            "focus_axis": {"slave": 3, "objective_switch_collision_limit_pos": -3168285},
+        },
+    }
+
+
+@pytest.mark.parametrize("focus_position", [-3000000, -3168285])
+def test_objective_executor_reads_focus_before_objective_then_focus_moves(
+    monkeypatch, focus_position
+) -> None:
+    from workflow import objective_executor
+
+    events = []
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeMotor:
+        def __init__(self, client, slave):
+            self.slave = slave
+
+        def get_current_position(self):
+            events.append(("read", self.slave))
+            return focus_position
+
+        def pp_absolute_move(self, *, target_pos, profile_vel, profile_acc, profile_dec):
+            events.append(("move", self.slave, target_pos))
+            return 0
+
+    monkeypatch.setattr(objective_executor, "ModbusRTUClient", FakeClient)
+    monkeypatch.setattr(objective_executor, "MotorManager", FakeMotor)
+
+    result = objective_executor.ensure_objective_for_task(
+        {"objective_name": "10x"},
+        _objective_switch_test_config(),
+    )
+
+    assert events == [
+        ("read", 3),
+        ("move", 4, 332695),
+        ("move", 3, -2998604),
+    ]
+    assert result["focus_position_before_switch"] == focus_position
+    assert result["focus_move_result"]["target"] == -2998604
+    assert result["objective_move_result"]["target"] == 332695
+
+
+@pytest.mark.parametrize(
+    ("focus_position", "read_raises", "error_pattern"),
+    [
+        (-3168286, False, "当前位置.*小于物镜切换碰撞安全限位"),
+        (None, False, "读取电机3当前位置失败"),
+        (None, True, "读取电机3当前位置失败"),
+    ],
+)
+def test_objective_executor_focus_precheck_failure_prevents_all_motion_and_state_write(
+    tmp_path, monkeypatch, focus_position, read_raises, error_pattern
+) -> None:
+    from workflow import objective_executor
+
+    events = []
+    state_file = tmp_path / "objective_state.json"
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeMotor:
+        def __init__(self, client, slave):
+            self.slave = slave
+
+        def get_current_position(self):
+            events.append(("read", self.slave))
+            if read_raises:
+                raise OSError("simulated Modbus read failure")
+            return focus_position
+
+        def pp_absolute_move(self, *, target_pos, profile_vel, profile_acc, profile_dec):
+            events.append(("move", self.slave, target_pos))
+            return 0
+
+    monkeypatch.setattr(objective_executor, "ModbusRTUClient", FakeClient)
+    monkeypatch.setattr(objective_executor, "MotorManager", FakeMotor)
+
+    with pytest.raises(objective_executor.ObjectiveSwitchError, match=error_pattern):
+        objective_executor.ensure_objective_for_task(
+            {"objective_name": "10x"},
+            _objective_switch_test_config(
+                state={"enabled": True, "state_file": str(state_file), "assume_initial": None}
+            ),
+        )
+
+    assert events == [("read", 3)]
+    assert not state_file.exists()
+
+
+def test_objective_executor_rejects_focus_target_beyond_collision_limit() -> None:
+    from workflow import objective_executor
+
+    with pytest.raises(objective_executor.ObjectiveSwitchError, match="碰撞安全限位"):
+        objective_executor.ensure_objective_for_task(
+            {"objective_name": "4x"},
+            {
+                "objectives": {
+                    "4x": {
+                        "switch": {
+                            "enabled": True,
+                            "objective_target_pos": 166347,
+                            "focus_target_pos": -3500000,
+                            "focus_collision_limit_pos": -3436433,
+                        }
+                    }
+                },
+                "state": {"enabled": False},
+                "hardware": {"modbus": {"port": "COM3", "baudrate": 115200}},
+            },
+        )
+
+
+def test_motor_manager_is_class_only_and_position_timeout_is_120_seconds() -> None:
+    import inspect
+    from importlib import import_module
+
+    project_module = import_module("devices.motion.MotorManager")
+    project_modbus_module = import_module("devices.motion.modbus")
+    third_party_module = import_module("third_party.XWJJJ260511.MotorManager")
+    third_party_modbus_module = import_module("third_party.XWJJJ260511.modbus")
+    from third_party.XWJJJ260511.hardware.modbus_motor import ModbusFocusMotor
+
+    for stale_name in (
+        "point_home",
+        "point_6",
+        "point_12",
+        "point_24",
+        "point_48",
+        "rpm_mm",
+        "x4",
+        "x10",
+        "x4_focal",
+        "x10_focal",
+    ):
+        assert not hasattr(project_module, stale_name)
+
+    assert inspect.signature(project_module.MotorManager.pp_absolute_move).parameters[
+        "timeout"
+    ].default == 120.0
+    assert inspect.signature(project_module.MotorManager.pp_relative_move).parameters[
+        "timeout"
+    ].default == 120.0
+    assert inspect.signature(third_party_module.MotorManager.pp_absolute_move).parameters[
+        "timeout"
+    ].default == 120.0
+    assert inspect.signature(ModbusFocusMotor).parameters["timeout"].default == 120.0
+    assert inspect.signature(project_modbus_module.ModbusRTUClient.move_absolute_pp).parameters[
+        "timeout"
+    ].default == 120.0
+    assert inspect.signature(third_party_modbus_module.ModbusRTUClient.move_absolute_pp).parameters[
+        "timeout"
+    ].default == 120.0
+
+
+def test_motor_manager_get_current_position_is_one_pure_register_read() -> None:
+    from devices.motion.modbus import ModbusRTUClient
+    from devices.motion.MotorManager import MotorManager
+
+    class ReadOnlyClient:
+        def __init__(self):
+            self.calls = []
+
+        def _read_32bit(self, slave, register):
+            self.calls.append(("read_32bit", slave, register))
+            return -3000000
+
+    client = ReadOnlyClient()
+    manager = MotorManager(client, slave=3)
+
+    assert manager.get_current_position() == -3000000
+    assert client.calls == [("read_32bit", 3, ModbusRTUClient.REG_CURRENT_POS)]
 
 
 def test_task_store_finalize_success_preserves_existing_timeline_and_wells() -> None:
@@ -771,12 +981,105 @@ def test_api_server_stage_reciprocation_request_rejects_invalid_ranges() -> None
         StageReciprocationStartRequest(move_timeout_s=0)
     with pytest.raises(ValidationError):
         StageReciprocationStartRequest(max_cycles=0)
-    with pytest.raises(ValidationError):
-        StageReciprocationStartRequest(x_min=10, x_max=10)
-    with pytest.raises(ValidationError):
-        StageReciprocationStartRequest(safety_margin=10_000_000)
-    with pytest.raises(ValidationError):
-        StageReciprocationStartRequest(point_a_x=999_999_999)
+
+
+def test_stage_reciprocation_request_schema_removes_and_forbids_legacy_fields() -> None:
+    from workflow.api_models import StageReciprocationStartRequest
+
+    legacy_fields = {
+        "point_a_x",
+        "point_a_y",
+        "point_b_x",
+        "point_b_y",
+        "limit_check_enabled",
+        "x_min",
+        "x_max",
+        "y_min",
+        "y_max",
+        "safety_margin",
+    }
+    schema = StageReciprocationStartRequest.model_json_schema()
+
+    assert legacy_fields.isdisjoint(StageReciprocationStartRequest.model_fields)
+    assert legacy_fields.isdisjoint(schema["properties"])
+    assert schema["additionalProperties"] is False
+    for field in legacy_fields:
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            StageReciprocationStartRequest.model_validate({field: 0})
+
+
+@pytest.mark.parametrize(
+    "legacy_field",
+    [
+        "point_a_x",
+        "point_a_y",
+        "point_b_x",
+        "point_b_y",
+        "limit_check_enabled",
+        "x_min",
+        "x_max",
+        "y_min",
+        "y_max",
+        "safety_margin",
+    ],
+)
+def test_stage_reciprocation_api_rejects_legacy_fields_before_hardware_use(
+    monkeypatch, legacy_field
+) -> None:
+    from workflow import api_server, stage_reciprocation
+
+    hardware_calls = []
+    monkeypatch.setattr(
+        api_server,
+        "acquire_hardware_operation",
+        lambda *_args, **_kwargs: hardware_calls.append("lock"),
+    )
+    monkeypatch.setattr(
+        stage_reciprocation.stage_reciprocation_controller,
+        "start",
+        lambda *_args, **_kwargs: hardware_calls.append("thread"),
+    )
+
+    async def invoke_app() -> list[dict]:
+        body = json.dumps({legacy_field: 0}).encode("utf-8")
+        messages = []
+        request_received = False
+
+        async def receive():
+            nonlocal request_received
+            if not request_received:
+                request_received = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return {"type": "http.disconnect"}
+
+        async def send(message):
+            messages.append(message)
+
+        await api_server.app(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0", "spec_version": "2.3"},
+                "http_version": "1.1",
+                "method": "POST",
+                "scheme": "http",
+                "path": "/api/stage/reciprocation/start",
+                "raw_path": b"/api/stage/reciprocation/start",
+                "query_string": b"",
+                "root_path": "",
+                "headers": [(b"content-type", b"application/json")],
+                "client": ("testclient", 50000),
+                "server": ("testserver", 80),
+            },
+            receive,
+            send,
+        )
+        return messages
+
+    messages = asyncio.run(invoke_app())
+
+    response_start = next(message for message in messages if message["type"] == "http.response.start")
+    assert response_start["status"] == 422
+    assert hardware_calls == []
 
 
 def test_task_runtime_cancel_request_marks_record_and_sets_event(tmp_path, monkeypatch) -> None:
@@ -1417,6 +1720,27 @@ def test_compute_well_start_maps_columns_to_x_and_rows_to_y() -> None:
     }
 
 
+def test_compute_well_start_uses_independent_axis_pulses_per_mm() -> None:
+    plate_cfg = {
+        "rows": 2,
+        "cols": 2,
+        "a1_start": {"x": 1000, "y": 2000},
+        "well_diameter_mm": 1.0,
+        "well_gap_mm": 0.0,
+        "pulses_per_mm": {"x": 100, "y": 200},
+        "row_stage_sign": -1,
+        "col_stage_sign": -1,
+    }
+
+    assert compute_well_start(plate_cfg, "B2") == {
+        "x": 900,
+        "y": 1800,
+        "row_index": 1,
+        "col_index": 1,
+        "well_name": "B2",
+    }
+
+
 def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
     from workflow.scan_planner import plan_single_well_scan
 
@@ -1426,7 +1750,7 @@ def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
         "a1_start": {"x": 1000, "y": 2000},
         "well_diameter_mm": 2.0,
         "well_gap_mm": 0.0,
-        "pulses_per_mm": 100,
+        "pulses_per_mm": {"x": 100, "y": 200},
         "row_stage_sign": 1,
         "col_stage_sign": 1,
         "x_stage_sign_for_view_right": 1,
@@ -1447,7 +1771,8 @@ def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
 
     for point in plan["points"]:
         assert point["stage_x_target"] == round(1000 + point["view_right_mm"] * 100)
-        assert point["stage_y_target"] == round(2000 + point["view_down_mm"] * 100)
+        assert point["stage_y_target"] == round(2000 + point["view_down_mm"] * 200)
+    assert plan["reference"]["pulses_per_mm"] == {"x": 100.0, "y": 200.0}
     assert plan["reference"]["x_stage_sign_for_view_right"] == 1
     assert plan["reference"]["y_stage_sign_for_view_down"] == 1
 
@@ -1458,7 +1783,7 @@ def test_compensate_maps_horizontal_offset_to_x_and_vertical_offset_to_y() -> No
     result = _calc_compensate_target(
         ctx={
             "plate": {
-                "pulses_per_mm": 100,
+                "pulses_per_mm": {"x": 100, "y": 200},
                 "x_stage_sign_for_view_right": 1,
                 "y_stage_sign_for_view_down": 1,
             }
@@ -1473,7 +1798,7 @@ def test_compensate_maps_horizontal_offset_to_x_and_vertical_offset_to_y() -> No
     )
 
     assert result["offset_mm"] == {"view_right_mm": 1.0, "view_down_mm": 4.0}
-    assert result["compensate_target"] == {"x": 900, "y": 1600}
+    assert result["compensate_target"] == {"x": 900, "y": 1200}
 
 
 def test_normalize_detect_result_preserves_pickability_fields() -> None:
@@ -1517,32 +1842,35 @@ def test_normalize_detect_result_preserves_pickability_fields() -> None:
     assert clone["is_pickable"] is True
 
 
-def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path) -> None:
+def _write_stage_reciprocation_plates_config(tmp_path, mutate_plate=None) -> Path:
+    config = load_yaml_unique("config/plates.yaml")
+    if mutate_plate is not None:
+        mutate_plate(config["plates"]["24-well"])
     plates_path = tmp_path / "plates.yaml"
-    plates_path.write_text(
-        textwrap.dedent(
-            """
-            plates:
-              24-well:
-                rows: 4
-                cols: 6
-                a1_start:
-                  x: 8865800
-                  y: 6185500
-                well_diameter_mm: 13.7
-                well_gap_mm: 3.5
-                pulses_per_mm: 147500
-                row_stage_sign: -1
-                col_stage_sign: -1
-            """
-        ).strip(),
-        encoding="utf-8",
-    )
+    plates_path.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
+    return plates_path
+
+
+def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path) -> None:
+    plates_path = _write_stage_reciprocation_plates_config(tmp_path)
+    expected_limits = {
+        "enabled": True,
+        "x_min": -1295041,
+        "x_max": 6525977,
+        "y_min": -1095614,
+        "y_max": 9241733,
+        "safety_margin": 131072,
+    }
 
     cfg = StageReciprocationController()._normalize_cfg(
         {
             "plates_path": str(plates_path),
-            "limit_check_enabled": True,
+            "limit_check_enabled": False,
+            "x_min": 0,
+            "x_max": 1,
+            "y_min": 0,
+            "y_max": 1,
+            "safety_margin": 0,
             "max_cycles": 3,
         }
     )
@@ -1550,36 +1878,98 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
     assert cfg["plate_type"] == "24-well"
     assert cfg["scan_wells"] == ["B2", "B3", "B4", "C2", "C3", "C4"]
     assert cfg["max_cycles"] == 3
+    assert cfg["limits"] == expected_limits
     assert cfg["targets"][0] == {
         "index": 1,
         "well_name": "B2",
-        "x": 6328800,
-        "y": 3648500,
+        "x": 4979233,
+        "y": 6088062,
     }
     assert cfg["targets"][1] == {
         "index": 2,
         "well_name": "B3",
-        "x": 3791800,
-        "y": 3648500,
+        "x": 3852014,
+        "y": 6088062,
     }
     assert cfg["targets"][-1] == {
         "index": 6,
         "well_name": "C4",
-        "x": 1254800,
-        "y": 1111500,
+        "x": 2724794,
+        "y": 3833623,
     }
+    x_safe = (
+        expected_limits["x_min"] + expected_limits["safety_margin"],
+        expected_limits["x_max"] - expected_limits["safety_margin"],
+    )
+    y_safe = (
+        expected_limits["y_min"] + expected_limits["safety_margin"],
+        expected_limits["y_max"] - expected_limits["safety_margin"],
+    )
+    for target in cfg["targets"]:
+        assert x_safe[0] <= target["x"] <= x_safe[1]
+        assert y_safe[0] <= target["y"] <= y_safe[1]
 
 
-def test_stage_reciprocation_rejects_invalid_limits() -> None:
+def test_stage_reciprocation_rejects_missing_stage_limits_before_thread_start(tmp_path) -> None:
+    plates_path = _write_stage_reciprocation_plates_config(
+        tmp_path,
+        lambda plate: plate.pop("stage_limits"),
+    )
     controller = StageReciprocationController()
-    with pytest.raises(StageReciprocationError, match="min must be smaller"):
-        controller._normalize_cfg(
-            {
-                "limit_check_enabled": True,
-                "x_min": 10,
-                "x_max": 10,
-            }
-        )
+    with pytest.raises(StageReciprocationError, match="stage_limits.*required mapping"):
+        controller.start({"plates_path": str(plates_path)})
+    assert controller._thread is None
+
+
+def test_stage_reciprocation_rejects_disabled_stage_limits_before_thread_start(tmp_path) -> None:
+    def disable_limits(plate):
+        plate["stage_limits"]["enabled"] = False
+
+    plates_path = _write_stage_reciprocation_plates_config(tmp_path, disable_limits)
+    controller = StageReciprocationController()
+    with pytest.raises(StageReciprocationError, match="stage limits are disabled"):
+        controller.start({"plates_path": str(plates_path)})
+    assert controller._thread is None
+
+
+@pytest.mark.parametrize(
+    ("mutate_limits", "error_pattern"),
+    [
+        (lambda limits: limits.update(x_min=limits["x_max"]), "x_min must be smaller"),
+        (lambda limits: limits.update(safety_margin=10_000_000), "leaves no valid X travel range"),
+    ],
+)
+def test_stage_reciprocation_rejects_invalid_plate_limits(
+    tmp_path, mutate_limits, error_pattern
+) -> None:
+    def mutate_plate(plate):
+        mutate_limits(plate["stage_limits"])
+
+    plates_path = _write_stage_reciprocation_plates_config(tmp_path, mutate_plate)
+    controller = StageReciprocationController()
+    with pytest.raises(StageReciprocationError, match=error_pattern):
+        controller.start({"plates_path": str(plates_path)})
+    assert controller._thread is None
+
+
+def test_stage_reciprocation_rejects_computed_target_outside_config_limits(monkeypatch) -> None:
+    from workflow import stage_reciprocation
+
+    plates_config = load_yaml_unique("config/plates.yaml")
+
+    def fake_compute_well_start(plate, well_name):
+        position = compute_well_start(plate, well_name)
+        if well_name == "B2":
+            position["x"] = 999_999_999
+        return position
+
+    monkeypatch.setattr(stage_reciprocation, "validate_plates_file", lambda _path: plates_config)
+    monkeypatch.setattr(stage_reciprocation, "compute_well_start", fake_compute_well_start)
+
+    controller = StageReciprocationController()
+    with pytest.raises(StageReciprocationError, match=r"B2\.x=.*outside safe range"):
+        controller.start({})
+    assert controller._thread is None
 
 
 def test_handoff_executor_uses_stage_executor_move_entry(monkeypatch) -> None:
@@ -1638,6 +2028,16 @@ def test_handoff_executor_uses_stage_executor_move_entry(monkeypatch) -> None:
                 },
             },
         },
+        plate_cfg={
+            "stage_limits": {
+                "enabled": True,
+                "x_min": 0,
+                "x_max": 1000,
+                "y_min": 0,
+                "y_max": 1000,
+                "safety_margin": 10,
+            }
+        },
     )
 
     assert result["status"] == "success"
@@ -1647,6 +2047,14 @@ def test_handoff_executor_uses_stage_executor_move_entry(monkeypatch) -> None:
     assert calls[0]["y_target"] == 200
     assert calls[0]["arrival_tolerance_pulse"] == 3
     assert calls[0]["poll_s"] == 0.01
+    assert calls[0]["stage_limits"] == {
+        "enabled": True,
+        "x_min": 0,
+        "x_max": 1000,
+        "y_min": 0,
+        "y_max": 1000,
+        "safety_margin": 10,
+    }
     assert result["move_result"]["motion_params"]["move_mode"] == "simultaneous_pp"
 
 
@@ -1712,6 +2120,64 @@ def test_stage_reciprocation_move_target_uses_stage_executor_entry(monkeypatch) 
 
 def test_project_plates_config_passes_machine_validation() -> None:
     validate_plates_file("config/plates.yaml")
+
+
+def test_project_xy_stage_calibration_values() -> None:
+    plates = load_yaml_unique("config/plates.yaml")["plates"]
+    expected_a1 = {
+        "6-well": (6213780, 7156357),
+        "12-well": (5781368, 7957288),
+        "24-well": (6106452, 8342500),
+        "48-well": (5854763, 8843257),
+    }
+    expected_farthest = {
+        "6-well": (1626260, 2568837, "B3"),
+        "12-well": (1239723, 1901762, "C4"),
+        "24-well": (470356, 1579185, "D6"),
+        "48-well": (487365, 1175545, "F8"),
+    }
+    limits = {
+        "enabled": True,
+        "x_min": -1295041,
+        "x_max": 6525977,
+        "y_min": -1095614,
+        "y_max": 9241733,
+        "safety_margin": 131072,
+    }
+
+    for plate_type, plate in plates.items():
+        assert (plate["a1_start"]["x"], plate["a1_start"]["y"]) == expected_a1[plate_type]
+        assert plate["pulses_per_mm"] == {"x": 65536, "y": 131072}
+        assert plate["stage_limits"] == limits
+        assert plate["row_stage_sign"] == -1
+        assert plate["col_stage_sign"] == -1
+        assert plate["x_stage_sign_for_view_right"] == -1
+        assert plate["y_stage_sign_for_view_down"] == -1
+
+        far_x, far_y, far_well = expected_farthest[plate_type]
+        far_start = compute_well_start(plate, far_well)
+        assert (far_start["x"], far_start["y"]) == (far_x, far_y)
+
+        x_safe = (limits["x_min"] + limits["safety_margin"], limits["x_max"] - limits["safety_margin"])
+        y_safe = (limits["y_min"] + limits["safety_margin"], limits["y_max"] - limits["safety_margin"])
+        for x, y in (expected_a1[plate_type], (far_x, far_y)):
+            assert x_safe[0] <= x <= x_safe[1]
+            assert y_safe[0] <= y <= y_safe[1]
+
+
+def test_project_handoff_point_matches_xy_calibration() -> None:
+    point = load_yaml_unique("config/handoff.yaml")["handoff"]["points"]["robot_exchange"]
+    assert (point["x"], point["y"]) == (5000000, 0)
+
+
+def test_plates_validator_rejects_incomplete_axis_pulses_per_mm() -> None:
+    cfg = load_yaml_unique("config/plates.yaml")
+    cfg["plates"]["24-well"]["pulses_per_mm"].pop("y")
+
+    with pytest.raises(ConfigValidationError) as exc_info:
+        validate_plates_config(cfg)
+
+    assert "plates.24-well.pulses_per_mm.y" in str(exc_info.value)
 
 
 def test_project_camera_config_passes_machine_validation() -> None:
@@ -2170,6 +2636,101 @@ def test_project_autofocus_config_passes_machine_validation() -> None:
     )
 
 
+def test_project_camera_identity_is_synced_for_autofocus() -> None:
+    project_camera = load_yaml_unique("config/camera.yaml")["camera"]
+    autofocus_camera = load_yaml_unique("config/autofocus.yaml")["camera"]
+
+    assert project_camera["ip"] == autofocus_camera["ip"] == "192.168.0.66"
+    assert project_camera["serial_number"] == autofocus_camera["serial_number"] == "DA8583237"
+
+
+def test_autofocus_validator_rejects_camera_serial_mismatch() -> None:
+    autofocus = load_yaml_unique("config/autofocus.yaml")
+    objectives = load_yaml_unique("config/objectives.yaml")
+    camera = load_yaml_unique("config/camera.yaml")
+    autofocus["camera"]["serial_number"] = "WRONG-SERIAL"
+
+    with pytest.raises(ConfigValidationError) as exc_info:
+        validate_autofocus_config(autofocus, objectives_cfg=objectives, camera_cfg=camera)
+
+    assert "autofocus.camera.serial_number" in str(exc_info.value)
+    assert "DA8583237" in str(exc_info.value)
+
+
+def test_third_party_autofocus_passes_camera_identity(monkeypatch) -> None:
+    from third_party.XWJJJ260511 import run as autofocus_run
+    from third_party.XWJJJ260511.hardware import hikrobot_camera
+
+    received = {}
+
+    class FakeCamera:
+        def __init__(self, **kwargs):
+            received.update(kwargs)
+
+    monkeypatch.setattr(hikrobot_camera, "HikrobotCamera", FakeCamera)
+    autofocus_run._create_camera(
+        {
+            "camera": {
+                "backend": "mvs",
+                "serial_number": "DA8583237",
+                "ip": "192.168.0.66",
+                "net_export_ip": "192.168.0.10",
+            },
+            "motor": {"objective": "4x"},
+        }
+    )
+
+    assert received["serial_number"] == "DA8583237"
+    assert received["device"] == "192.168.0.66"
+
+
+def test_third_party_camera_reads_gige_serial_number() -> None:
+    from types import SimpleNamespace
+
+    from third_party.XWJJJ260511.hardware.hikrobot_camera import HikrobotCamera
+
+    mvs = SimpleNamespace(MV_GIGE_DEVICE=1, MV_GENTL_GIGE_DEVICE=2, MV_USB_DEVICE=4)
+    device_info = SimpleNamespace(
+        nTLayerType=1,
+        SpecialInfo=SimpleNamespace(
+            stGigEInfo=SimpleNamespace(chSerialNumber=b"DA8583237\x00\x00")
+        ),
+    )
+
+    assert HikrobotCamera._get_mvs_device_serial(mvs, device_info) == "DA8583237"
+
+
+def test_project_objective_focus_calibration_values() -> None:
+    objectives_config = load_yaml_unique("config/objectives.yaml")
+    objectives = objectives_config["objectives"]
+    ranges = load_yaml_unique("config/autofocus.yaml")["motor"]["objective_ranges"]
+
+    assert objectives["4x"]["switch"]["objective_target_pos"] == 166347
+    assert objectives["4x"]["switch"]["focus_target_pos"] == -3002685
+    assert objectives["4x"]["switch"]["focus_collision_limit_pos"] == -3436433
+    assert ranges["4x"] == {"min_pos": -3082685, "max_pos": -2922685}
+
+    assert objectives["10x"]["switch"]["objective_target_pos"] == 332695
+    assert objectives["10x"]["switch"]["focus_target_pos"] == -2998604
+    assert objectives["10x"]["switch"]["focus_collision_limit_pos"] == -3229262
+    assert ranges["10x"] == {"min_pos": -3078604, "max_pos": -2918604}
+    assert objectives_config["hardware"]["focus_axis"]["objective_switch_collision_limit_pos"] == -3168285
+
+
+def test_autofocus_range_cannot_cross_objective_switch_collision_limit() -> None:
+    autofocus = load_yaml_unique("config/autofocus.yaml")
+    objectives = load_yaml_unique("config/objectives.yaml")
+    camera = load_yaml_unique("config/camera.yaml")
+    autofocus["motor"]["objective_ranges"]["4x"]["min_pos"] = -3168286
+
+    with pytest.raises(ConfigValidationError) as exc_info:
+        validate_autofocus_config(autofocus, objectives_cfg=objectives, camera_cfg=camera)
+
+    message = str(exc_info.value)
+    assert "autofocus.motor.objective_ranges.4x.min_pos" in message
+    assert "objective_switch_collision_limit_pos (-3168285)" in message
+
+
 def test_autofocus_validator_rejects_unsafe_or_stale_fields(tmp_path) -> None:
     sdk_dir = tmp_path / "MvImport"
     sdk_dir.mkdir()
@@ -2251,6 +2812,8 @@ def test_autofocus_validator_rejects_unsafe_or_stale_fields(tmp_path) -> None:
     assert "autofocus.motor.objective_ranges.10x" in message
     assert "autofocus.motor.objective_ranges.4x" in message
     assert "autofocus.motor.min_pos" in message
+    assert "objectives.4x.switch.focus_collision_limit_pos" in message
+    assert "objectives.hardware.focus_axis.objective_switch_collision_limit_pos" in message
 
 
 def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() -> None:
