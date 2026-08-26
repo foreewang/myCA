@@ -27,8 +27,10 @@ trigger:
 camera:
   # 相机后端；当前只支持海康 MVS。
   backend: mvs
-  # 相机 IP；序列号未参与自动对焦模块的相机选择。
-  ip: "192.168.0.253"
+  # 相机序列号；自动调焦打开相机后会校验设备身份，避免连接到同网段的其他相机。
+  serial_number: "DA8583237"
+  # 相机 IP。
+  ip: "192.168.0.66"
   # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
   net_export_ip: "192.168.0.10"
   # 海康 MVS Python SDK 的导入目录。
@@ -67,14 +69,14 @@ motor:
   objective_ranges:
     4x:
       # 4x 搜索最小位置。
-      min_pos: -2063120
+      min_pos: -3082685
       # 4x 搜索最大位置。
-      max_pos: -1769500
+      max_pos: -2922685
     10x:
       # 10x 搜索最小位置。
-      min_pos: -2095551
+      min_pos: -3078604
       # 10x 搜索最大位置。
-      max_pos: -2028750
+      max_pos: -2918604
 
   # 调焦轴 PP 位置模式轮廓速度。
   profile_vel: 50000

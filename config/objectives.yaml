@@ -28,7 +28,9 @@ objectives:
       objective_target_pos: 166347
       # 调焦轴预定位目标位置，单位：pulse。
       # 切换物镜动作对应的细准焦螺旋；粗准焦螺旋不应由这里移动。
-      focus_target_pos: -1923201
+      focus_target_pos: -3002685
+      # 4X 物镜下电机3允许到达的最小安全脉冲；更小的脉冲会继续靠近培养板并有碰撞风险。
+      focus_collision_limit_pos: -3436433
 
       # 物镜轴移动速度参数。
       objective_profile_vel: 100000
@@ -64,9 +66,11 @@ objectives:
       # 切换模式；当前 objective_executor 只支持 motor_manager。
       mode: motor_manager
       # 物镜转盘/物镜轴目标位置，单位：pulse。
-      objective_target_pos: -165903
+      objective_target_pos: 332695
       # 切换物镜动作对应的调焦轴预定位目标位置，单位：pulse。
-      focus_target_pos: -2074313
+      focus_target_pos: -2998604
+      # 10X 物镜下电机3允许到达的最小安全脉冲；更小的脉冲会继续靠近培养板并有碰撞风险。
+      focus_collision_limit_pos: -3229262
 
       # 物镜轴移动速度参数。
       objective_profile_vel: 100000
@@ -90,7 +94,8 @@ state:
   # 物镜状态文件路径，程序会在切换成功后写入当前物镜。
   state_file: "data/objective_state.json"
   # 当状态文件不存在或没有 current_objective 时，假定初始物镜为该值。
-  assume_initial: "4x"
+  # 标定变更后不再猜测启动时的物镜状态，首次任务必须执行一次物镜和焦点定位。
+  assume_initial: null
 
 # 物镜切换相关硬件配置。
 hardware:
@@ -110,3 +115,5 @@ hardware:
   focus_axis:
     # 调焦轴电机的 Modbus 从站地址。
     slave: 3
+    # 物镜切换安全限位；自动调焦搜索位置不得小于该值，不作为额外运动目标。
+    objective_switch_collision_limit_pos: -3168285

@@ -29,9 +29,9 @@ handoff:
     # 机械臂与显微平台交接培养板的标准点位。
     robot_exchange:
       # 交接点 X 轴绝对坐标，单位：pulse。
-      x: 0
+      x: 5000000
       # 交接点 Y 轴绝对坐标，单位：pulse。
-      y: 7500000
+      y: 0
       # 点位含义说明，会写入 handoff 执行结果。
       meaning: "exchange point for robot"
 

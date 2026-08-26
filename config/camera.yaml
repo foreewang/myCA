@@ -18,7 +18,7 @@ camera:
   serial_number: DA8583237
 
   # GigE camera IPv4 address. Used only when serial_number is null or empty.
-  ip: "192.168.0.253"
+  ip: "192.168.0.66"
 
   # 图像分辨率配置，主要用于扫描参数计算和相机采集尺寸管理。
   resolution:
@@ -28,8 +28,8 @@ camera:
     # 采集图像高度，单位：像素。
     height: 5120
 
-    # 当相机或当前模式不支持目标分辨率时，是否允许降级到更小分辨率。
-    allow_downscale: true
+    # 4x 模型发布契约固定为 5120×5120；不允许静默降采样后再产生不可用图像。
+    allow_downscale: false
 
     # 常用分辨率预设，方便在代码或配置中引用不同尺寸。
     presets:
