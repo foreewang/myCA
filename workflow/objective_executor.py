@@ -122,21 +122,59 @@ def ensure_objective_for_task(
         raise ObjectiveSwitchError("objectives.yaml.hardware.modbus.port 未配置")
 
     objective_slave = int((hw_cfg.get("objective_axis") or {}).get("slave", 4))
-    focus_slave = int((hw_cfg.get("focus_axis") or {}).get("slave", 3))
+    focus_axis_cfg = hw_cfg.get("focus_axis") or {}
+    focus_slave = int(focus_axis_cfg.get("slave", 3))
+    objective_switch_collision_limit = focus_axis_cfg.get("objective_switch_collision_limit_pos")
 
     objective_target = switch_cfg.get("objective_target_pos")
     focus_target = switch_cfg.get("focus_target_pos")
+    focus_collision_limit = switch_cfg.get("focus_collision_limit_pos")
     if objective_target is None:
         raise ObjectiveSwitchError(f"{requested} 缺少 switch.objective_target_pos")
     if focus_target is None:
         raise ObjectiveSwitchError(f"{requested} 缺少 switch.focus_target_pos")
+    if isinstance(focus_collision_limit, bool) or not isinstance(focus_collision_limit, int):
+        raise ObjectiveSwitchError(f"{requested} 缺少有效的 switch.focus_collision_limit_pos")
+    if int(focus_target) < focus_collision_limit:
+        raise ObjectiveSwitchError(
+            f"{requested} 的焦点位置 {focus_target} 小于碰撞安全限位 {focus_collision_limit}"
+        )
+    if isinstance(objective_switch_collision_limit, bool) or not isinstance(
+        objective_switch_collision_limit, int
+    ):
+        raise ObjectiveSwitchError("缺少有效的 hardware.focus_axis.objective_switch_collision_limit_pos")
+    if int(focus_target) < objective_switch_collision_limit:
+        raise ObjectiveSwitchError(
+            f"{requested} 的焦点位置 {focus_target} 小于物镜切换碰撞安全限位 "
+            f"{objective_switch_collision_limit}"
+        )
 
     objective_move = {}
     focus_move = {}
+    focus_position_before_switch = None
 
     with ModbusRTUClient(port=port, baudrate=int(baudrate)) as client:
         objective_motor = MotorManager(client, slave=objective_slave)
         focus_motor = MotorManager(client, slave=focus_slave)
+
+        try:
+            focus_position_before_switch = focus_motor.get_current_position()
+        except Exception as exc:
+            raise ObjectiveSwitchError("切换物镜前读取电机3当前位置失败") from exc
+
+        if focus_position_before_switch is None:
+            raise ObjectiveSwitchError("切换物镜前读取电机3当前位置失败：未返回有效位置")
+        if isinstance(focus_position_before_switch, bool) or not isinstance(
+            focus_position_before_switch, int
+        ):
+            raise ObjectiveSwitchError(
+                "切换物镜前读取电机3当前位置失败：返回值不是整数脉冲位置"
+            )
+        if focus_position_before_switch < objective_switch_collision_limit:
+            raise ObjectiveSwitchError(
+                f"切换物镜前电机3当前位置 {focus_position_before_switch} 小于物镜切换碰撞安全限位 "
+                f"{objective_switch_collision_limit}"
+            )
 
         objective_move = _move_axis(
             motor=objective_motor,
@@ -163,6 +201,7 @@ def ensure_objective_for_task(
         "state_file": str(state_file) if state_enabled else None,
         "objective_axis_slave": objective_slave,
         "focus_axis_slave": focus_slave,
+        "focus_position_before_switch": focus_position_before_switch,
         "objective_move_result": objective_move,
         "focus_move_result": focus_move,
         "message": "Objective and focus switching completed",

@@ -184,7 +184,13 @@ def visualize_plan_stage(
 
     well_start_x = int(reference["well_start"]["x"])
     well_start_y = int(reference["well_start"]["y"])
-    ppm = float(reference["pulses_per_mm"])
+    ppm_cfg = reference["pulses_per_mm"]
+    if isinstance(ppm_cfg, dict):
+        x_ppm = float(ppm_cfg["x"])
+        y_ppm = float(ppm_cfg["y"])
+    else:
+        # 兼容旧扫描结果中的两轴共用单值。
+        x_ppm = y_ppm = float(ppm_cfg)
     if "x_stage_sign_for_view_right" in reference and "y_stage_sign_for_view_down" in reference:
         sign_summary = (
             f"x_right_sign={int(reference['x_stage_sign_for_view_right'])} | "
@@ -231,7 +237,7 @@ def visualize_plan_stage(
     ax.set_ylabel("stage_y_target (pulse)")
     ax.set_title(
         f"Stage scan path | well={plan['well_name']} | "
-        f"points={len(points)} | ppm={ppm} | {sign_summary}"
+        f"points={len(points)} | ppm_x={x_ppm} | ppm_y={y_ppm} | {sign_summary}"
     )
     ax.grid(True)
 

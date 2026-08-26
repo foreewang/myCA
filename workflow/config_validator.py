@@ -446,6 +446,8 @@ def _validate_autofocus_camera(
 ) -> None:
     backend = _require_choice(camera, "backend", f"{base}.backend", issues, SUPPORTED_AUTOFOCUS_BACKENDS)
     if backend == "mvs":
+        if "serial_number" in camera and camera.get("serial_number") is not None:
+            _require_text(camera, "serial_number", f"{base}.serial_number", issues)
         _require_ipv4(camera, "ip", f"{base}.ip", issues)
         _require_ipv4(camera, "net_export_ip", f"{base}.net_export_ip", issues)
         _validate_camera_mvs_path(base, camera, issues)
@@ -503,6 +505,17 @@ def _compare_autofocus_camera_with_project_camera(
     project_camera: Mapping[str, Any],
     issues: list[ConfigIssue],
 ) -> None:
+    autofocus_serial = autofocus_camera.get("serial_number")
+    project_serial = project_camera.get("serial_number")
+    if isinstance(project_serial, str) and project_serial.strip():
+        if not isinstance(autofocus_serial, str) or autofocus_serial.strip() != project_serial.strip():
+            issues.append(
+                ConfigIssue(
+                    f"{base}.serial_number",
+                    f"must match camera.serial_number ({project_serial.strip()})",
+                )
+            )
+
     autofocus_ip = autofocus_camera.get("ip")
     project_ip = project_camera.get("ip")
     if (
@@ -559,6 +572,14 @@ def _validate_autofocus_motor(
             issues.append(ConfigIssue(f"{base}.{legacy_key}", "legacy fallback field is not used by the production workflow"))
 
     objective_names = {str(name) for name in objectives.keys()} if objectives is not None else None
+    objective_switch_collision_limit = _objective_switch_collision_limit(objectives_cfg)
+    if objectives_cfg is not None and objective_switch_collision_limit is None:
+        issues.append(
+            ConfigIssue(
+                "objectives.hardware.focus_axis.objective_switch_collision_limit_pos",
+                "required numeric objective-switch collision safety limit is missing",
+            )
+        )
     objective = _require_text(motor, "objective", f"{base}.objective", issues)
     if objective is not None and objective_names is not None and objective not in objective_names:
         issues.append(ConfigIssue(f"{base}.objective", f"objective is not defined in objectives.yaml: {objective!r}"))
@@ -590,6 +611,43 @@ def _validate_autofocus_motor(
                         ConfigIssue(
                             range_path,
                             f"must contain objectives.{objective_name}.switch.focus_target_pos ({focus_target:g})",
+                        )
+                    )
+                if objectives is not None:
+                    collision_limit = _objective_focus_collision_limit(objectives, str(objective_name))
+                    if collision_limit is None:
+                        issues.append(
+                            ConfigIssue(
+                                f"objectives.{objective_name}.switch.focus_collision_limit_pos",
+                                "required numeric collision safety limit is missing",
+                            )
+                        )
+                    else:
+                        if focus_target is not None and focus_target < collision_limit:
+                            issues.append(
+                                ConfigIssue(
+                                    f"objectives.{objective_name}.switch.focus_target_pos",
+                                    f"must be >= focus_collision_limit_pos ({collision_limit})",
+                                )
+                            )
+                        if min_pos < collision_limit:
+                            issues.append(
+                                ConfigIssue(
+                                    f"{range_path}.min_pos",
+                                    f"must be >= objectives.{objective_name}.switch.focus_collision_limit_pos "
+                                    f"({collision_limit}); smaller pulses move closer to the culture plate",
+                                )
+                            )
+                if (
+                    objective_switch_collision_limit is not None
+                    and min_pos < objective_switch_collision_limit
+                ):
+                    issues.append(
+                        ConfigIssue(
+                            f"{range_path}.min_pos",
+                            "must be >= objectives.hardware.focus_axis."
+                            f"objective_switch_collision_limit_pos ({objective_switch_collision_limit}) "
+                            "so the objective can be switched without an extra focus-axis retreat move",
                         )
                     )
 
@@ -653,6 +711,39 @@ def _objective_focus_target(objectives: Mapping[str, Any] | None, objective_name
     return float(focus_target)
 
 
+def _objective_focus_collision_limit(
+    objectives: Mapping[str, Any] | None,
+    objective_name: str,
+) -> int | None:
+    if objectives is None:
+        return None
+    objective_cfg = objectives.get(objective_name)
+    if not isinstance(objective_cfg, Mapping):
+        return None
+    switch_cfg = objective_cfg.get("switch")
+    if not isinstance(switch_cfg, Mapping):
+        return None
+    collision_limit = switch_cfg.get("focus_collision_limit_pos")
+    if isinstance(collision_limit, bool) or not isinstance(collision_limit, int):
+        return None
+    return collision_limit
+
+
+def _objective_switch_collision_limit(objectives_cfg: Mapping[str, Any] | None) -> int | None:
+    if objectives_cfg is None:
+        return None
+    hardware = objectives_cfg.get("hardware")
+    if not isinstance(hardware, Mapping):
+        return None
+    focus_axis = hardware.get("focus_axis")
+    if not isinstance(focus_axis, Mapping):
+        return None
+    collision_limit = focus_axis.get("objective_switch_collision_limit_pos")
+    if isinstance(collision_limit, bool) or not isinstance(collision_limit, int):
+        return None
+    return collision_limit
+
+
 def _validate_autofocus_focus(base: str, focus: Mapping[str, Any], issues: list[ConfigIssue]) -> None:
     _require_number(focus, "tol", f"{base}.tol", issues, minimum=0, exclusive_min=True)
     _require_int(focus, "max_iter", f"{base}.max_iter", issues, minimum=1)
@@ -714,7 +805,7 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
 
     _require_number(plate, "well_diameter_mm", f"{base}.well_diameter_mm", issues, minimum=0, exclusive_min=True)
     _require_number(plate, "well_gap_mm", f"{base}.well_gap_mm", issues, minimum=0, exclusive_min=False)
-    _require_number(plate, "pulses_per_mm", f"{base}.pulses_per_mm", issues, minimum=0, exclusive_min=True)
+    _validate_axis_pulses_per_mm(base, plate, issues)
 
     for key in (
         "row_stage_sign",
@@ -736,6 +827,89 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
     else:
         _validate_runtime_guard(f"{base}.runtime_guard", runtime_guard, issues)
 
+    _validate_plate_reference_points_within_safe_limits(base, plate, issues)
+
+
+def _validate_axis_pulses_per_mm(
+    base: str,
+    plate: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    value = plate.get("pulses_per_mm")
+    if isinstance(value, Mapping):
+        _require_number(value, "x", f"{base}.pulses_per_mm.x", issues, minimum=0, exclusive_min=True)
+        _require_number(value, "y", f"{base}.pulses_per_mm.y", issues, minimum=0, exclusive_min=True)
+        for key in sorted(str(key) for key in value.keys()):
+            if key not in {"x", "y"}:
+                issues.append(ConfigIssue(f"{base}.pulses_per_mm.{key}", "unexpected axis; expected only x and y"))
+        return
+    _require_number(plate, "pulses_per_mm", f"{base}.pulses_per_mm", issues, minimum=0, exclusive_min=True)
+
+
+def _validate_plate_reference_points_within_safe_limits(
+    base: str,
+    plate: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    """校验 A1 及最远行列起始点均落在带余量的可执行范围内。"""
+    a1 = plate.get("a1_start")
+    limits = plate.get("stage_limits")
+    ppm = plate.get("pulses_per_mm")
+    if not isinstance(a1, Mapping) or not isinstance(limits, Mapping) or not bool(limits.get("enabled")):
+        return
+
+    values = (
+        plate.get("rows"),
+        plate.get("cols"),
+        a1.get("x"),
+        a1.get("y"),
+        plate.get("well_diameter_mm"),
+        plate.get("well_gap_mm"),
+        plate.get("row_stage_sign"),
+        plate.get("col_stage_sign"),
+        limits.get("x_min"),
+        limits.get("x_max"),
+        limits.get("y_min"),
+        limits.get("y_max"),
+        limits.get("safety_margin"),
+    )
+    if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values):
+        return
+    if isinstance(ppm, Mapping):
+        x_ppm, y_ppm = ppm.get("x"), ppm.get("y")
+    else:
+        x_ppm = y_ppm = ppm
+    if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in (x_ppm, y_ppm)):
+        return
+
+    pitch_mm = float(plate["well_diameter_mm"]) + float(plate["well_gap_mm"])
+    far_x = int(a1["x"]) + round(
+        (int(plate["cols"]) - 1) * pitch_mm * float(x_ppm) * int(plate["col_stage_sign"])
+    )
+    far_y = int(a1["y"]) + round(
+        (int(plate["rows"]) - 1) * pitch_mm * float(y_ppm) * int(plate["row_stage_sign"])
+    )
+    margin = int(limits["safety_margin"])
+    safe = {
+        "x": (int(limits["x_min"]) + margin, int(limits["x_max"]) - margin),
+        "y": (int(limits["y_min"]) + margin, int(limits["y_max"]) - margin),
+    }
+    for label, x, y in (("A1", int(a1["x"]), int(a1["y"])), ("farthest well", far_x, far_y)):
+        if not safe["x"][0] <= x <= safe["x"][1]:
+            issues.append(
+                ConfigIssue(
+                    f"{base}.a1_start",
+                    f"{label} x={x} is outside safe X range [{safe['x'][0]}, {safe['x'][1]}]",
+                )
+            )
+        if not safe["y"][0] <= y <= safe["y"][1]:
+            issues.append(
+                ConfigIssue(
+                    f"{base}.a1_start",
+                    f"{label} y={y} is outside safe Y range [{safe['y'][0]}, {safe['y'][1]}]",
+                )
+            )
+
 
 def _validate_stage_limits(base: str, cfg: Mapping[str, Any], issues: list[ConfigIssue]) -> None:
     _require_bool(cfg, "enabled", f"{base}.enabled", issues)
@@ -743,12 +917,17 @@ def _validate_stage_limits(base: str, cfg: Mapping[str, Any], issues: list[Confi
     x_max = _require_int(cfg, "x_max", f"{base}.x_max", issues)
     y_min = _require_int(cfg, "y_min", f"{base}.y_min", issues)
     y_max = _require_int(cfg, "y_max", f"{base}.y_max", issues)
-    _require_int(cfg, "safety_margin", f"{base}.safety_margin", issues, minimum=0)
+    safety_margin = _require_int(cfg, "safety_margin", f"{base}.safety_margin", issues, minimum=0)
 
     if x_min is not None and x_max is not None and x_min >= x_max:
         issues.append(ConfigIssue(base, "x_min must be smaller than x_max"))
     if y_min is not None and y_max is not None and y_min >= y_max:
         issues.append(ConfigIssue(base, "y_min must be smaller than y_max"))
+    if safety_margin is not None:
+        if x_min is not None and x_max is not None and x_min + safety_margin > x_max - safety_margin:
+            issues.append(ConfigIssue(f"{base}.safety_margin", "leaves no valid X travel range"))
+        if y_min is not None and y_max is not None and y_min + safety_margin > y_max - safety_margin:
+            issues.append(ConfigIssue(f"{base}.safety_margin", "leaves no valid Y travel range"))
 
 
 def _validate_runtime_guard(base: str, cfg: Mapping[str, Any], issues: list[ConfigIssue]) -> None:

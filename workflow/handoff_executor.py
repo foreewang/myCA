@@ -102,7 +102,11 @@ def _check_arrival_tolerance(axis_name: str, err: int, tolerance: int, target: i
         )
 
 
-def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def execute_handoff_task(
+    task_cfg: Dict[str, Any],
+    handoff_root_cfg: Dict[str, Any],
+    plate_cfg: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     root_cfg = _get_root_cfg(handoff_root_cfg)
 
     task_id = str(task_cfg.get("task_id") or "")
@@ -136,6 +140,7 @@ def execute_handoff_task(task_cfg: Dict[str, Any], handoff_root_cfg: Dict[str, A
             timeout_s=motion_cfg["timeout_s"],
             poll_s=motion_cfg["poll_s"],
             arrival_tolerance_pulse=motion_cfg["arrival_tolerance_pulse"],
+            stage_limits=(plate_cfg or {}).get("stage_limits"),
         )
     except StageMotionError as exc:
         raise HandoffError(str(exc)) from exc

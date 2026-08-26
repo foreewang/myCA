@@ -7,8 +7,8 @@ from typing import Dict, List, Any
 from workflow.plate_geometry import (
     compute_well_start,
     get_a1_start,
+    get_axis_pulses_per_mm,
     get_plate_pitch_mm,
-    get_pulses_per_mm,
     get_view_signs,
     require_number,
 )
@@ -130,7 +130,7 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
 
     well_start = compute_well_start(plate, well_name)
     a1_start = get_a1_start(plate)
-    ppm = get_pulses_per_mm(plate)
+    x_ppm, y_ppm = get_axis_pulses_per_mm(plate)
     x_sign_for_right, y_sign_for_down = get_view_signs(plate)
 
     well_diameter_mm = require_number(plate.get("well_diameter_mm"), "well_diameter_mm")
@@ -170,8 +170,8 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
 
         for col_index, vright in enumerate(xs):
             # 标准坐标映射：图像左右对应 X/电机 1，图像上下对应 Y/电机 2。
-            stage_x = int(round(well_start["x"] + x_sign_for_right * vright * ppm))
-            stage_y = int(round(well_start["y"] + y_sign_for_down * vdown * ppm))
+            stage_x = int(round(well_start["x"] + x_sign_for_right * vright * x_ppm))
+            stage_y = int(round(well_start["y"] + y_sign_for_down * vdown * y_ppm))
 
             points.append(
                 {
@@ -207,7 +207,10 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
             "well_diameter_mm": well_diameter_mm,
             "well_gap_mm": well_gap_mm,
             "pitch_mm": pitch_mm,
-            "pulses_per_mm": ppm,
+            "pulses_per_mm": {
+                "x": x_ppm,
+                "y": y_ppm,
+            },
             "x_stage_sign_for_view_right": x_sign_for_right,
             "y_stage_sign_for_view_down": y_sign_for_down,
         },

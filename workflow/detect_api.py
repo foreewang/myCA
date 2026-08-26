@@ -54,8 +54,8 @@ def _resolve_callable(entrypoint: str | None = None) -> Callable[..., Any]:
             candidates.append((mod_name.replace("vision.", "vision.vision.", 1), func_name))
     else:
         for fn in _CANDIDATE_CALLABLES:
-            candidates.append(("vision.vision.detect_pipeline", fn))
-            candidates.append(("vision.detect_pipeline", fn))
+            candidates.append(("vision.vision.instance_pipeline", fn))
+            candidates.append(("vision.instance_pipeline", fn))
 
     tried: List[str] = []
     last_err: Exception | None = None
@@ -102,7 +102,7 @@ def _coerce_bbox(value: Any) -> List[int] | None:
 
 
 def _extract_center(item: Dict[str, Any]) -> tuple[int, int] | None:
-    for key in ("safe_point", "dark_core_center_pixel", "center_px", "center_pixel", "center", "centroid", "clone_center_px"):
+    for key in ("center_pixel", "safe_point", "dark_core_center_pixel", "center_px", "center", "centroid", "clone_center_px"):
         if key in item:
             pair = _to_int_pair(item[key])
             if pair is not None:
@@ -121,7 +121,7 @@ def _extract_center(item: Dict[str, Any]) -> tuple[int, int] | None:
 
 
 def _extract_score(item: Dict[str, Any]) -> float | None:
-    for key in ("score", "confidence", "conf", "prob"):
+    for key in ("detection_confidence", "score", "confidence", "conf", "prob"):
         if key in item:
             try:
                 return float(item[key])
@@ -186,13 +186,15 @@ def _normalize_items(raw: Any) -> List[Dict[str, Any]]:
     return []
 
 
-def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
-    items = _normalize_items(raw_result)
+def _normalize_component_items(raw: Any, *, strict: bool, kind: str) -> List[Dict[str, Any]]:
+    items = _normalize_items(raw)
     clones: List[Dict[str, Any]] = []
 
     for idx, item in enumerate(items, start=1):
         center = _extract_center(item)
         if center is None:
+            if strict:
+                raise DetectAPIError(f"vision schema v2 {kind}[{idx - 1}] 缺少有效中心或 bbox")
             continue
 
         bbox = None
@@ -202,8 +204,7 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
                 if bbox is not None:
                     break
 
-        clones.append(
-            {
+        normalized = {
                 "clone_id": item.get("clone_id") or item.get("target_id") or item.get("id") or f"c{idx:02d}",
                 "center_px": [center[0], center[1]],
                 "bbox": bbox,
@@ -219,9 +220,70 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
                 "distance_to_well_edge_px": item.get("distance_to_well_edge_px"),
                 "distance_to_well_edge_mm": item.get("distance_to_well_edge_mm"),
                 "is_pickable": _extract_bool(item, "is_pickable"),
+                "status": item.get("status"),
+                "detection_confidence": item.get("detection_confidence"),
+                "segmentation_status": item.get("segmentation_status"),
+                "segmentation_score": item.get("segmentation_score"),
+                "truncated": _extract_bool(item, "truncated"),
+                "instance_label": item.get("instance_label"),
+                "detection_source": item.get("detection_source"),
+                "contour_points": item.get("contour_points"),
+                "review_reasons": list(item.get("review_reasons") or []),
+                "location_valid": _extract_bool(item, "location_valid"),
+                "eligible_for_10x_centering": _extract_bool(item, "eligible_for_10x_centering"),
+                "quality_assessment": item.get("quality_assessment"),
                 "raw": item,
             }
-        )
+        clones.append(normalized)
+    return clones
+
+
+def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
+    schema_version = 1
+    if isinstance(raw_result, dict):
+        try:
+            schema_version = int(raw_result.get("schema_version", 1))
+        except Exception as exc:
+            raise DetectAPIError("vision schema_version 必须是整数") from exc
+
+    if schema_version >= 2:
+        if not isinstance(raw_result, dict):
+            raise DetectAPIError("vision schema v2 顶层结果必须是对象")
+        raw_components = raw_result.get("components")
+        raw_reviews = raw_result.get("review_candidates")
+        if not isinstance(raw_components, list) or not isinstance(raw_reviews, list):
+            raise DetectAPIError("vision schema v2 必须包含 components 和 review_candidates 列表")
+        try:
+            declared_components = int(raw_result["component_count"])
+            declared_reviews = int(raw_result["review_candidate_count"])
+        except Exception as exc:
+            raise DetectAPIError("vision schema v2 缺少合法计数字段") from exc
+        if declared_components != len(raw_components):
+            raise DetectAPIError(
+                f"vision schema v2 component_count={declared_components} 与 components={len(raw_components)} 不一致"
+            )
+        if declared_reviews != len(raw_reviews):
+            raise DetectAPIError(
+                f"vision schema v2 review_candidate_count={declared_reviews} 与 review_candidates={len(raw_reviews)} 不一致"
+            )
+        clones = _normalize_component_items(raw_components, strict=True, kind="components")
+        reviews = _normalize_component_items(raw_reviews, strict=True, kind="review_candidates")
+        return {
+            "schema_version": schema_version,
+            "objective_name": raw_result.get("objective_name"),
+            "purpose": raw_result.get("purpose"),
+            "clone_count": len(clones),
+            "review_candidate_count": len(reviews),
+            "clones": clones,
+            "review_candidates": reviews,
+            "models": raw_result.get("models") or {},
+            "runtime": raw_result.get("runtime") or {},
+            "quality_assessment": raw_result.get("quality_assessment"),
+            "raw_result": raw_result,
+        }
+
+    items = _normalize_items(raw_result)
+    clones = _normalize_component_items(items, strict=False, kind="components")
 
     clone_count = len(clones)
     if isinstance(raw_result, dict):
@@ -237,8 +299,13 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
                 clone_count = len(clones)
 
     return {
+        "schema_version": schema_version,
         "clone_count": clone_count,
         "clones": clones,
+        "review_candidate_count": 0,
+        "review_candidates": [],
+        "models": {},
+        "runtime": {},
         "raw_result": raw_result if isinstance(raw_result, dict) else None,
     }
 
@@ -275,7 +342,6 @@ def run_detect_on_image(
         raw_result = _call_detect_entrypoint(fn, image_path, detect_kwargs or {})
     except TypeError as exc:
         raise DetectAPIError(
-            f"视觉入口函数调用失败：{exc}。当前默认按 fn(image_path) 调用，"
-            "若你的 detect_pipeline 需要其他参数，请把函数名和签名发给我。"
+            f"视觉入口函数调用失败：{exc}。请检查 detect.entrypoint 与对应参数。"
         ) from exc
     return normalize_detect_result(raw_result)

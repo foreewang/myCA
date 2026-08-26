@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from workflow.clone_dedupe import dedupe_well_clones
 from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
 from workflow.task_control import raise_if_cancel_requested, report_progress
@@ -62,7 +63,7 @@ def _extract_polygon_points(raw_item: Dict[str, Any]) -> List[Tuple[int, int]] |
     if not isinstance(raw_item, dict):
         return None
 
-    candidate_keys = ("contour", "contours", "polygon", "outline", "points", "cnt")
+    candidate_keys = ("contour_points", "contour", "contours", "polygon", "outline", "points", "cnt")
     raw_points = None
     for key in candidate_keys:
         if key in raw_item:
@@ -212,6 +213,10 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     draw_center = bool(detect_cfg.get("draw_center", True))
     draw_image_center = bool(detect_cfg.get("draw_image_center", True))
 
+    objective_name = str(params.get("objective_name") or "").strip().lower()
+    if entrypoint is None and objective_name != "4x":
+        raise ValueError("默认 4x 定位模型入口只允许 objective_name='4x'")
+
     fov_cfg = scan_result.get("scan_config", {}).get("fov_mm", {}) or {}
     fov_w_mm = float(fov_cfg.get("width"))
     fov_h_mm = float(fov_cfg.get("height"))
@@ -259,6 +264,12 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
             entrypoint=entrypoint,
             detect_kwargs={
                 **detect_kwargs,
+                "model_dir": detect_cfg.get("model_dir") or params.get("detect_model_dir"),
+                "provider": str(detect_cfg.get("provider") or params.get("detect_provider") or "cuda"),
+                "allow_cpu_fallback": bool(
+                    detect_cfg.get("allow_cpu_fallback", params.get("detect_allow_cpu_fallback", False))
+                ),
+                "objective_name": params.get("objective_name"),
                 "mm_per_pixel": mm_per_pixel,
                 "well_border_margin_mm": float(detect_cfg.get("well_border_margin_mm", 0.0) or 0.0),
                 "well_border_margin_px": float(detect_cfg.get("well_border_margin_px", 30.0) or 30.0),
@@ -266,36 +277,63 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
             },
         )
 
-        raw_clones = detect_result.get("clones", []) or []
-        clones: List[Dict[str, Any]] = []
-        for clone in raw_clones:
-            center_px = clone["center_px"]
-            offset_px = _offset_from_center(center_px, image_center)
-            polygon = _extract_polygon_points(clone.get("raw") or {})
+        def build_items(raw_items: List[Dict[str, Any]], *, review: bool) -> List[Dict[str, Any]]:
+            built: List[Dict[str, Any]] = []
+            for clone in raw_items:
+                center_px = clone["center_px"]
+                offset_px = _offset_from_center(center_px, image_center)
+                polygon = _extract_polygon_points(clone.get("raw") or {})
+                source_id = f"I{int(capture['index'])}:{clone['clone_id']}"
+                is_v2 = int(detect_result.get("schema_version", 1)) >= 2
+                explicit_pickable = clone.get("is_pickable")
+                if review or is_v2:
+                    is_pickable = explicit_pickable is True
+                else:
+                    is_pickable = explicit_pickable if explicit_pickable is not None else clone.get("is_valid_for_compensation") is not False
 
-            clone_out = {
-                "clone_id": clone["clone_id"],
-                "center_px": center_px,
-                "offset_from_image_center_px": offset_px,
-                "bbox": clone.get("bbox"),
-                "area_px": clone.get("area_px"),
-                "score": clone.get("score"),
-                "confidence": clone.get("confidence"),
-                "is_valid_for_compensation": clone.get("is_valid_for_compensation"),
-                "source_image_path": image_path,
-                "stage_x_actual": actual_x,
-                "stage_y_actual": actual_y,
-                "has_polygon": bool(polygon),
-                "touch_image_border": clone.get("touch_image_border"),
-                "image_border_sides": list(clone.get("image_border_sides") or []),
-                "image_edge_clipped": clone.get("image_edge_clipped"),
-                "well_border_detected": clone.get("well_border_detected"),
-                "near_well_border": clone.get("near_well_border"),
-                "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
-                "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
-                "is_pickable": clone.get("is_pickable") if clone.get("is_pickable") is not None else clone.get("is_valid_for_compensation") is not False,
-            }
-            clones.append(clone_out)
+                built.append(
+                    {
+                        "clone_id": clone["clone_id"],
+                        "source_detection_id": source_id,
+                        "center_px": center_px,
+                        "offset_from_image_center_px": offset_px,
+                        "bbox": clone.get("bbox"),
+                        "area_px": clone.get("area_px"),
+                        "score": clone.get("score"),
+                        "confidence": clone.get("confidence"),
+                        "detection_confidence": clone.get("detection_confidence"),
+                        "segmentation_status": clone.get("segmentation_status"),
+                        "segmentation_score": clone.get("segmentation_score"),
+                        "status": clone.get("status") or ("review" if review else "accepted"),
+                        "instance_label": clone.get("instance_label"),
+                        "detection_source": clone.get("detection_source"),
+                        "review_reasons": list(clone.get("review_reasons") or []),
+                        "quality_assessment": clone.get("quality_assessment"),
+                        "location_valid": clone.get("location_valid"),
+                        "eligible_for_10x_centering": clone.get("eligible_for_10x_centering"),
+                        "is_valid_for_compensation": clone.get("is_valid_for_compensation"),
+                        "source_image_path": image_path,
+                        "stage_x_actual": actual_x,
+                        "stage_y_actual": actual_y,
+                        "has_polygon": bool(polygon),
+                        "contour_points": [list(point) for point in polygon] if polygon else None,
+                        "touch_image_border": clone.get("touch_image_border"),
+                        "image_border_sides": list(clone.get("image_border_sides") or []),
+                        "image_edge_clipped": clone.get("image_edge_clipped"),
+                        "truncated": clone.get("truncated"),
+                        "well_border_detected": clone.get("well_border_detected"),
+                        "near_well_border": clone.get("near_well_border"),
+                        "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
+                        "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
+                        "is_pickable": bool(is_pickable),
+                    }
+                )
+            return built
+
+        raw_clones = detect_result.get("clones", []) or []
+        raw_reviews = detect_result.get("review_candidates", []) or []
+        clones = build_items(raw_clones, review=False)
+        review_candidates = build_items(raw_reviews, review=True)
 
         overlay_image_path = None
         if save_overlay:
@@ -329,8 +367,13 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "image_height_px": height,
                 "image_center_px": image_center,
                 "mm_per_pixel": mm_per_pixel,
-                "clone_count": int(detect_result["clone_count"]),
+                "schema_version": int(detect_result.get("schema_version", 1)),
+                "clone_count": len(clones),
+                "review_candidate_count": len(review_candidates),
                 "clones": clones,
+                "review_candidates": review_candidates,
+                "models": detect_result.get("models") or {},
+                "runtime": detect_result.get("runtime") or {},
             }
         )
         report_progress(
@@ -342,10 +385,37 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         )
         raise_if_cancel_requested(params, f"after_detect:image_{capture.get('index')}")
 
+    total_image_clones = sum(len(x["clones"]) for x in images)
+    total_review_candidates = sum(len(x["review_candidates"]) for x in images)
+    dedupe_cfg = detect_cfg.get("deduplication") or {}
+    if total_image_clones == 0:
+        deduped = {
+            "unique_clones": [],
+            "metadata": {
+                "method": "physical_bbox_iom_and_center_distance",
+                "input_observation_count": 0,
+                "merged_observation_count": 0,
+                "iom_threshold": float(dedupe_cfg.get("intersection_over_min_threshold", 0.50)),
+            },
+        }
+    else:
+        dedupe_scan_config = dict(scan_result.get("scan_config") or {})
+        dedupe_scan_config["dedupe_registration_calibrated"] = bool(
+            dedupe_cfg.get("calibrated", False)
+        )
+        deduped = dedupe_well_clones(
+            images,
+            plate_cfg=ctx.get("plate") or {},
+            reference=scan_result.get("reference") or {},
+            scan_config=dedupe_scan_config,
+            iom_threshold=float(dedupe_cfg.get("intersection_over_min_threshold", 0.50)),
+            registration_tolerance_mm=float(dedupe_cfg.get("registration_tolerance_mm", 0.10)),
+        )
+    unique_clones = deduped["unique_clones"]
     report_progress(params, "detect", 100, params.get("well_name"), "detect completed")
-    total_clones = sum(int(x["clone_count"]) for x in images)
 
     result = {
+        "schema_version": 2,
         "task_id": params["task_id"],
         "status": "success",
         "task_type": "single_well_scan_and_detect",
@@ -357,7 +427,16 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         "scan_result_json": params.get("scan_result_json"),
         "detect_overlay_dir": str(_choose_overlay_dir(params, images[0]["image_path"])) if images and save_overlay else None,
         "image_count": len(images),
-        "total_clone_count": total_clones,
+        "total_image_clone_count": total_image_clones,
+        "review_candidate_count": total_review_candidates,
+        "unique_clone_count": len(unique_clones),
+        "total_clone_count": len(unique_clones),
+        "unique_clones": unique_clones,
+        "deduplication": deduped["metadata"],
+        "quality_assessment": {
+            "status": "not_assessed",
+            "reason": "4x is localization-only; colony quality requires 10x observation",
+        },
         "images": images,
     }
 

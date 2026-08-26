@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any, Dict, List, Tuple
 
 # 孔位名称正则：
@@ -264,6 +265,29 @@ def get_plate_pitch_mm(plate_cfg: Dict[str, Any]) -> float:
     )
 
 
+def get_axis_pulses_per_mm(plate_cfg: Dict[str, Any]) -> Tuple[float, float]:
+    """读取 X/电机1、Y/电机2 各自的每毫米脉冲数。
+
+    ``pulses_per_mm`` 可以是旧版单值，也可以是 ``{x: ..., y: ...}``。
+    单值配置会同时用于两轴；映射配置用于两轴导程不一致的设备。
+    """
+    value = plate_cfg.get('pulses_per_mm')
+    if isinstance(value, Mapping):
+        x_ppm = require_number(value.get('x'), 'pulses_per_mm.x')
+        y_ppm = require_number(value.get('y'), 'pulses_per_mm.y')
+    elif value is not None:
+        x_ppm = y_ppm = require_number(value, 'pulses_per_mm')
+    elif 'rpm_mm' in plate_cfg and plate_cfg.get('rpm_mm') is not None:
+        # 旧 rpm_mm 表示 0.1 mm 对应的脉冲数。
+        x_ppm = y_ppm = require_number(plate_cfg.get('rpm_mm'), 'rpm_mm') * 10.0
+    else:
+        raise KeyError('plates 配置缺少 pulses_per_mm（或旧字段 rpm_mm）')
+
+    if x_ppm <= 0 or y_ppm <= 0:
+        raise ValueError('pulses_per_mm 的 X/Y 值必须大于 0')
+    return x_ppm, y_ppm
+
+
 def get_pulses_per_mm(plate_cfg: Dict[str, Any]) -> float:
     """
     读取位移台脉冲换算系数：1 mm 对应多少脉冲。
@@ -280,8 +304,9 @@ def get_pulses_per_mm(plate_cfg: Dict[str, Any]) -> float:
 
     兼容规则
     --------
-    - 优先使用新字段 pulses_per_mm
+    - 支持单值 pulses_per_mm，表示两轴换算系数相同
     - 若没有，则兼容旧字段 rpm_mm，并按旧单位换算为 pulses_per_mm
+    - 当 X/Y 换算系数不同时，调用方必须使用 get_axis_pulses_per_mm
 
     异常
     ----
@@ -293,13 +318,12 @@ def get_pulses_per_mm(plate_cfg: Dict[str, Any]) -> float:
     你之前的旧配置里 `rpm_mm` 表示的是 0.1 mm 对应脉冲数，
     因此这里乘以 10 转成标准的“1 mm 对应脉冲数”。
     """
-    if 'pulses_per_mm' in plate_cfg and plate_cfg.get('pulses_per_mm') is not None:
-        return require_number(plate_cfg.get('pulses_per_mm'), 'pulses_per_mm')
-
-    if 'rpm_mm' in plate_cfg and plate_cfg.get('rpm_mm') is not None:
-        return require_number(plate_cfg.get('rpm_mm'), 'rpm_mm') * 10.0
-
-    raise KeyError('plates 配置缺少 pulses_per_mm（或旧字段 rpm_mm）')
+    x_ppm, y_ppm = get_axis_pulses_per_mm(plate_cfg)
+    if x_ppm != y_ppm:
+        raise ValueError(
+            'pulses_per_mm.x 与 pulses_per_mm.y 不一致；请按轴使用 get_axis_pulses_per_mm'
+        )
+    return x_ppm
 
 
 def get_a1_start(plate_cfg: Dict[str, Any]) -> Dict[str, int]:
@@ -433,13 +457,13 @@ def compute_well_start(plate_cfg: Dict[str, Any], well_name: str) -> Dict[str, i
     a1_start = get_a1_start(plate_cfg)
     row_idx, col_idx = parse_well_name(well_name)
     pitch_mm = get_plate_pitch_mm(plate_cfg)
-    ppm = get_pulses_per_mm(plate_cfg)
+    x_ppm, y_ppm = get_axis_pulses_per_mm(plate_cfg)
     row_sign, col_sign = get_grid_signs(plate_cfg)
 
     # 标准坐标映射：孔板列变化对应 X/电机 1，孔板行变化对应 Y/电机 2。
     # 从 A1 到目标孔的位移量先在物理空间(mm)计算，再乘以脉冲系数转成设备坐标。
-    dx = round(col_idx * pitch_mm * ppm * col_sign)
-    dy = round(row_idx * pitch_mm * ppm * row_sign)
+    dx = round(col_idx * pitch_mm * x_ppm * col_sign)
+    dy = round(row_idx * pitch_mm * y_ppm * row_sign)
 
     return {
         'x': int(a1_start['x'] + dx),

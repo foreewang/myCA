@@ -260,6 +260,9 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "scan_output_json": scan_cfg.get("output_json"),
         "motion": task.get("motion", {}) or {},
         "detect_entrypoint": detect_cfg.get("entrypoint"),
+        "detect_model_dir": detect_cfg.get("model_dir"),
+        "detect_provider": detect_cfg.get("provider", "cuda"),
+        "detect_allow_cpu_fallback": bool(detect_cfg.get("allow_cpu_fallback", False)),
         "detect_output_json": detect_cfg.get("output_json") or output_cfg.get("detect_json"),
         "scan_result_json": detect_cfg.get("input_scan_result_json") or output_cfg.get("scan_json") or scan_cfg.get("output_json"),
         "compensate_selector": compensate_cfg.get("selector", {}) or {},
@@ -506,15 +509,73 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
-def run_handoff_task(raw_task_cfg: Dict[str, Any], handoff_path: str | None = None) -> Dict[str, Any]:
+def preflight_detection_backend(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
+    """Validate/load the model before capture moves or camera acquisition begin."""
+    if "detect" not in (params.get("stages") or []):
+        return
+    detect_cfg = (ctx.get("task") or {}).get("detect") or {}
+    entrypoint = str(detect_cfg.get("entrypoint") or "").strip()
+    builtin_model_entrypoints = {
+        "vision.vision.instance_pipeline:process_image",
+        "vision.instance_pipeline:process_image",
+    }
+    if entrypoint and entrypoint not in builtin_model_entrypoints:
+        # Explicit legacy or third-party entrypoints own their own preflight
+        # contract; do not force the built-in ONNX package onto them.
+        return
+    if str(params.get("objective_name") or "").strip().lower() != "4x":
+        raise ValueError("模型定位后端只允许 4x 物镜")
+    camera_resolution = (ctx.get("camera") or {}).get("resolution") or {}
+    if bool(camera_resolution.get("allow_downscale", False)):
+        raise ValueError("4x 模型检测要求 camera.resolution.allow_downscale=false")
+    if (
+        int(camera_resolution.get("width") or 0),
+        int(camera_resolution.get("height") or 0),
+    ) != (5120, 5120):
+        raise ValueError("4x 模型检测要求相机分辨率固定为 5120x5120")
+    model_dir = detect_cfg.get("model_dir") or params.get("detect_model_dir")
+    if not model_dir:
+        raise ValueError("detect.model_dir 是 4x 模型检测的必填项")
+    if float(params.get("overlap") or 0.0) > 0.0 and not bool(
+        (detect_cfg.get("deduplication") or {}).get("calibrated", False)
+    ):
+        raise ValueError(
+            "重叠视野唯一计数要求 detect.deduplication.calibrated=true；"
+            "请先用带跨视野实例身份标注的数据标定 registration_tolerance_mm"
+        )
+    dedupe_cfg = detect_cfg.get("deduplication") or {}
+    if bool(dedupe_cfg.get("calibrated", False)) and "registration_tolerance_mm" not in dedupe_cfg:
+        raise ValueError(
+            "detect.deduplication.calibrated=true 时必须显式配置 registration_tolerance_mm"
+        )
+    from vision.vision.instance_pipeline import _cached_bundle
+
+    _cached_bundle(
+        str(Path(model_dir).resolve(strict=False)),
+        str(detect_cfg.get("provider") or params.get("detect_provider") or "cuda"),
+        bool(detect_cfg.get("allow_cpu_fallback", params.get("detect_allow_cpu_fallback", False))),
+    )
+
+
+def run_handoff_task(
+    raw_task_cfg: Dict[str, Any],
+    handoff_path: str | None = None,
+    plates_path: str | None = None,
+) -> Dict[str, Any]:
     from workflow.handoff_executor import execute_handoff_task
-    from workflow.config_validator import validate_handoff_file
+    from workflow.config_validator import validate_handoff_file, validate_plates_file
 
     default_config_dir = PROJECT_ROOT / "config"
     handoff_path = handoff_path or str(default_config_dir / "handoff.yaml")
+    plates_path = plates_path or str(default_config_dir / "plates.yaml")
     handoff_root_cfg = validate_handoff_file(handoff_path)
+    plates_root_cfg = validate_plates_file(plates_path)
     task = raw_task_cfg["task"]
-    return execute_handoff_task(task, handoff_root_cfg)
+    plate_type = str(task.get("plate_type") or "")
+    plate_cfg = (plates_root_cfg.get("plates") or {}).get(plate_type)
+    if not isinstance(plate_cfg, dict):
+        raise KeyError(f"plates.yaml 中不存在板型: {plate_type}")
+    return execute_handoff_task(task, handoff_root_cfg, plate_cfg=plate_cfg)
 
 
 def execute_task_request(
@@ -546,7 +607,11 @@ def execute_task_request(
     if task_type == "handoff":
         raise_if_cancel_requested(cancel_params, "before_handoff")
         report_progress(cancel_params, "handoff", 5, None, "handoff started")
-        result = run_handoff_task(raw_task_cfg, handoff_path=handoff_path)
+        result = run_handoff_task(
+            raw_task_cfg,
+            handoff_path=handoff_path,
+            plates_path=plates_path,
+        )
         report_progress(cancel_params, "handoff", 95, None, "handoff completed")
         output_path = dump_json or ((task.get("output", {}) or {}).get("result_json"))
         if persist_result:
@@ -580,6 +645,13 @@ def execute_task_request(
     objectives_root_cfg = load_structured_file(objectives_path)
     ctx["objectives_cfg"] = objectives_root_cfg
 
+    params = build_pipeline_params(ctx)
+    params["_cancel_check"] = cancel_check
+    params["_progress_callback"] = progress_callback
+    # Validate model files/provider before objective, autofocus, stage, or camera
+    # hardware is moved.
+    preflight_detection_backend(ctx, params)
+
     raise_if_cancel_requested(cancel_params, "before_objective")
     objective_result = ensure_objective_for_task(
         task_cfg=task,
@@ -587,10 +659,6 @@ def execute_task_request(
         extra_context={"task_id": task.get("task_id")},
     )
     raise_if_cancel_requested(cancel_params, "after_objective")
-
-    params = build_pipeline_params(ctx)
-    params["_cancel_check"] = cancel_check
-    params["_progress_callback"] = progress_callback
 
     autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
     autofocus_should_run, autofocus_reason = should_run_autofocus(

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from workflow.config_loader import load_yaml
+from workflow.config_validator import validate_plates_file
 from workflow.plate_geometry import compute_well_start
 from workflow.stage_executor import StageMotionError, move_to_absolute
 
@@ -21,13 +21,6 @@ class StageReciprocationController:
     DEFAULT_PLATE_TYPE = "24-well"
     DEFAULT_SCAN_WELLS = ["B2", "B3", "B4", "C2", "C3", "C4"]
     DEFAULT_PLATES_PATH = Path(__file__).resolve().parent.parent / "config" / "plates.yaml"
-    DEFAULT_LIMITS = {
-        "x_min": -800000,
-        "x_max": 10400000,
-        "y_min": -8900000,
-        "y_max": 7700000,
-        "safety_margin": 147500,
-    }
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -96,22 +89,9 @@ class StageReciprocationController:
             return dict(self._status)
 
     def _normalize_cfg(self, cfg: Dict[str, Any]) -> Dict[str, Any]:
-        targets = self._build_scan_targets(cfg)
-        limits = {
-            "enabled": bool(cfg.get("limit_check_enabled", True)),
-            "x_min": int(cfg.get("x_min", self.DEFAULT_LIMITS["x_min"])),
-            "x_max": int(cfg.get("x_max", self.DEFAULT_LIMITS["x_max"])),
-            "y_min": int(cfg.get("y_min", self.DEFAULT_LIMITS["y_min"])),
-            "y_max": int(cfg.get("y_max", self.DEFAULT_LIMITS["y_max"])),
-            "safety_margin": int(cfg.get("safety_margin", self.DEFAULT_LIMITS["safety_margin"])),
-        }
-        if limits["enabled"]:
-            if limits["x_min"] >= limits["x_max"] or limits["y_min"] >= limits["y_max"]:
-                raise StageReciprocationError("invalid limits: min must be smaller than max")
-            if limits["safety_margin"] < 0:
-                raise StageReciprocationError("safety_margin must be non-negative")
-            for target in targets:
-                self._validate_target_in_safe_range(target, limits, str(target["well_name"]))
+        targets, limits = self._load_scan_config(cfg)
+        for target in targets:
+            self._validate_target_in_safe_range(target, limits, str(target["well_name"]))
 
         max_cycles_raw = cfg.get("max_cycles")
         max_cycles = None if max_cycles_raw is None else int(max_cycles_raw)
@@ -137,28 +117,34 @@ class StageReciprocationController:
             "limits": limits,
         }
 
-    def _build_scan_targets(self, cfg: Dict[str, Any]) -> list[Dict[str, Any]]:
+    def _load_scan_config(self, cfg: Dict[str, Any]) -> tuple[list[Dict[str, Any]], Dict[str, Any]]:
         plates_path = Path(str(cfg.get("plates_path") or self.DEFAULT_PLATES_PATH))
-        if not plates_path.exists():
-            raise StageReciprocationError(f"plates config not found: {plates_path}")
+        try:
+            plates_cfg = validate_plates_file(plates_path)
+            plate = plates_cfg["plates"][self.DEFAULT_PLATE_TYPE]
+            limits = dict(plate["stage_limits"])
+            if not limits["enabled"]:
+                raise StageReciprocationError(
+                    f"stage limits are disabled for plate config: {self.DEFAULT_PLATE_TYPE}"
+                )
 
-        plates_cfg = load_yaml(plates_path)
-        plate = (plates_cfg.get("plates") or {}).get(self.DEFAULT_PLATE_TYPE)
-        if not isinstance(plate, dict):
-            raise StageReciprocationError(f"missing plate config: {self.DEFAULT_PLATE_TYPE}")
+            targets: list[Dict[str, Any]] = []
+            for index, well_name in enumerate(self.DEFAULT_SCAN_WELLS, start=1):
+                pos = compute_well_start(plate, well_name)
+                targets.append(
+                    {
+                        "index": index,
+                        "well_name": well_name,
+                        "x": int(pos["x"]),
+                        "y": int(pos["y"]),
+                    }
+                )
+        except StageReciprocationError:
+            raise
+        except Exception as exc:
+            raise StageReciprocationError(f"invalid plates config {plates_path}: {exc}") from exc
 
-        targets: list[Dict[str, Any]] = []
-        for index, well_name in enumerate(self.DEFAULT_SCAN_WELLS, start=1):
-            pos = compute_well_start(plate, well_name)
-            targets.append(
-                {
-                    "index": index,
-                    "well_name": well_name,
-                    "x": int(pos["x"]),
-                    "y": int(pos["y"]),
-                }
-            )
-        return targets
+        return targets, limits
 
     def _run(self, cfg: Dict[str, Any]) -> None:
         cycles = 0

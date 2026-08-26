@@ -9,7 +9,7 @@ from PIL import Image
 from workflow.camera_executor import capture_single_image
 from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
-from workflow.plate_geometry import get_pulses_per_mm, get_view_signs
+from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
 from workflow.stage_executor import move_to_absolute_with_approach
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
@@ -29,6 +29,15 @@ def _all_clone_refs(detect_result: Dict[str, Any]) -> List[Tuple[Dict[str, Any],
     return refs
 
 
+def _all_centering_refs(detect_result: Dict[str, Any]) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    refs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+    for image_item in detect_result.get("images", []):
+        for clone_item in image_item.get("clones", []):
+            if clone_item.get("eligible_for_10x_centering") is True:
+                refs.append((image_item, clone_item))
+    return refs
+
+
 def select_clone_for_compensation(
     detect_result: Dict[str, Any],
     selector_cfg: Dict[str, Any],
@@ -44,9 +53,13 @@ def select_clone_for_compensation(
     - image_and_clone: 显式指定 image_index + clone_id
     """
     mode = str((selector_cfg or {}).get("mode") or "first").strip().lower()
-    refs = _all_clone_refs(detect_result)
+    purpose = str((selector_cfg or {}).get("purpose") or "pick").strip().lower()
+    if purpose not in {"pick", "10x_centering"}:
+        raise ValueError("selector.purpose 必须是 pick 或 10x_centering")
+    refs = _all_centering_refs(detect_result) if purpose == "10x_centering" else _all_clone_refs(detect_result)
     if not refs:
-        raise ValueError("detect_result 中没有 is_pickable=true 的可挑取克隆")
+        requirement = "eligible_for_10x_centering=true" if purpose == "10x_centering" else "is_pickable=true"
+        raise ValueError(f"detect_result 中没有 {requirement} 的克隆")
 
     if mode == "first":
         return refs[0]
@@ -106,7 +119,7 @@ def _calc_compensate_target(
     clone_item: Dict[str, Any],
 ) -> Dict[str, Any]:
     plate_cfg = ctx["plate"]
-    ppm = float(get_pulses_per_mm(plate_cfg))
+    x_ppm, y_ppm = get_axis_pulses_per_mm(plate_cfg)
     x_sign_for_right, y_sign_for_down = get_view_signs(plate_cfg)
 
     offset_px = clone_item.get("offset_from_image_center_px", [0, 0])
@@ -128,8 +141,8 @@ def _calc_compensate_target(
     y_scale = float(scale_cfg.get("y", 1.0))
 
     # 标准坐标映射：图像水平偏移由 X/电机 1 补偿，图像垂直偏移由 Y/电机 2 补偿。
-    target_x = int(round(float(base_x) - x_sign_for_right * offset_right_mm * ppm * x_scale))
-    target_y = int(round(float(base_y) - y_sign_for_down * offset_down_mm * ppm * y_scale))
+    target_x = int(round(float(base_x) - x_sign_for_right * offset_right_mm * x_ppm * x_scale))
+    target_y = int(round(float(base_y) - y_sign_for_down * offset_down_mm * y_ppm * y_scale))
 
     return {
         "base_stage": {
@@ -207,6 +220,10 @@ def _build_image_item_from_capture(
         image_path,
         entrypoint=detect_entrypoint,
         detect_kwargs={
+            "model_dir": params.get("detect_model_dir"),
+            "provider": params.get("detect_provider", "cuda"),
+            "allow_cpu_fallback": bool(params.get("detect_allow_cpu_fallback", False)),
+            "objective_name": params.get("objective_name"),
             "mm_per_pixel": mm_per_pixel,
             "well_border_margin_mm": float((params.get("compensate_selector") or {}).get("well_border_margin_mm", 0.0) or 0.0),
             "well_border_margin_px": float((params.get("compensate_selector") or {}).get("well_border_margin_px", 30.0) or 30.0),
@@ -214,6 +231,7 @@ def _build_image_item_from_capture(
         },
     )
     clones: List[Dict[str, Any]] = []
+    schema_version = int(detect_result.get("schema_version", 1))
     for clone in detect_result.get("clones", []) or []:
         center_px = clone["center_px"]
         offset_px = _offset_from_center(center_px, image_center)
@@ -227,6 +245,9 @@ def _build_image_item_from_capture(
                 "area_px": clone.get("area_px"),
                 "score": clone.get("score"),
                 "confidence": clone.get("confidence"),
+                "segmentation_status": clone.get("segmentation_status"),
+                "location_valid": clone.get("location_valid"),
+                "eligible_for_10x_centering": clone.get("eligible_for_10x_centering"),
                 "is_valid_for_compensation": is_valid,
                 "touch_image_border": clone.get("touch_image_border"),
                 "image_border_sides": list(clone.get("image_border_sides") or []),
@@ -235,7 +256,13 @@ def _build_image_item_from_capture(
                 "near_well_border": clone.get("near_well_border"),
                 "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
                 "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
-                "is_pickable": clone.get("is_pickable") if clone.get("is_pickable") is not None else is_valid is not False,
+                "is_pickable": (
+                    clone.get("is_pickable") is True
+                    if schema_version >= 2
+                    else clone.get("is_pickable")
+                    if clone.get("is_pickable") is not None
+                    else is_valid is not False
+                ),
                 "source_image_path": image_path,
                 "stage_x_actual": stage_x_actual,
                 "stage_y_actual": stage_y_actual,
@@ -308,7 +335,11 @@ def _run_closed_loop(
 ) -> Dict[str, Any]:
     cfg = params.get("compensate_closed_loop") or {}
     max_iterations = int(cfg.get("max_iterations", 2))
-    selector_cfg = cfg.get("selector") or {"mode": "nearest_image_center"}
+    selector_cfg = dict(cfg.get("selector") or {"mode": "nearest_image_center"})
+    selector_cfg.setdefault(
+        "purpose",
+        str((params.get("compensate_selector") or {}).get("purpose") or "pick"),
+    )
     detect_entrypoint = cfg.get("detect_entrypoint") or params.get("detect_entrypoint")
 
     current_x = _axis_actual_from_move(first_move_result, "x", initial_target["x"])
