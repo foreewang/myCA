@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import cv2
 import numpy as np
@@ -29,6 +31,24 @@ from workflow.clone_dedupe import (
 from workflow.detect_api import DetectAPIError, normalize_detect_result
 from vision.tools.validate_coco_instances import validate_coco
 from vision.tools.evaluate_coco_instances import evaluate_coco_predictions
+
+
+def test_direct_cli_bootstrap_exposes_repository_packages(tmp_path: Path) -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    cli_path = repository_root / "vision" / "run_detect.py"
+    code = (
+        "import runpy; "
+        f"runpy.run_path({str(cli_path)!r}, run_name='cli_bootstrap'); "
+        "import vision.vision.detect_pipeline; import workflow.file_io"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 def _model_spec(name: str, path: Path, input_size: tuple[int, int]) -> OnnxModelSpec:
