@@ -1,0 +1,527 @@
+{
+  "input_path": "C:\\colony_system\\data\\http_tests\\pipeline_b6_detect_legacy_001\\B6\\images\\B6_019_row03_col00.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 2,
+  "coarse_seed_thresh": 60,
+  "coarse_density_thresh": 80.0,
+  "coarse_candidate_count": 2,
+  "well_border_detection": {
+    "detected": false,
+    "method": "hough_circle",
+    "confidence": 0.0
+  },
+  "scale_bar": null,
+  "component_ids": [
+    "C02",
+    "C01"
+  ],
+  "components": [
+    {
+      "id": "C02",
+      "coarse_bbox": [
+        0,
+        2346,
+        3306,
+        2774
+      ],
+      "refine_roi_bbox": [
+        0,
+        1791,
+        3967,
+        3329
+      ],
+      "center_pixel": [
+        1428,
+        3838
+      ],
+      "contour_center_pixel": [
+        1509,
+        3935
+      ],
+      "dark_core_center_pixel": [
+        1358,
+        3903
+      ],
+      "safe_point": [
+        1428,
+        3838
+      ],
+      "bbox": [
+        291,
+        2816,
+        2238,
+        2149
+      ],
+      "area_px": 3149574,
+      "contour_points": [
+        [
+          1765,
+          2816
+        ],
+        [
+          1561,
+          2830
+        ],
+        [
+          1392,
+          2915
+        ],
+        [
+          457,
+          3639
+        ],
+        [
+          291,
+          3896
+        ],
+        [
+          715,
+          4092
+        ],
+        [
+          754,
+          4187
+        ],
+        [
+          582,
+          4383
+        ],
+        [
+          589,
+          4528
+        ],
+        [
+          817,
+          4631
+        ],
+        [
+          837,
+          4776
+        ],
+        [
+          933,
+          4830
+        ],
+        [
+          999,
+          4951
+        ],
+        [
+          1269,
+          4852
+        ],
+        [
+          1487,
+          4881
+        ],
+        [
+          1633,
+          4964
+        ],
+        [
+          1769,
+          4888
+        ],
+        [
+          2155,
+          4829
+        ],
+        [
+          2254,
+          4410
+        ],
+        [
+          2479,
+          4230
+        ],
+        [
+          2528,
+          3917
+        ],
+        [
+          2476,
+          3600
+        ],
+        [
+          2353,
+          3519
+        ],
+        [
+          2327,
+          3339
+        ],
+        [
+          2238,
+          3278
+        ],
+        [
+          2221,
+          3147
+        ],
+        [
+          2077,
+          3117
+        ]
+      ],
+      "center_history_small": [
+        [
+          410.78900932694734,
+          638.870683135871
+        ],
+        [
+          438.0,
+          648.0
+        ],
+        [
+          455.0,
+          649.0
+        ]
+      ],
+      "refine_method": "grabcut",
+      "edge_refine_success": false,
+      "edge_refine_reason": "area_ratio_rejected",
+      "edge_refine_area_ratio": 2.0331280883516394,
+      "is_valid_for_compensation": false,
+      "confidence": 0.0,
+      "foreground_ratio": 0.0939630627164294,
+      "bbox_area_ratio": 0.24785995483398438,
+      "dark_core_area_ratio": 0.02328968048095703,
+      "dark_core_area_small": 24421,
+      "touch_image_border": true,
+      "image_border_sides": [
+        "left"
+      ],
+      "image_edge_clipped": true,
+      "well_border_detected": false,
+      "well_border_detection": {
+        "detected": false,
+        "method": "hough_circle",
+        "confidence": 0.0
+      },
+      "near_well_border": false,
+      "distance_to_well_edge_px": null,
+      "distance_to_well_edge_mm": null,
+      "is_pickable": false
+    },
+    {
+      "id": "C01",
+      "coarse_bbox": [
+        872,
+        2195,
+        1631,
+        1390
+      ],
+      "refine_roi_bbox": [
+        546,
+        1917,
+        2283,
+        1946
+      ],
+      "center_pixel": [
+        1779,
+        2966
+      ],
+      "contour_center_pixel": [
+        1762,
+        2893
+      ],
+      "dark_core_center_pixel": [
+        1670,
+        2908
+      ],
+      "safe_point": [
+        1779,
+        2966
+      ],
+      "bbox": [
+        890,
+        2129,
+        1696,
+        1527
+      ],
+      "area_px": 1838989,
+      "contour_points": [
+        [
+          1534,
+          2136
+        ],
+        [
+          1275,
+          2213
+        ],
+        [
+          1119,
+          2302
+        ],
+        [
+          967,
+          2436
+        ],
+        [
+          897,
+          2535
+        ],
+        [
+          890,
+          2587
+        ],
+        [
+          1071,
+          2761
+        ],
+        [
+          1076,
+          2791
+        ],
+        [
+          1057,
+          2860
+        ],
+        [
+          1086,
+          2903
+        ],
+        [
+          1184,
+          2915
+        ],
+        [
+          1248,
+          2892
+        ],
+        [
+          1275,
+          2903
+        ],
+        [
+          1283,
+          2923
+        ],
+        [
+          1278,
+          3011
+        ],
+        [
+          1228,
+          3084
+        ],
+        [
+          1216,
+          3127
+        ],
+        [
+          1166,
+          3170
+        ],
+        [
+          1074,
+          3310
+        ],
+        [
+          1074,
+          3346
+        ],
+        [
+          1087,
+          3373
+        ],
+        [
+          1241,
+          3531
+        ],
+        [
+          1380,
+          3608
+        ],
+        [
+          1520,
+          3641
+        ],
+        [
+          1695,
+          3655
+        ],
+        [
+          1930,
+          3626
+        ],
+        [
+          2154,
+          3540
+        ],
+        [
+          2235,
+          3482
+        ],
+        [
+          2266,
+          3473
+        ],
+        [
+          2347,
+          3409
+        ],
+        [
+          2436,
+          3310
+        ],
+        [
+          2521,
+          3175
+        ],
+        [
+          2570,
+          3032
+        ],
+        [
+          2585,
+          2919
+        ],
+        [
+          2571,
+          2755
+        ],
+        [
+          2549,
+          2676
+        ],
+        [
+          2452,
+          2490
+        ],
+        [
+          2289,
+          2338
+        ],
+        [
+          2224,
+          2345
+        ],
+        [
+          2174,
+          2375
+        ],
+        [
+          2106,
+          2386
+        ],
+        [
+          2041,
+          2447
+        ],
+        [
+          1971,
+          2479
+        ],
+        [
+          1918,
+          2546
+        ],
+        [
+          1857,
+          2550
+        ],
+        [
+          1831,
+          2534
+        ],
+        [
+          1827,
+          2505
+        ],
+        [
+          1884,
+          2432
+        ],
+        [
+          1918,
+          2412
+        ],
+        [
+          1927,
+          2387
+        ],
+        [
+          1966,
+          2370
+        ],
+        [
+          2020,
+          2312
+        ],
+        [
+          2040,
+          2264
+        ],
+        [
+          2039,
+          2207
+        ],
+        [
+          1981,
+          2174
+        ],
+        [
+          1892,
+          2146
+        ],
+        [
+          1829,
+          2155
+        ],
+        [
+          1800,
+          2180
+        ],
+        [
+          1753,
+          2188
+        ],
+        [
+          1687,
+          2129
+        ]
+      ],
+      "center_history_small": [
+        [
+          590.8015768725361,
+          520.8935611038107
+        ],
+        [
+          618.0,
+          530.0
+        ],
+        [
+          647.0,
+          542.0
+        ]
+      ],
+      "refine_method": "grabcut",
+      "edge_refine_success": true,
+      "edge_refine_reason": "accepted",
+      "edge_refine_area_ratio": 1.0830143836220842,
+      "is_valid_for_compensation": true,
+      "confidence": 0.7189057888129121,
+      "foreground_ratio": 0.1560487023867148,
+      "bbox_area_ratio": 0.05122566223144531,
+      "dark_core_area_ratio": 0.007993698120117188,
+      "dark_core_area_small": 8382,
+      "touch_image_border": false,
+      "image_border_sides": [],
+      "image_edge_clipped": false,
+      "well_border_detected": false,
+      "well_border_detection": {
+        "detected": false,
+        "method": "hough_circle",
+        "confidence": 0.0
+      },
+      "near_well_border": false,
+      "distance_to_well_edge_px": null,
+      "distance_to_well_edge_mm": null,
+      "is_pickable": true
+    }
+  ]
+}

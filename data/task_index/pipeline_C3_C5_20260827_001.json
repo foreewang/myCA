@@ -1,0 +1,102 @@
+{
+  "task_id": "pipeline_C3_C5_20260827_001",
+  "status": "failed",
+  "task_type": "pipeline",
+  "observe_scope": "well_list",
+  "plate_type": "24-well",
+  "objective_name": "4x",
+  "stored_at_utc": "2026-08-27T05:35:37.084314+00:00",
+  "created_at": "2026-08-27T05:35:36.917790+00:00",
+  "started_at": "2026-08-27T05:35:36.933743+00:00",
+  "updated_at": "2026-08-27T05:35:37.084314+00:00",
+  "finished_at": "2026-08-27T05:35:37.084314+00:00",
+  "persist_result": true,
+  "result_json_path": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\result.json",
+  "base_save_dir": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001",
+  "progress": 100,
+  "message": "任务执行失败，请查看本地日志或联系维护人员",
+  "current_stage": null,
+  "current_well": null,
+  "wells": {
+    "C3": {
+      "image_dir": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C3\\images",
+      "capture_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C3\\scan_result.json",
+      "detect_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C3\\detect_result.json",
+      "compensate_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C3\\compensate_result.json",
+      "status": "failed",
+      "progress": 0,
+      "message": "任务执行失败，请查看本地日志或联系维护人员",
+      "previous_status": "queued"
+    },
+    "C5": {
+      "image_dir": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C5\\images",
+      "capture_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C5\\scan_result.json",
+      "detect_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C5\\detect_result.json",
+      "compensate_result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\C5\\compensate_result.json",
+      "status": "failed",
+      "progress": 0,
+      "message": "任务执行失败，请查看本地日志或联系维护人员",
+      "previous_status": "queued"
+    }
+  },
+  "result": null,
+  "request_task": {
+    "task_id": "pipeline_C3_C5_20260827_001",
+    "task_type": "pipeline",
+    "stages": [
+      "capture",
+      "detect"
+    ],
+    "plate_type": "24-well",
+    "objective_name": "4x",
+    "observe_scope": "well_list",
+    "target": {
+      "well_list": [
+        "C3",
+        "C5"
+      ]
+    },
+    "capture": {
+      "save_dir": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001",
+      "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
+    },
+    "motion": {
+      "port": "COM3",
+      "baudrate": 115200,
+      "x_slave": 1,
+      "y_slave": 2,
+      "profile_vel": 500000,
+      "profile_acc": 500000,
+      "profile_dec": 500000,
+      "timeout_s": 120.0,
+      "poll_s": 0.05
+    },
+    "scan": {
+      "overlap": 0.1,
+      "use_objective_fov": true,
+      "settle_s": 0.8
+    },
+    "detect": {
+      "entrypoint": "vision.vision.instance_pipeline:process_image",
+      "model_dir": "C:/models/ipsc_4x/<replace-with-validated-release>",
+      "provider": "cuda",
+      "allow_cpu_fallback": false,
+      "deduplication": {
+        "calibrated": true,
+        "registration_tolerance_mm": 0.1,
+        "intersection_over_min_threshold": 0.5
+      },
+      "save_overlay": true,
+      "overlay_source": "vision",
+      "detect_well_border": true,
+      "well_border_margin_mm": 0.0,
+      "well_border_margin_px": 30.0
+    },
+    "output": {
+      "result_json": "C:\\colony_system\\data\\interface_tasks\\pipeline_C3_C5_20260827_001\\result.json"
+    }
+  },
+  "progress_source": "fallback",
+  "error_code": "TASK_EXECUTION_FAILED",
+  "error": "任务执行失败，请查看本地日志或联系维护人员"
+}

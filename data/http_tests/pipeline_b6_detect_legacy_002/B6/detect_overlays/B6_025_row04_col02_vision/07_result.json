@@ -1,0 +1,201 @@
+{
+  "input_path": "C:\\colony_system\\data\\http_tests\\pipeline_b6_detect_legacy_002\\B6\\images\\B6_025_row04_col02.bmp",
+  "input_size": {
+    "width": 5120,
+    "height": 5120
+  },
+  "component_count": 1,
+  "coarse_seed_thresh": 51,
+  "coarse_density_thresh": 87.0,
+  "coarse_candidate_count": 1,
+  "well_border_detection": {
+    "detected": false,
+    "method": "hough_circle",
+    "confidence": 0.0
+  },
+  "scale_bar": null,
+  "component_ids": [
+    "C01"
+  ],
+  "components": [
+    {
+      "id": "C01",
+      "coarse_bbox": [
+        0,
+        1894,
+        2436,
+        3226
+      ],
+      "refine_roi_bbox": [
+        0,
+        1249,
+        2923,
+        3871
+      ],
+      "center_pixel": [
+        1628,
+        3556
+      ],
+      "contour_center_pixel": [
+        1593,
+        3499
+      ],
+      "dark_core_center_pixel": [
+        1237,
+        3830
+      ],
+      "safe_point": [
+        1628,
+        3556
+      ],
+      "bbox": [
+        436,
+        2304,
+        2103,
+        2652
+      ],
+      "area_px": 3386454,
+      "contour_points": [
+        [
+          578,
+          2598
+        ],
+        [
+          436,
+          2711
+        ],
+        [
+          526,
+          3229
+        ],
+        [
+          778,
+          3600
+        ],
+        [
+          449,
+          3788
+        ],
+        [
+          475,
+          3861
+        ],
+        [
+          607,
+          3942
+        ],
+        [
+          1013,
+          3929
+        ],
+        [
+          1475,
+          4710
+        ],
+        [
+          1707,
+          4923
+        ],
+        [
+          1964,
+          4955
+        ],
+        [
+          2116,
+          4656
+        ],
+        [
+          1877,
+          4066
+        ],
+        [
+          2009,
+          4097
+        ],
+        [
+          2048,
+          4052
+        ],
+        [
+          2459,
+          4171
+        ],
+        [
+          2538,
+          3815
+        ],
+        [
+          2538,
+          3199
+        ],
+        [
+          2320,
+          2498
+        ],
+        [
+          2217,
+          2443
+        ],
+        [
+          1701,
+          2511
+        ],
+        [
+          1433,
+          2304
+        ],
+        [
+          1249,
+          2939
+        ],
+        [
+          1190,
+          2975
+        ],
+        [
+          816,
+          2659
+        ]
+      ],
+      "center_history_small": [
+        [
+          383.46680444329627,
+          800.1033324722293
+        ],
+        [
+          458.0,
+          744.0
+        ],
+        [
+          528.0,
+          694.0
+        ]
+      ],
+      "refine_method": "grabcut",
+      "edge_refine_success": false,
+      "edge_refine_reason": "area_ratio_rejected",
+      "edge_refine_area_ratio": 1.4842157854034617,
+      "is_valid_for_compensation": false,
+      "confidence": 0.0,
+      "foreground_ratio": 0.13250854217739785,
+      "bbox_area_ratio": 0.22523975372314453,
+      "dark_core_area_ratio": 0.02984619140625,
+      "dark_core_area_small": 31296,
+      "touch_image_border": true,
+      "image_border_sides": [
+        "bottom"
+      ],
+      "image_edge_clipped": true,
+      "well_border_detected": false,
+      "well_border_detection": {
+        "detected": false,
+        "method": "hough_circle",
+        "confidence": 0.0
+      },
+      "near_well_border": false,
+      "distance_to_well_edge_px": null,
+      "distance_to_well_edge_mm": null,
+      "is_pickable": false
+    }
+  ]
+}
