@@ -28,17 +28,17 @@
 
 方向参数保持 `row_stage_sign=-1`、`col_stage_sign=-1`、`x_stage_sign_for_view_right=-1`、`y_stage_sign_for_view_down=-1`。
 
-## 2. 自动化测试
+## 2. 部署包静态检查
 
-在项目根目录使用 `ca` 环境执行：
+部署支线不包含开发测试套件。在 `D:\colony_system` 使用项目虚拟环境执行静态编译和配置校验：
 
 ```powershell
-C:\miniforge3\envs\ca\python.exe -m workflow.config_validator --plates config/plates.yaml --handoff config/handoff.yaml --camera config/camera.yaml --autofocus config/autofocus.yaml --objectives config/objectives.yaml
-C:\miniforge3\envs\ca\python.exe -m pytest tests/test_core_workflow.py -q
-C:\miniforge3\envs\ca\python.exe -m pytest tests/test_vision_v2.py -q
+Set-Location D:\colony_system
+.\.venv\Scripts\python.exe -m compileall -q workflow devices vision third_party
+.\.venv\Scripts\python.exe -m workflow.config_validator --plates config/plates.yaml --handoff config/handoff.yaml --camera config/camera.yaml --autofocus config/autofocus.yaml --objectives config/objectives.yaml
 ```
 
-覆盖点：X/Y 独立脉冲换算、换孔坐标、孔内扫描坐标、视觉补偿、跨视野坐标投影、物理限位与安全余量、A1/最远孔起始点、交接点及 handoff 限位透传。
+完整自动化回归应在 `improve` 开发支线执行；这里的检查只确认部署文件可导入且现场 YAML 通过校验，不能替代硬件验收。
 
 ## 3. 上电前检查
 

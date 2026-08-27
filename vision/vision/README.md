@@ -25,7 +25,7 @@ CLI example:
 
 ```powershell
 python -m vision.run_detect image.bmp --backend model `
-  --model-dir C:/models/ipsc_4x/2026-08-validated --provider cuda `
+  --model-dir D:/colony_system/vision/models/ipsc_4x/production --provider cuda `
   --out-dir outputs/image_001
 ```
 

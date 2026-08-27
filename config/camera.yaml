@@ -1,4 +1,4 @@
-# C:/colony_system/config/camera.yaml
+# D:/colony_system/config/camera.yaml
 # 主拍照相机配置文件。
 # workflow/config_loader.py 会读取顶层 camera 字段，workflow/run_task.py 会把其中的相机参数
 # 传给 workflow/camera_executor.py，用于打开海康相机、设置曝光/增益并保存采集图像。

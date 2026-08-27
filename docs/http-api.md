@@ -2,7 +2,7 @@
 
 > 核对基线：2026-08-27，当前工作区源码，FastAPI 应用版本 `0.3.0`。
 >
-> 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 14 个；FastAPI 自动文档路由另列在文末。真实硬件的分阶段验收见 [HTTP 功能接口审查与真实硬件联调测试方案](http-api-test-plan.md)。
+> 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 14 个；FastAPI 自动文档路由另列在文末。真实硬件必须按 [硬件与安全](hardware.md) 分阶段验收。
 
 ## 1. 联调前必须确认
 
@@ -73,7 +73,7 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 
 ### 3.2 路径边界
 
-相对路径按项目根目录 `C:/colony_system` 解析。HTTP 层会把下列路径规范化成绝对路径：
+相对路径按项目根目录 `D:/colony_system` 解析。HTTP 层会把下列路径规范化成绝对路径：
 
 | 允许目录 | 字段 |
 | --- | --- |
@@ -388,7 +388,7 @@ Host: 127.0.0.1:8000
   "observe_scope": "single_well",
   "objective_name": "4x",
   "message": "task accepted",
-  "result_json_path": "C:/colony_system/data/interface_tasks/capture_A1_20260827_001/result.json"
+  "result_json_path": "D:/colony_system/data/interface_tasks/capture_A1_20260827_001/result.json"
 }
 ```
 
@@ -884,9 +884,9 @@ Host: 127.0.0.1:8000
 {
   "task_id": "pipeline_C3_C5_20260827_001",
   "well_name": "C3",
-  "image_dir": "C:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/images",
-  "capture_result_json": "C:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/scan_result.json",
-  "detect_result_json": "C:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/detect_result.json",
+  "image_dir": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/images",
+  "capture_result_json": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/scan_result.json",
+  "detect_result_json": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/detect_result.json",
   "compensate_result_json": null,
   "images": [
     "C3_001_row00_col00.bmp",

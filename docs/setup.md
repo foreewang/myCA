@@ -2,7 +2,7 @@
 
 ## Python
 
-代码使用 `X | None` 等语法，需要 Python 3.10 或更高。建议在项目根目录建虚拟环境：
+代码使用 `X | None` 等语法，最低需要 Python 3.10。工控机部署使用 64 位 Python 3.10，并在项目根目录建虚拟环境：
 
 ```powershell
 python -m venv .venv
@@ -11,14 +11,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-`requirements.txt` 锁定应用运行依赖，主要包括 FastAPI、uvicorn、pydantic、PyYAML、numpy、OpenCV、Pillow、pymodbus、pyserial、matplotlib。
-
-跑测试另装 pytest：
-
-```powershell
-python -m pip install pytest
-python -m pytest -q
-```
+`requirements.txt` 包含设备应用运行依赖，主要包括 FastAPI、uvicorn、pydantic、PyYAML、numpy、OpenCV、Pillow、pymodbus 和 pyserial。
 
 ## 4x 模型运行时
 
@@ -32,7 +25,7 @@ python -m pip install -r requirements-vision-runtime-gpu.txt
 python -m pip install -r requirements-vision-runtime-cpu.txt
 ```
 
-训练和导出用 `requirements-vision-training.txt`，不要装到设备生产环境。
+部署支线不包含训练、导出或数据集评估依赖；这些工作应在开发支线和独立环境中完成。
 
 模型目录、入口和失败语义见 [视觉检测](vision.md)。
 
@@ -97,7 +90,7 @@ python -m workflow.config_validator --handoff config/handoff.yaml
 - `autofocus.yaml`：触发策略、MVS 配置、关闭自动曝光、物镜覆盖、调焦范围、串口与物镜硬件一致
 - `handoff.yaml`：从站、点位、动作引用、`settle_s`、`arrival_tolerance_pulse`
 
-`data/objective_state.json` 必须与真实物镜一致。标定变更后不要猜测开机物镜。
+部署包不携带旧电脑的 `data/objective_state.json`。首次硬件任务前必须人工确认物镜和碰撞安全位置；首次成功切换后程序会生成状态文件。此后该文件必须始终与真实物镜一致。
 
 ## 代码入口
 

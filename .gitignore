@@ -1,8 +1,14 @@
 .vscode/
+.pytest_cache/
 __pycache__/
 
-# API single-instance lock is a local runtime artifact (contains PID).
-data/api_server.lock
+# Runtime state and task artifacts are created on the industrial PC.
+data/*
+!data/__init__.py
+logs/
+outputs/
+outputs_*/
+third_party/XWJJJ260511/output/
 
 *.pyc
 *.pyo

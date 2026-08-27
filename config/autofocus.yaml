@@ -1,4 +1,4 @@
-# C:/colony_system/config/autofocus.yaml
+# D:/colony_system/config/autofocus.yaml
 # 生产环境自动对焦配置。
 # 本文件同时承担两类用途：
 # 1. workflow 层读取其中的启用状态和触发策略；
@@ -103,6 +103,6 @@ output:
   # 是否为每次运行创建带时间戳的输出目录。
   timestamp_folder: true
   # 最清晰图像保存路径；启用时间戳目录时会在派生目录中保存。
-  image_path: C:/colony_system/data/autofocus/sharpest.png
+  image_path: D:/colony_system/data/autofocus/sharpest.png
   # 对焦过程日志保存路径；启用时间戳目录时会在派生目录中保存。
-  log_path: C:/colony_system/data/autofocus/focus_log.csv
+  log_path: D:/colony_system/data/autofocus/focus_log.csv

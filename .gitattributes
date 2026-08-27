@@ -1,0 +1,2 @@
+# Keep Windows batch scripts directly executable in git archives.
+*.bat -text whitespace=cr-at-eol

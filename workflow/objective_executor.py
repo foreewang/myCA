@@ -10,6 +10,9 @@ from workflow.file_io import atomic_write_json, read_json_with_retry
 from workflow.task_store import task_objective_name
 
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
 class ObjectiveSwitchError(RuntimeError):
     pass
 
@@ -97,7 +100,9 @@ def ensure_objective_for_task(
         raise ObjectiveSwitchError(f"当前 objective_executor 只支持 mode=motor_manager，收到: {mode!r}")
 
     state_enabled = bool(state_cfg.get("enabled", True))
-    state_file = Path(state_cfg.get("state_file") or "C:/colony_system/data/objective_state.json")
+    state_file = Path(state_cfg.get("state_file") or PROJECT_ROOT / "data" / "objective_state.json")
+    if not state_file.is_absolute():
+        state_file = PROJECT_ROOT / state_file
     previous = None
     if state_enabled:
         state = _load_state(state_file)

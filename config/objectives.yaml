@@ -1,4 +1,4 @@
-# C:/colony_system/config/objectives.yaml
+# D:/colony_system/config/objectives.yaml
 # 物镜配置文件。
 # workflow/config_loader.py 会根据 task.objective_name 读取对应物镜的视野大小；
 # workflow/objective_executor.py 会根据 switch 配置执行真实物镜切换和调焦轴预定位。

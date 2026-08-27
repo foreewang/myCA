@@ -38,7 +38,7 @@
 ```json
 "compensate": {
   "closed_loop": {
-    "save_dir": "C:/colony_system/data/compensate_eval/closed_loop"
+    "save_dir": "D:/colony_system/data/compensate_eval/closed_loop"
   }
 }
 ```
@@ -73,7 +73,7 @@
 
 - 改 `.py` → 重启 uvicorn → 再发任务
 - 改 YAML → `python -m workflow.config_validator`
-- 改相机、视觉、handoff、对焦 → 跑 `pytest`
+- 改相机、视觉、handoff、对焦 → 在开发支线跑完整测试，部署前再做配置校验和硬件分阶段验收
 - 联调保留请求 JSON、`scan_result.json`、`detect_result.json`、`result.json`
 - 标定文件建议进版本库；现场私有参数可用单独文件覆盖
 - 功能 commit 不要混入大量 `data/` 运行产物

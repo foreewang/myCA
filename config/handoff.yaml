@@ -1,4 +1,4 @@
-# C:/colony_system/config/handoff.yaml
+# D:/colony_system/config/handoff.yaml
 # 机械臂交接点配置文件。
 # handoff 任务会读取这里的点位和电机参数，把 XY 位移台移动到机械臂可放板/取板的位置。
 

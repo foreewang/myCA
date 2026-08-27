@@ -62,29 +62,13 @@ vision.vision.detect_pipeline:process_image
 
 `total_clone_count` 是去重后的唯一数，不是逐图观察数之和。逐图数在 `total_image_clone_count`。
 
-## 训练数据
-
-必须是 4x 逐实例 polygon/mask，并按培养批次/孔位分组拆分。目录名里的“较高质量/较低质量”只能当采集来源提示，不能当 4x 实例标签，也不能代替 10x 质量判断。
-
-标注规则：[4x 标注规范](vision_4x_annotation_guide.md)。首批先标 5 张并完成双人规则校准，再标剩余图。
-
-可先做只读盘点，再校验 COCO：
-
-```powershell
-python vision/tools/inventory_dataset.py "C:/path/to/data" --objective unknown --output inventory.json
-python vision/tools/validate_coco_instances.py annotations.json "C:/path/to/4x-data"
-python vision/tools/evaluate_coco_instances.py annotations.json detect_result.json
-```
-
-参考盘点 `data/vision_dataset_inventory_20260617.json`：38 张可读、5120×5120 三通道 BMP，倍率已确认为 4×。这 38 张是同一次采集，只能当同一个训练/试标组，不能在内部随机拆验证/测试集。
-
 ## 单图调试
 
 模型后端：
 
 ```powershell
 python vision/run_detect.py path\to\image.bmp --backend model `
-  --model-dir C:/models/ipsc_4x/2026-08-validated --provider cuda `
+  --model-dir D:/colony_system/vision/models/ipsc_4x/production --provider cuda `
   --out-dir data/vision_debug
 ```
 

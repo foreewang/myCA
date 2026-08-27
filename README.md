@@ -30,7 +30,7 @@ colony_system/
 ├─ docs/                     # 使用与联调文档（本 README 的专题拆分）
 ├─ third_party/XWJJJ260511/  # 第三方自动对焦
 ├─ tools/                    # 标定与精度测试脚本
-├─ tests/                    # pytest
+├─ start_api.bat             # 工控机单实例启动脚本
 └─ README.md
 ```
 
@@ -65,14 +65,13 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 
 | 文档 | 内容 |
 | --- | --- |
+| [服务端口与启动说明](服务端口与启动说明.md) | `D:\colony_system` 部署、TCP 8000、启动与验收 |
 | [环境与配置](docs/setup.md) | Python / 视觉运行时、相机与电机约定、YAML 校验 |
 | [任务与命令行](docs/tasks.md) | 任务字段、CLI 示例、补偿、输出目录 |
 | [HTTP API](docs/http-api.md) | 启停服务、任务队列、录像、往复扫描、日志 |
-| [HTTP 接口联调测试](docs/http-api-test-plan.md) | 14 个接口审查、PowerShell 用例、硬件分阶段验收 |
-| [视觉检测](docs/vision.md) | 4x 模型契约、去重、标注与单图调试 |
+| [视觉检测](docs/vision.md) | 4x 模型契约、去重与单图调试 |
 | [硬件与安全](docs/hardware.md) | 联调顺序、限位、自动对焦、精度测试 |
 | [常见问题](docs/troubleshooting.md) | 故障排查与维护习惯 |
-| [4x 标注规范](docs/vision_4x_annotation_guide.md) | 实例分割标注规则 |
 | [XY 标定测试方案](docs/xy_stage_calibration_test_plan.md) | 当前位移台标定基线 |
 
 算法实现细节见 [`vision/vision/README.md`](vision/vision/README.md)，模型打包格式见 [`vision/models/ipsc_4x/README.md`](vision/models/ipsc_4x/README.md)。
