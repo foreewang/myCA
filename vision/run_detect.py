@@ -1,72 +1,75 @@
+"""Command-line entrypoint for model-based 4x localization or explicit legacy mode.
+
+Direct script execution only places the ``vision`` directory on ``sys.path``.
+Add the repository root so sibling packages such as ``workflow`` remain
+importable. Module execution via ``python -m vision.run_detect`` already has
+the correct import root.
+"""
+
 import argparse
 import json
+from pathlib import Path
+import sys
 
-from vision.vision.detect_pipeline import detect_from_path
+
+if __package__ in (None, ""):
+    script_directory = str(Path(__file__).resolve().parent)
+    repository_root = str(Path(__file__).resolve().parents[1])
+    # The current working directory may already contribute this path later in
+    # the list. It still has to precede ``.../vision`` or ``vision`` resolves
+    # to the inner package and ``vision.vision`` becomes unavailable.
+    sys.path[:] = [
+        entry for entry in sys.path if entry not in {repository_root, script_directory}
+    ]
+    sys.path.insert(0, repository_root)
 
 
-def main():
-    """命令行入口: 读取参数并执行细胞克隆检测流程。"""
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description='Coarse ROI detection + radial/GrabCut contour refinement for microscope colony images'
+        description="4x iPSC colony instance localization (quality assessment requires 10x)"
     )
-    # 必填参数: 输入图像路径。实际支持的格式由 image_loader/OpenCV 决定，不只限 BMP。
-    parser.add_argument('image_path', help='input image path')
-    # 可选参数: 输出目录，默认写到项目下固定调试文件夹。
-    parser.add_argument('--out_dir', default='outputs_5120_contour_refined_opt', help='output directory')
-    # 粗检测阶段内部最大尺寸(越小越快，过小可能损失细节)。
-    parser.add_argument('--coarse_work_max', type=int, default=1024, help='coarse detection internal max size')
-    # 细化前对粗框额外扩边比例，防止轮廓贴边被截断。
-    parser.add_argument('--refine_pad_ratio', type=float, default=0.20, help='extra pad around coarse box before refinement')
-    # 仅保留前 K 个粗候选，0 表示全部保留。
-    parser.add_argument('--max_keep', type=int, default=0, help='keep top-k coarse colonies; 0 means keep all')
-    # 径向细化模式:
-    # threshold=阈值穿越, gradient=梯度极值, hybrid=二者结合(默认)。
-    parser.add_argument('--radial_mode', choices=['threshold', 'gradient', 'hybrid'], default='hybrid')
-    # 边缘细化模式: none=只使用径向轮廓, grabcut/hybrid=在径向 mask 基础上做 GrabCut 贴边。
-    parser.add_argument('--edge_refine_method', choices=['none', 'grabcut', 'hybrid'], default='hybrid')
-    parser.add_argument('--edge_refine_iterations', type=int, default=2)
-    # 首次径向扫描后，允许质心重定位并重复细化的次数。
-    parser.add_argument('--recenter_iterations', type=int, default=1, help='number of center update iterations after first radial scan')
-    parser.add_argument('--seed_quantile', type=float, default=0.12, help='strict dark-core quantile for coarse detection')
-    parser.add_argument('--core_density_min', type=float, default=80, help='minimum density threshold for coarse dark-core candidates')
-    parser.add_argument('--min_foreground_ratio', type=float, default=0.025, help='minimum dark-core pixels / bbox area')
-    parser.add_argument('--max_bbox_area_ratio', type=float, default=0.30, help='maximum coarse bbox area / image area')
-    parser.add_argument('--mm_per_pixel', type=float, default=None, help='millimeters per pixel for scale bar')
-    parser.add_argument('--scale_bar_length_mm', type=float, default=None, help='fixed scale bar length in mm')
-    parser.add_argument('--scale_bar_position', choices=['bottom_right', 'bottom_left'], default='bottom_right')
+    parser.add_argument("image_path", help="input microscope image")
+    parser.add_argument("--out-dir", default="outputs_4x_instances", help="output directory")
+    parser.add_argument("--backend", choices=("model", "legacy"), default="model")
+    parser.add_argument("--model-dir", help="directory containing model_manifest.json and ONNX weights")
+    parser.add_argument("--provider", choices=("cuda", "cpu", "auto"), default="cuda")
+    parser.add_argument(
+        "--allow-cpu-fallback",
+        action="store_true",
+        help="explicitly allow rebuilding sessions on CPU when CUDA initialization fails",
+    )
+    parser.add_argument("--mm-per-pixel", type=float, default=None)
     args = parser.parse_args()
 
     scale_bar = None
     if args.mm_per_pixel is not None:
-        scale_bar = {
-            "enabled": True,
-            "mm_per_pixel": args.mm_per_pixel,
-            "position": args.scale_bar_position,
-        }
-        if args.scale_bar_length_mm is not None:
-            scale_bar["length_mm"] = args.scale_bar_length_mm
+        scale_bar = {"enabled": True, "mm_per_pixel": args.mm_per_pixel}
 
-    # 调用统一检测入口，返回结构化结果(JSON 可序列化字典)，同时按 out_dir 写出调试图。
-    result_json = detect_from_path(
-        image_path=args.image_path,
-        out_dir=args.out_dir,
-        coarse_work_max=args.coarse_work_max,
-        refine_pad_ratio=args.refine_pad_ratio,
-        max_keep=(None if args.max_keep == 0 else args.max_keep),
-        radial_mode=args.radial_mode,
-        recenter_iterations=args.recenter_iterations,
-        edge_refine_method=args.edge_refine_method,
-        edge_refine_iterations=args.edge_refine_iterations,
-        seed_quantile=args.seed_quantile,
-        core_density_min=args.core_density_min,
-        min_foreground_ratio=args.min_foreground_ratio,
-        max_bbox_area_ratio=args.max_bbox_area_ratio,
-        scale_bar=scale_bar,
-        mm_per_pixel=args.mm_per_pixel
-    )
-    # 打印最终 JSON，便于命令行直接查看或重定向保存。
-    print(json.dumps(result_json, ensure_ascii=False, indent=2))
+    if args.backend == "model":
+        if not args.model_dir:
+            parser.error("--model-dir is required when --backend=model")
+        from vision.vision.instance_pipeline import detect_from_path
+
+        result = detect_from_path(
+            args.image_path,
+            out_dir=args.out_dir,
+            model_dir=args.model_dir,
+            provider=args.provider,
+            allow_cpu_fallback=args.allow_cpu_fallback,
+            objective_name="4x",
+            scale_bar=scale_bar,
+        )
+    else:
+        from vision.vision.detect_pipeline import detect_from_path
+
+        result = detect_from_path(
+            args.image_path,
+            out_dir=args.out_dir,
+            scale_bar=scale_bar,
+            mm_per_pixel=args.mm_per_pixel,
+        )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

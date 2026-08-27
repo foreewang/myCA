@@ -303,4 +303,9 @@ def process_image(image_path, **kwargs):
     """
     if "out_dir" not in kwargs:
         kwargs["out_dir"] = None
+    # workflow v2 forwards model-selection metadata to every configured
+    # entrypoint.  Explicit legacy mode ignores those keys rather than leaking
+    # them into detect_from_gray, which has no model runtime.
+    for key in ("model_dir", "provider", "allow_cpu_fallback", "objective_name"):
+        kwargs.pop(key, None)
     return detect_from_path(image_path=image_path, **kwargs)

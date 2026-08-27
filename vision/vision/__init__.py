@@ -1,15 +1,21 @@
 """vision 包的对外入口。
 
-上层业务通常只需要调用:
-- detect_from_path: 传入图片路径，执行完整检测流程。
-- detect_from_gray: 传入内存中的灰度图或彩色图，执行完整检测流程。
-- detect_and_refine: 只运行核心检测算法，不负责读写文件。
+默认业务入口是模型化 4x 实例定位。旧规则算法保留 ``legacy_*`` 别名，
+只在调用方显式选择 legacy 时使用。
 """
 
-from .detect_pipeline import detect_and_refine, detect_from_gray, detect_from_path
+from .instance_pipeline import detect_from_array, detect_from_path, process_image
+from .detect_pipeline import (
+    detect_and_refine as legacy_detect_and_refine,
+    detect_from_gray as legacy_detect_from_gray,
+    detect_from_path as legacy_detect_from_path,
+)
 
 __all__ = [
-    "detect_and_refine",
-    "detect_from_gray",
+    "detect_from_array",
     "detect_from_path",
+    "process_image",
+    "legacy_detect_and_refine",
+    "legacy_detect_from_gray",
+    "legacy_detect_from_path",
 ]

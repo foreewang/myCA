@@ -39,14 +39,39 @@ def to_gray_u8(img):
 
 
 def load_image(image_path, flags=cv2.IMREAD_UNCHANGED):
-    """从磁盘读取图片，读取失败时抛出清晰异常。"""
-    image_path = str(Path(image_path))
-    src = cv2.imread(image_path, flags)
+    """从磁盘读取图片，读取失败时抛出清晰异常。
+
+    Windows 下部分 OpenCV 构建的 ``imread`` 不能可靠处理中文路径。
+    先由 NumPy 读取原始字节，再交给 ``imdecode``，可以保持完整 Unicode
+    路径，同时仍由 OpenCV 负责图片格式解码。
+    """
+    image_path = Path(image_path)
+    try:
+        encoded = np.fromfile(str(image_path), dtype=np.uint8)
+    except OSError as exc:
+        raise FileNotFoundError(f"cannot read image: {image_path}") from exc
+
+    src = cv2.imdecode(encoded, flags) if encoded.size else None
 
     if src is None:
         raise FileNotFoundError(f"cannot read image: {image_path}")
 
     return src
+
+
+def save_image(image_path, image, params=None):
+    """以支持 Unicode 路径的方式保存 OpenCV 图像。"""
+    image_path = Path(image_path)
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    suffix = image_path.suffix or ".png"
+    ok, encoded = cv2.imencode(suffix, image, params or [])
+    if not ok:
+        raise OSError(f"cannot encode image: {image_path}")
+    try:
+        encoded.tofile(str(image_path))
+    except OSError as exc:
+        raise OSError(f"cannot write image: {image_path}") from exc
+    return str(image_path)
 
 
 def load_gray_image(image_path):

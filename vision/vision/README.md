@@ -1,27 +1,41 @@
-# Structured vision package
+# 4x iPSC colony localization
 
-This package contains the OpenCV-based colony detection pipeline used by the
-workflow layer.
+The production entrypoint is:
 
-Goal:
-- detect coarse colony ROI candidates from dark-core and texture-density cues
-- refine local contours with radial search and optional GrabCut edge refinement
-- annotate visual well-border distance and pickability fields
-- keep a single pipeline entry for CLI or upper-level workflow calls
-
-## Main Entry Points
-
-Programmatic usage:
-
-```python
-from vision.detect_pipeline import detect_from_path, detect_from_gray
+```text
+vision.vision.instance_pipeline:process_image
 ```
 
-CLI:
+It combines a full-image detector pass with overlapping tiles, fuses duplicate
+boxes, and segments each retained ROI. Formal instances and uncertain review
+candidates are separate. Output schema v2 enforces:
 
-```bash
-python vision/run_detect.py /path/to/image.bmp --out_dir outputs
+- `component_count == len(components)`
+- `review_candidate_count == len(review_candidates)`
+- stable IDs after spatial sorting (`C001`, `R001`)
+- a 16-bit `05_instance_mask.png` whose label values match `instance_label`
+- explicit model hashes, providers, fallback reasons, and timings
+- `quality_assessment.status = not_assessed`; 4x is localization-only
+
+The model directory must contain a strict manifest and two verified ONNX files.
+See `../models/ipsc_4x/model_manifest.example.json`. Missing/incompatible models
+are hard errors and never cause an empty result or a silent legacy fallback.
+
+CLI example:
+
+```powershell
+python -m vision.run_detect image.bmp --backend model `
+  --model-dir C:/models/ipsc_4x/2026-08-validated --provider cuda `
+  --out-dir outputs/image_001
 ```
 
-The output directory contains normalized gray image, coarse/refine debug images,
-overlay, contour mask, and `07_result.json`.
+The previous OpenCV rule chain remains available only through explicit legacy
+selection:
+
+```text
+vision.vision.detect_pipeline:process_image
+python -m vision.run_detect image.bmp --backend legacy
+```
+
+Legacy output must not be used as evidence that the model meets recall or
+precision acceptance criteria.

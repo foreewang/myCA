@@ -15,5 +15,9 @@
   "refine_contour_in_roi": "vision/segment.py",
   "build_failed_component": "vision/feature_extract.py",
   "build_refined_component": "vision/feature_extract.py",
-  "detect_and_refine": "vision/detect_pipeline.py"
+  "detect_and_refine": "vision/detect_pipeline.py",
+  "model_process_image": "vision/instance_pipeline.py",
+  "load_model_bundle": "vision/model_runtime.py",
+  "build_sliding_tiles": "vision/instance_postprocess.py",
+  "merge_detections": "vision/instance_postprocess.py"
 }

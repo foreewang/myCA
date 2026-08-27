@@ -11,6 +11,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .image_loader import save_image
 from workflow.file_io import atomic_write_json
 
 
@@ -220,15 +221,15 @@ def save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=None):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cv2.imwrite(str(out_dir / "01_gray.bmp"), gray)
-    cv2.imwrite(str(out_dir / "02_coarse_flat.bmp"), upscale_to_original(debug["coarse_flat"], gray.shape))
-    cv2.imwrite(str(out_dir / "03_coarse_binary.bmp"), upscale_to_original(debug["coarse_binary"], gray.shape))
-    cv2.imwrite(str(out_dir / "04_refine_density.bmp"), debug["full_refine_density"])
-    cv2.imwrite(str(out_dir / "05_contour_mask.bmp"), debug["contour_mask"])
+    save_image(out_dir / "01_gray.bmp", gray)
+    save_image(out_dir / "02_coarse_flat.bmp", upscale_to_original(debug["coarse_flat"], gray.shape))
+    save_image(out_dir / "03_coarse_binary.bmp", upscale_to_original(debug["coarse_binary"], gray.shape))
+    save_image(out_dir / "04_refine_density.bmp", debug["full_refine_density"])
+    save_image(out_dir / "05_contour_mask.bmp", debug["contour_mask"])
 
     overlay = debug["overlay"].copy()
     scale_bar_info = draw_scale_bar(overlay, scale_bar)
-    cv2.imwrite(str(out_dir / "06_overlay.bmp"), overlay)
+    save_image(out_dir / "06_overlay.bmp", overlay)
 
     result_json = {
         "input_path": str(src_path),
