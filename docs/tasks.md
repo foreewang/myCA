@@ -161,36 +161,50 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 独立补偿：
 
 ```json
-"compensate": {
-  "input_detect_json": "C:/colony_system/data/http_tests/pipeline_C3_detect_http_001/C3/detect_result.json",
-  "selector": {
-    "mode": "image_and_clone",
-    "image_index": 4,
-    "clone_id": "C01"
+{
+  "compensate": {
+    "input_detect_json": "C:/colony_system/data/http_tests/pipeline_C3_detect_http_001/C3/detect_result.json",
+    "selector": {
+      "mode": "image_and_clone",
+      "purpose": "10x_centering",
+      "image_index": 4,
+      "clone_id": "C01"
+    }
   }
 }
 ```
+
+上例读取内置 4x 定位结果时，完整任务应使用 `objective_name: "10x"`，表示切换到 10x 后做视野对中。若输入结果确有经审核的 `is_pickable=true` 目标，才把 `purpose` 改为 `pick`。
 
 ### 闭环
 
 第一次移动后再拍、再识别，判断是否继续。开启时必须有 `closed_loop.save_dir` 或任务里的 `capture.save_dir`。
 
 ```json
-"closed_loop": {
-  "enabled": true,
-  "save_dir": "C:/colony_system/data/compensate_eval/closed_loop/C3_index04_c01",
-  "filename_pattern": "closed_loop_{task_id}_{well}_iter{iteration:02d}.bmp",
-  "max_iterations": 2,
-  "tolerance_px": 10,
-  "detect_entrypoint": "vision.vision.detect_pipeline:process_image",
-  "selector": { "mode": "nearest_image_center" }
+{
+  "closed_loop": {
+    "enabled": true,
+    "save_dir": "C:/colony_system/data/compensate_eval/closed_loop/C3_index04_c01",
+    "filename_pattern": "closed_loop_{task_id}_{well}_iter{iteration:02d}.bmp",
+    "max_iterations": 2,
+    "tolerance_px": 10,
+    "detect_entrypoint": "vision.vision.detect_pipeline:process_image",
+    "selector": {
+      "mode": "nearest_image_center",
+      "purpose": "10x_centering"
+    }
+  }
 }
 ```
 
 只验证首次方向和距离时关掉闭环：
 
 ```json
-"closed_loop": { "enabled": false }
+{
+  "closed_loop": {
+    "enabled": false
+  }
+}
 ```
 
 在 10x 上闭环复检需要显式 `detect_entrypoint`。省略时会走默认 4x 模型入口。

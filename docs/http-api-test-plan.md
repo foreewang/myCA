@@ -204,7 +204,7 @@ $TerminalStatuses = @("success", "failed", "canceled", "interrupted")
 }
 ```
 
-配置覆盖路径只能位于项目 `config/`；任务输入输出只能位于项目 `data/` 或 `outputs/`。相对路径按 `C:\colony_system` 解析。
+配置覆盖路径只能位于项目 `config/`；受 HTTP 路径守卫管理的任务产物/输入路径只能位于项目 `data/` 或 `outputs/`。相对路径按 `C:\colony_system` 解析。`detect.model_dir` 和相机 `mvs_python_dir` 是另外校验的本机资源目录，不受该输出目录白名单约束，详见 [HTTP API](http-api.md#32-路径边界)。
 
 `task` 在 OpenAPI 中只是任意对象，服务不会在入队前完整校验业务结构。外层 `ExecuteTaskRequest` 的未知字段目前也会被静默忽略，不能把 Swagger 的请求通过当作业务参数正确。
 
@@ -638,7 +638,8 @@ $CompensateBody = @{
     task_id = $TaskId
     task_type = "compensate"
     plate_type = "24-well"
-    objective_name = "4x"
+    # 已审核的 4x 定位结果用于切到 10x 后对中。
+    objective_name = "10x"
     observe_scope = "single_well"
     target = @{ well_name = "A1" }
     motion = @{
@@ -655,6 +656,7 @@ $CompensateBody = @{
       input_detect_json = "data/interface_tests/<已审核任务>/A1/detect_result.json"
       selector = @{
         mode = "image_and_clone"
+        purpose = "10x_centering"
         image_index = 1
         clone_id = "C01"
       }
@@ -666,7 +668,7 @@ $CompensateBody = @{
 } | ConvertTo-Json -Depth 20
 ```
 
-该模板包含占位路径和克隆 ID，审核 detect_result、补偿方向、比例和目标安全范围后才能提交。必须用量具或视觉标定板核对真实补偿误差，不能只看驱动器回读。
+该模板包含占位路径和克隆 ID，审核 detect_result、补偿方向、比例和目标安全范围后才能提交。内置 4x v2 结果的正式目标是 `is_pickable=false`、可按 `eligible_for_10x_centering=true` 做 10x 对中，因此这里必须显式使用 `purpose="10x_centering"`；只有输入结果确有经审核的 `is_pickable=true` 目标时才改用 `purpose="pick"`。必须用量具或视觉标定板核对真实补偿误差，不能只看驱动器回读。
 
 ### HANDOFF-01：load_in / unload_out
 
