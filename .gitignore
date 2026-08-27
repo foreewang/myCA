@@ -1,5 +1,9 @@
 .vscode/
 __pycache__/
+
+# API single-instance lock is a local runtime artifact (contains PID).
+data/api_server.lock
+
 *.pyc
 *.pyo
 *.pyd
