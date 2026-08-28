@@ -31,7 +31,8 @@ python -m pip install -r requirements-vision-runtime-cpu.txt
 
 ## 相机与 SDK
 
-- 海康 MVS Python SDK 路径写在 `config/camera.yaml` 的 `camera.mvs_python_dir`。
+- 工控机海康 MVS Python SDK 导入目录为 `D:/colony_system/MvImport`，并同时写入 `config/camera.yaml` 与 `config/autofocus.yaml` 的 `camera.mvs_python_dir`。
+- 该目录须由现场安装或复制 MVS SDK 文件后提供，其中必须包含 `MvCameraControl_class.py`、`CameraParams_header.py` 和 `CameraParams_const.py`；项目部署包不会自动生成 SDK 文件。
 - 旧字段 `mvs_sdk_path` 只是兼容别名。
 - 选相机优先级：`serial_number` > `ip` > `device_index`。
 - 生产采集要求 `pixel_format: mono8`。

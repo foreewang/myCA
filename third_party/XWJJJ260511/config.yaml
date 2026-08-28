@@ -19,7 +19,7 @@ camera:
   serial_number: DA8583237
   ip: 192.168.0.66
   net_export_ip: 192.168.0.10
-  mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
+  mvs_sdk_path: D:/colony_system/MvImport
   opencv_index: 0
   # 曝光控制：
   # - exposure_auto 留空表示不改相机当前设置

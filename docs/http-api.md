@@ -163,15 +163,15 @@ Host: 127.0.0.1:8000
 {
     "recording": true,
     "background": true,
-    "saved_path": "C:\\colony_system\\data\\camera_records\\recording.avi",
+    "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
     "frame_rate": 10.0,
     "bitrate_kbps": 1000,
     "frame_count": 164,
     "duration_s": 45.87022662162781,
     "error": null,
     "settings": {
-        "save_path": "C:\\colony_system\\data\\camera_records\\recording.avi",
-        "mvs_python_dir": "C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport",
+        "save_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
+        "mvs_python_dir": "D:/colony_system/MvImport",
         "device_index": 0,
         "serial_number": "DA8583237",
         "camera_ip": "192.168.0.66",
@@ -201,7 +201,7 @@ Host: 127.0.0.1:8000
   "device_index": 0,
   "serial_number": "DA8583237",
   "ip": "192.168.0.66",
-  "mvs_python_dir": "C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport",
+  "mvs_python_dir": "D:/colony_system/MvImport",
   "pixel_format": "mono8",
   "exposure_us": 5000,
   "gain": 0.0,
@@ -245,7 +245,7 @@ Content-Length: 0
 {
     "status": "stopped",
     "video": {
-        "saved_path": "C:\\colony_system\\data\\camera_records\\recording.avi",
+        "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
         "width": 5120,
         "height": 5120,
         "pixel_type": 17301505,
@@ -257,8 +257,8 @@ Content-Length: 0
         "timestamp_finished": 1787794040.1322181
     },
     "settings": {
-        "save_path": "C:\\colony_system\\data\\camera_records\\recording.avi",
-        "mvs_python_dir": "C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport",
+        "save_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
+        "mvs_python_dir": "D:/colony_system/MvImport",
         "device_index": 0,
         "serial_number": "DA8583237",
         "camera_ip": "192.168.0.66",

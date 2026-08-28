@@ -207,7 +207,7 @@ camera:
   serial_number: DA8583237
   ip: 192.168.0.66
   net_export_ip: 192.168.0.10
-  mvs_sdk_path: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
+  mvs_sdk_path: D:/colony_system/MvImport
 ```
 
 `serial_number` 是相机身份校验值，`ip` 是相机 IP，`net_export_ip` 是连接相机的电脑有线网卡 IP。只调相机时建议先运行 `python run.py --preview`，这样不会进入电机自动对焦流程。

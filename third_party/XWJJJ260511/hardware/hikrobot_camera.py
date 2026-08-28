@@ -339,17 +339,12 @@ class HikrobotCamera(CameraBase):
         env_root = os.getenv("MVCAM_COMMON_RUNENV")
         if env_root:
             candidates.append(Path(env_root) / "Samples" / "Python" / "MvImport")
-        # 常见安装路径兜底。
-        candidates.extend(
-            [
-                Path("D:/app/mvs/MVS/Development/Samples/Python/MvImport"),
-                Path("C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport"),
-                Path("C:/Program Files/MVS/Development/Samples/Python/MvImport"),
-            ]
-        )
-        # 找到包含 MvCameraControl_class.py 的目录就返回。
+        # 本部署版本的工控机固定路径兜底。
+        candidates.append(Path("D:/colony_system/MvImport"))
+        # 找到包含完整 MVS Python 导入文件的目录就返回。
+        required_files = ("MvCameraControl_class.py", "CameraParams_header.py", "CameraParams_const.py")
         for path in candidates:
-            if (path / "MvCameraControl_class.py").exists():
+            if all((path / filename).is_file() for filename in required_files):
                 return path
         # 没找到时返回 None，后续 import 会失败并给出提示。
         return None

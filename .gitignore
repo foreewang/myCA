@@ -23,6 +23,8 @@ third_party/XWJJJ260511/output/
 *.avi
 .venv/
 env/
+# MVS SDK Python bindings are installed/copied separately on the industrial PC.
+MvImport/
 dist/
 build/
 

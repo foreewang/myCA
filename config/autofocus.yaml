@@ -34,7 +34,7 @@ camera:
   # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
   net_export_ip: "192.168.0.10"
   # 海康 MVS Python SDK 的导入目录。
-  mvs_python_dir: C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport
+  mvs_python_dir: D:/colony_system/MvImport
 
   # 关闭自动曝光，使不同焦点位置的清晰度分数具有可比性。
   exposure_auto: false

@@ -12,7 +12,11 @@ import yaml
 
 EXPECTED_PLATE_TYPES = ("6-well", "12-well", "24-well", "48-well")
 EXPECTED_HANDOFF_ACTIONS = ("load_in", "unload_out")
-MVS_CAMERA_CONTROL_FILE = "MvCameraControl_class.py"
+MVS_REQUIRED_PYTHON_FILES = (
+    "MvCameraControl_class.py",
+    "CameraParams_header.py",
+    "CameraParams_const.py",
+)
 SUPPORTED_CAMERA_TRIGGER_MODES = {"software"}
 SUPPORTED_CAMERA_PIXEL_FORMATS = {"mono8"}
 SUPPORTED_CAMERA_SAVE_FORMATS = {"bmp", "png", "jpg", "jpeg", "tif", "tiff"}
@@ -969,9 +973,9 @@ def _validate_camera_mvs_path(base: str, cfg: Mapping[str, Any], issues: list[Co
         issues.append(ConfigIssue(f"{base}.mvs_python_dir", f"path is not a directory: {resolved}"))
         return
 
-    sdk_entrypoint = sdk_dir / MVS_CAMERA_CONTROL_FILE
-    if not sdk_entrypoint.is_file():
-        issues.append(ConfigIssue(f"{base}.mvs_python_dir", f"missing {MVS_CAMERA_CONTROL_FILE} in SDK import directory"))
+    for required_file in MVS_REQUIRED_PYTHON_FILES:
+        if not (sdk_dir / required_file).is_file():
+            issues.append(ConfigIssue(f"{base}.mvs_python_dir", f"missing {required_file} in SDK import directory"))
 
 
 def _validate_camera_resolution(base: str, cfg: Mapping[str, Any], issues: list[ConfigIssue]) -> None:

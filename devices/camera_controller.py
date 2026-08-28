@@ -38,7 +38,7 @@ class CameraSDKError(RuntimeError):
     pass
 
 # DEFAULT_MVS_PYTHON_DIR = r"/opt/MVS/Samples/64/Python/MvImport"
-DEFAULT_MVS_PYTHON_DIR = r"C:\Program Files (x86)\MVS\Development\Samples\Python\MvImport"
+DEFAULT_MVS_PYTHON_DIR = r"D:\colony_system\MvImport"
 MVS_PIXEL_FORMAT_FALLBACKS = {
     "mono8": 0x01080001,
 }
@@ -255,7 +255,7 @@ class HikCameraController:
                 f"当前尝试路径: {self.mvs_python_dir}\n"
                 "建议检查：\n"
                 "1) MVS 已安装；\n"
-                "2) 目录中存在 MvCameraControl_class.py；\n"
+                "2) 目录中存在 MvCameraControl_class.py、CameraParams_header.py 和 CameraParams_const.py；\n"
                 "3) 该目录已通过构造参数或环境变量 MVS_PYTHON_DIR 传入。"
             ) from e
 
