@@ -67,7 +67,7 @@ X/Y 是软件业务坐标，不按丝杆长短自动判断。
 | `objectives.yaml` | 视野、切换点、碰撞限位、状态文件 |
 | `plates.yaml` | 板型几何、`pulses_per_mm`、`stage_limits`、`runtime_guard` |
 | `autofocus.yaml` | 触发策略与第三方对焦参数 |
-| `handoff.yaml` | 上下料对接点 |
+| `handoff.yaml` | 位移台对接点（供自控放板/取板） |
 
 改完 YAML 先跑机器校验：
 
@@ -105,7 +105,7 @@ python -m workflow.config_validator --handoff config/handoff.yaml
 | `workflow/detect_api.py` / `detect_executor.py` | 检测调用与 `detect_result` |
 | `workflow/compensate_executor.py` | 补偿位移 |
 | `workflow/objective_executor.py` | 物镜与调焦切换 |
-| `workflow/handoff_executor.py` | 上下料对接 |
+| `workflow/handoff_executor.py` | 把位移台开到对接点 |
 | `workflow/plate_geometry.py` | 孔位与脉冲/mm |
 | `devices/camera_controller.py` | 海康拍照与录像 |
 | `devices/motion/` | Modbus 与 `MotorManager` |

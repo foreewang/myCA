@@ -9,7 +9,7 @@
 | `capture` | 只采集，默认阶段 `capture` |
 | `pipeline` | 可包含 `capture`、`detect`、`compensate` |
 | `compensate` | 读已有检测结果，移动到目标中心 |
-| `handoff` | 移动到上下料点，`load_in` / `unload_out` |
+| `handoff` | 把 XY 位移台移动到对接点，供自控放置或取走培养板；`load_in` / `unload_out` |
 
 | `observe_scope` | 孔位 |
 | --- | --- |
@@ -136,7 +136,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 | `compensate.closed_loop` | 闭环复检 |
 | `compensate.input_detect_json` | 独立补偿读取的检测结果 |
 | `output.result_json` | 总结果 |
-| `handoff.action` | `load_in` / `unload_out` |
+| `handoff.action` | `load_in`：位移台开到对接点，供自控放板；`unload_out`：开到对接点，供自控取板 |
 
 曝光和增益来自 `camera.yaml` 的 `objective_settings.<objective_name>`。底层强制 Mono8，录像逐帧校验格式和长度。
 
