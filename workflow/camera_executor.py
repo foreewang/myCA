@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
+import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict
@@ -21,21 +21,12 @@ DEVICES_DIR = PROJECT_ROOT / "devices"
 if str(DEVICES_DIR) not in sys.path:
     sys.path.insert(0, str(DEVICES_DIR))
 
-from camera_controller import HikCameraController  # type: ignore
-
-
-_SHARED_CAMERA_LOCK = threading.RLock()
-_RECORDING_CAMERA: HikCameraController | None = None
-_RECORDING_CAMERA_SETTINGS: Dict[str, Any] = {}
-
-
-def _is_recording_camera(cam: HikCameraController | None) -> bool:
-    return cam is not None and cam is _RECORDING_CAMERA
-
-
-def _recording_is_active() -> bool:
-    return _RECORDING_CAMERA is not None and bool(getattr(_RECORDING_CAMERA, "recording", False))
-
+from camera_controller import resolve_record_grab_timeout_ms  # type: ignore
+from workflow.camera_process_supervisor import (
+    CameraProcessProxy,
+    get_camera_process_supervisor,
+    shutdown_camera_process_supervisor,
+)
 
 def _final_video_path(save_path: str | Path) -> Path:
     path = Path(save_path)
@@ -48,7 +39,9 @@ def _final_video_path(save_path: str | Path) -> Path:
 
 def _part_video_path(final_path: str | Path) -> Path:
     final = _final_video_path(final_path)
-    return final.with_name(f"{final.stem}.part{final.suffix}")
+    return final.with_name(
+        f"{final.stem}.{uuid.uuid4().hex}.part{final.suffix}"
+    )
 
 
 def _video_record_paths(save_path: str | Path) -> tuple[Path, Path]:
@@ -64,30 +57,6 @@ def _promote_completed_video(part_path: str | Path, final_path: str | Path) -> P
     final.parent.mkdir(parents=True, exist_ok=True)
     os.replace(str(part), str(final))
     return final
-
-
-def _normalize_pixel_format(pixel_format: str | None) -> str:
-    return str(pixel_format or "mono8").strip().lower().replace("-", "").replace("_", "")
-
-
-def _settings_match_recording(
-    device_index: int,
-    serial_number: str | None,
-    camera_ip: str | None = None,
-    pixel_format: str | None = None,
-) -> bool:
-    if not _recording_is_active():
-        return False
-    active_pixel_format = _RECORDING_CAMERA_SETTINGS.get("pixel_format")
-    if _normalize_pixel_format(active_pixel_format) != _normalize_pixel_format(pixel_format):
-        return False
-    active_serial = _RECORDING_CAMERA_SETTINGS.get("serial_number")
-    if active_serial or serial_number:
-        return str(active_serial or "") == str(serial_number or "")
-    active_ip = _RECORDING_CAMERA_SETTINGS.get("camera_ip")
-    if active_ip or camera_ip:
-        return str(active_ip or "") == str(camera_ip or "")
-    return int(_RECORDING_CAMERA_SETTINGS.get("device_index", 0)) == int(device_index)
 
 
 def build_image_name(pattern: str, format_kwargs: Dict[str, Any]) -> str:
@@ -228,8 +197,9 @@ def open_camera(
     camera_ip: str | None = None,
     pixel_format: str = "mono8",
     exposure_us: int | float | None = None,
+    exposure_auto: bool | None = None,
     gain: float | None = None,
-) -> HikCameraController:
+) -> CameraProcessProxy:
     """
     打开相机，并按需设置曝光和增益。
 
@@ -248,61 +218,35 @@ def open_camera(
 
     返回
     ----
-    HikCameraController
-        已经完成 open 的相机控制对象。
+    CameraProcessProxy
+        指向独立相机进程中已打开会话的代理对象。
 
     说明
     ----
-    这是 workflow 层面向上层流程提供的“统一开相机入口”。
-    与底层 controller 的对齐点是：
-    - 曝光调用 set_exposure_us(...)
-    - 增益调用 set_gain(...)
-    - 支持透传 mvs_python_dir / serial_number
-
-    设计意图是让扫描流程只关心“我要一台可用的相机”，
-    而不必关心底层 SDK 细节和对象创建过程。
-
-    注意
-    ----
-    这里不再静默吞掉曝光/增益设置异常。
-    如果参数设置失败，应明确暴露问题，避免“程序看似正常运行，
-    实际相机参数没有生效”的隐蔽错误。
+    所有 MVS 调用都在可终止的子进程执行。代理保持 capture_once 等
+    旧调用方式，因此扫描和自动对焦无需持有本进程内的原生句柄。
     """
-    with _SHARED_CAMERA_LOCK:
-        if _recording_is_active():
-            if not _settings_match_recording(device_index, serial_number, camera_ip, pixel_format):
-                raise RuntimeError("录像正在使用另一台相机，不能同时打开不同相机执行拍照任务")
-            return _RECORDING_CAMERA  # type: ignore[return-value]
-
-    cam = HikCameraController(
-        mvs_python_dir=mvs_python_dir,
-        device_index=device_index,
-        serial_number=serial_number,
-        camera_ip=camera_ip,
-        pixel_format=pixel_format,
-    )
-    try:
-        cam.open()
-
-        if exposure_us is not None:
-            cam.set_exposure_us(float(exposure_us))
-
-        if gain is not None:
-            cam.set_gain(float(gain))
-    except Exception:
-        cam.close()
-        raise
-
-    return cam
+    settings = {
+        "mvs_python_dir": mvs_python_dir,
+        "device_index": int(device_index),
+        "serial_number": serial_number,
+        "camera_ip": camera_ip,
+        "pixel_format": pixel_format,
+        "exposure_auto": False if exposure_us is not None else None,
+        "exposure_us": exposure_us,
+        "exposure_auto": exposure_auto,
+        "gain": gain,
+    }
+    return get_camera_process_supervisor().open_camera(settings)
 
 
-def close_camera(cam: HikCameraController | None) -> None:
+def close_camera(cam: CameraProcessProxy | None) -> None:
     """
     安全关闭相机。
 
     参数
     ----
-    cam : HikCameraController | None
+    cam : CameraProcessProxy | None
         相机对象。为 None 时直接返回。
 
     说明
@@ -312,15 +256,13 @@ def close_camera(cam: HikCameraController | None) -> None:
     """
     if cam is None:
         return
-    with _SHARED_CAMERA_LOCK:
-        if _is_recording_camera(cam) and _recording_is_active():
-            return
-    cam.close()
+    if not bool(cam.close()):
+        raise RuntimeError("相机子进程未能关闭会话")
 
 
 def capture_with_opened_camera(
     *,
-    cam: HikCameraController,
+    cam: CameraProcessProxy,
     save_dir: str,
     filename_pattern: str,
     format_kwargs: Dict[str, Any],
@@ -330,8 +272,8 @@ def capture_with_opened_camera(
 
     参数
     ----
-    cam : HikCameraController
-        已经打开的相机对象。
+    cam : CameraProcessProxy
+        已经打开的受监督相机会话代理。
     save_dir : str
         图像保存目录。
     filename_pattern : str
@@ -451,7 +393,7 @@ def capture_single_image(
 
 def record_video_with_opened_camera(
     *,
-    cam: HikCameraController,
+    cam: CameraProcessProxy,
     save_path: str,
     duration_s: float,
     fps: float | None = None,
@@ -480,6 +422,7 @@ def record_video_with_opened_camera(
 def start_recording_camera(
     *,
     save_path: str,
+    camera_path: str | None = None,
     mvs_python_dir: str | None = None,
     device_index: int = 0,
     serial_number: str | None = None,
@@ -491,106 +434,91 @@ def start_recording_camera(
     bitrate_kbps: int = 1000,
     timeout_ms: int | None = None,
 ) -> Dict[str, Any]:
-    global _RECORDING_CAMERA, _RECORDING_CAMERA_SETTINGS
-
-    with _SHARED_CAMERA_LOCK:
-        if _recording_is_active():
-            raise RuntimeError(f"录像已在进行中: {_RECORDING_CAMERA_SETTINGS.get('save_path')}")
-        final_path, part_path = _video_record_paths(save_path)
-
-        cam = HikCameraController(
-            mvs_python_dir=mvs_python_dir,
-            device_index=device_index,
-            serial_number=serial_number,
-            camera_ip=camera_ip,
-            pixel_format=pixel_format,
-        )
-        try:
-            cam.open()
-            if exposure_us is not None:
-                cam.set_exposure_us(float(exposure_us))
-            if gain is not None:
-                cam.set_gain(float(gain))
-            cam.start_background_recording(
-                save_path=str(part_path),
-                fps=fps,
-                bitrate_kbps=bitrate_kbps,
-                timeout_ms=timeout_ms,
-            )
-        except Exception:
-            cam.close()
-            raise
-
-        _RECORDING_CAMERA = cam
-        _RECORDING_CAMERA_SETTINGS = {
-            "save_path": str(final_path),
+    effective_timeout_ms = resolve_record_grab_timeout_ms(
+        timeout_ms,
+        exposure_us=exposure_us,
+    )
+    final_path, part_path = _video_record_paths(save_path)
+    planned_settings = {
+        "save_path": str(final_path),
+        "recording_path": str(part_path),
+        "camera_path": camera_path,
+        "mvs_python_dir": mvs_python_dir,
+        "device_index": int(device_index),
+        "serial_number": serial_number,
+        "camera_ip": camera_ip,
+        "pixel_format": pixel_format,
+        "exposure_us": exposure_us,
+        "gain": gain,
+        "fps": fps,
+        "bitrate_kbps": int(bitrate_kbps),
+        "timeout_ms": effective_timeout_ms,
+    }
+    supervisor = get_camera_process_supervisor()
+    status = supervisor.begin_start_recording(
+        {
             "recording_path": str(part_path),
-            "mvs_python_dir": mvs_python_dir,
-            "device_index": int(device_index),
-            "serial_number": serial_number,
-            "camera_ip": camera_ip,
-            "pixel_format": pixel_format,
-            "exposure_us": exposure_us,
-            "gain": gain,
+            "settings": planned_settings,
             "fps": fps,
             "bitrate_kbps": int(bitrate_kbps),
-            "timeout_ms": timeout_ms,
+            "timeout_ms": effective_timeout_ms,
         }
-        return recording_camera_status()
+    )
+    status["settings"] = {
+        key: value for key, value in dict(status.get("settings") or {}).items()
+        if key != "recording_path"
+    }
+    status["saved_path"] = str(final_path)
+    return status
 
 
 def stop_recording_camera() -> Dict[str, Any]:
-    global _RECORDING_CAMERA, _RECORDING_CAMERA_SETTINGS
+    supervisor = get_camera_process_supervisor()
+    before = supervisor.status()
+    settings = dict(before.get("settings") or {})
+    status = supervisor.begin_stop_recording()
+    status["status"] = "stopping"
+    status["video"] = {}
+    status["settings"] = {k: v for k, v in settings.items() if k != "recording_path"}
+    if settings.get("save_path"):
+        status["saved_path"] = str(settings["save_path"])
+    return status
 
-    with _SHARED_CAMERA_LOCK:
-        cam = _RECORDING_CAMERA
-        if cam is None or not getattr(cam, "recording", False):
-            raise RuntimeError("当前没有正在进行的录像")
-        try:
-            info = cam.stop_background_recording()
-            final_path = Path(str(_RECORDING_CAMERA_SETTINGS.get("save_path") or info.saved_path))
-            promoted_path = _promote_completed_video(info.saved_path, final_path)
-            try:
-                info = replace(info, saved_path=str(promoted_path))
-            except TypeError:
-                info.saved_path = str(promoted_path)
-            settings = dict(_RECORDING_CAMERA_SETTINGS)
-            settings["save_path"] = str(promoted_path)
-            settings.pop("recording_path", None)
-            return {
-                "status": "stopped",
-                "video": videoinfo_to_dict(info),
-                "settings": settings,
-            }
-        finally:
-            cam.close()
-            _RECORDING_CAMERA = None
-            _RECORDING_CAMERA_SETTINGS = {}
+
+def recording_camera_is_busy() -> bool:
+    """只读 supervisor 状态，不跨进程、不进入 MVS SDK。"""
+    return get_camera_process_supervisor().is_recording_busy()
 
 
 def recording_camera_status() -> Dict[str, Any]:
-    with _SHARED_CAMERA_LOCK:
-        cam = _RECORDING_CAMERA
-        if cam is None:
-            return {
-                "recording": False,
-                "background": False,
-                "settings": {},
-            }
-        status = cam.recording_status()
-        settings = dict(_RECORDING_CAMERA_SETTINGS)
-        final_path = settings.get("save_path")
-        if final_path:
-            status["saved_path"] = str(final_path)
-        status["settings"] = {k: v for k, v in settings.items() if k != "recording_path"}
-        return status
+    status = get_camera_process_supervisor().status()
+    settings = dict(status.get("settings") or {})
+    status["settings"] = {k: v for k, v in settings.items() if k != "recording_path"}
+    if settings.get("save_path"):
+        status["saved_path"] = str(settings["save_path"])
+    return status
 
 
-def get_recording_camera() -> HikCameraController | None:
-    with _SHARED_CAMERA_LOCK:
-        if _recording_is_active():
-            return _RECORDING_CAMERA
+def get_recording_camera() -> CameraProcessProxy | None:
+    supervisor = get_camera_process_supervisor()
+    status = supervisor.status()
+    if status.get("state") != "recording" or status.get("sdk_hung"):
         return None
+    session_id = status.get("session_id")
+    if not session_id:
+        return None
+    return CameraProcessProxy(
+        supervisor,
+        str(session_id),
+        dict(status.get("settings") or {}),
+        recording_shared=True,
+    )
+
+
+def shutdown_recording_camera(join_timeout_s: float = 30.0) -> None:
+    """Bounded shutdown; a hung native call is ended with its worker process."""
+    timeout_s = min(max(float(join_timeout_s), 1.0), 30.0)
+    shutdown_camera_process_supervisor(timeout_s=timeout_s)
 
 
 def record_video(

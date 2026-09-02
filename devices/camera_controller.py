@@ -22,6 +22,7 @@ import ctypes
 import logging
 import importlib
 import argparse
+import math
 import threading
 from PIL import Image
 import numpy as np
@@ -42,6 +43,16 @@ DEFAULT_MVS_PYTHON_DIR = r"D:\colony_system\MvImport"
 MVS_PIXEL_FORMAT_FALLBACKS = {
     "mono8": 0x01080001,
 }
+# 与 workflow.api_models.CameraRecordStartRequest.timeout_ms 上限保持一致。
+# 15s 覆盖接口允许的最长曝光 10s 加上 GigE 传输余量，禁止再静默截断。
+RECORD_GRAB_TIMEOUT_MAX_MS = 15_000
+RECORD_GRAB_TRANSFER_SLACK_MS = 2_000
+_RECORD_STOP_JOIN_SLACK_S = 10.0
+_RECORD_STOP_JOIN_MAX_S = 30.0
+_SDK_LOCK_STOP_ACQUIRE_TIMEOUT_S = 2.0
+_SDK_STOP_RECORD_TIMEOUT_S = 30.0
+_SDK_CLOSE_TIMEOUT_S = 10.0
+_SDK_OPEN_TIMEOUT_S = 15.0
 _MVS_SDK_LIFECYCLE_LOCK = threading.RLock()
 _MVS_SDK_REFCOUNT = 0
 _MVS_SDK_INITIALIZED = False
@@ -50,6 +61,40 @@ _MVS_SDK_INITIALIZED = False
 def _check_mvs_ret(ret: int, name: str) -> None:
     if int(ret) != 0:
         raise CameraSDKError(f"{name} failed, ret=0x{int(ret):08x}")
+
+
+def resolve_record_grab_timeout_ms(
+    timeout_ms: Optional[int],
+    *,
+    exposure_us: Optional[float] = None,
+    default_ms: int = 1500,
+) -> int:
+    """计算录像取帧超时并做显式校验，不静默截断。"""
+    exposure_ms = 0
+    if exposure_us is not None:
+        exposure_value = float(exposure_us)
+        if not math.isfinite(exposure_value) or exposure_value <= 0:
+            raise CameraSDKError(f"exposure_us must be a finite positive number, got {exposure_us!r}")
+        exposure_ms = int((exposure_value + 999.0) / 1000.0)
+    min_ms = max(1, exposure_ms + RECORD_GRAB_TRANSFER_SLACK_MS)
+    if min_ms > RECORD_GRAB_TIMEOUT_MAX_MS:
+        raise CameraSDKError(
+            f"exposure {exposure_ms}ms plus {RECORD_GRAB_TRANSFER_SLACK_MS}ms transfer slack "
+            f"exceeds maximum recording timeout {RECORD_GRAB_TIMEOUT_MAX_MS}ms"
+        )
+    if timeout_ms is None:
+        return max(int(default_ms), min_ms)
+    requested = int(timeout_ms)
+    if requested > RECORD_GRAB_TIMEOUT_MAX_MS:
+        raise CameraSDKError(
+            f"timeout_ms={requested} exceeds maximum {RECORD_GRAB_TIMEOUT_MAX_MS}"
+        )
+    if requested < min_ms:
+        raise CameraSDKError(
+            f"timeout_ms={requested} is shorter than exposure {exposure_ms}ms plus "
+            f"{RECORD_GRAB_TRANSFER_SLACK_MS}ms transfer slack (need >= {min_ms})"
+        )
+    return requested
 
 
 def _acquire_mvs_sdk(MvCamera) -> None:
@@ -66,29 +111,36 @@ def _acquire_mvs_sdk(MvCamera) -> None:
         logger.debug("MVS SDK refcount=%s", _MVS_SDK_REFCOUNT)
 
 
-def _release_mvs_sdk(MvCamera) -> None:
-    """释放进程级 MVS SDK 生命周期引用；最后一个引用负责 Finalize。"""
+def _release_mvs_sdk(MvCamera) -> bool:
+    """Release one SDK reference and report whether finalization was clean."""
     global _MVS_SDK_REFCOUNT, _MVS_SDK_INITIALIZED
 
     with _MVS_SDK_LIFECYCLE_LOCK:
         if _MVS_SDK_REFCOUNT <= 0:
             _MVS_SDK_REFCOUNT = 0
             _MVS_SDK_INITIALIZED = False
-            return
+            return True
 
         _MVS_SDK_REFCOUNT -= 1
         logger.debug("MVS SDK refcount=%s", _MVS_SDK_REFCOUNT)
+        finalized_cleanly = True
         if _MVS_SDK_REFCOUNT == 0 and _MVS_SDK_INITIALIZED:
             try:
                 ret = MvCamera.MV_CC_Finalize()
-                if int(ret) != 0:
+                # Some historical Python wrappers expose the C void return as
+                # None.  Preserve compatibility while treating an explicit
+                # non-zero SDK result as an unsafe lifecycle.
+                if ret is not None and int(ret) != 0:
+                    finalized_cleanly = False
                     logger.warning("MV_CC_Finalize failed, ret=0x%08x", int(ret))
                 else:
                     logger.info("MVS SDK finalized")
             except Exception:
+                finalized_cleanly = False
                 logger.exception("MV_CC_Finalize raised during SDK lifecycle release")
             finally:
                 _MVS_SDK_INITIALIZED = False
+        return finalized_cleanly
 
 
 @dataclass
@@ -217,6 +269,16 @@ class HikCameraController:
         self._record_bitrate_kbps = 0
         self._record_frame_count = 0
         self._record_error: Optional[str] = None
+        self._record_continuous_mode = False
+        self._record_grab_timeout_ms = int(grab_timeout_ms)
+        self._record_snapshot_accepting = False
+        self._sdk_hung = False
+        self._closed = False
+        self._handle_created = False
+        self._device_opened = False
+        # PayloadSize 通常约为 25 MiB。缓存 ctypes 数组，避免录像每帧重新分配并清零。
+        self._grab_buffer: Any = None
+        self._grab_buffer_size = 0
 
     @staticmethod
     def _normalize_pixel_format(pixel_format: str | None) -> str:
@@ -297,9 +359,18 @@ class HikCameraController:
         if int(ret) != 0:
             raise CameraSDKError(f"{name} failed, ret=0x{int(ret):08x}")
 
+    def _ensure_sdk_healthy(self, operation: str = "MVS SDK operation") -> None:
+        """拒绝在已超时的原生调用仍可能存活时再次进入同一 SDK 实例。"""
+        if self._sdk_hung:
+            raise CameraSDKError(
+                f"{operation} skipped: a previous MVS SDK call is still hung; "
+                "restart the camera process before retrying"
+            )
+
     def _call_variants(self, func, variants, func_name: str):
         last_exc = None
         for args in variants:
+            self._ensure_sdk_healthy(func_name)
             try:
                 return func(*args)
             except TypeError as e:
@@ -327,15 +398,21 @@ class HikCameraController:
         if device_mask == 0:
             device_mask = (1 << 0) | (1 << 1)
 
-        ret = self._call_variants(
-            MvCamera.MV_CC_EnumDevices,
-            [
-                (device_mask, dev_list),
-                (device_mask, ctypes.byref(dev_list)),
-            ],
+        self._timed_sdk_call(
+            lambda: self._check(
+                self._call_variants(
+                    MvCamera.MV_CC_EnumDevices,
+                    [
+                        (device_mask, dev_list),
+                        (device_mask, ctypes.byref(dev_list)),
+                    ],
+                    "MV_CC_EnumDevices",
+                ),
+                "MV_CC_EnumDevices",
+            ),
+            _SDK_OPEN_TIMEOUT_S,
             "MV_CC_EnumDevices",
         )
-        self._check(ret, "MV_CC_EnumDevices")
         return dev_list
 
     def _get_device_serial(self, dev_info) -> str:
@@ -439,6 +516,46 @@ class HikCameraController:
             f"MV_CC_SetFloatValue({key})",
         )
         self._check(ret, f"MV_CC_SetFloatValue({key})")
+
+    def _set_bool(self, key: str, value: bool) -> None:
+        if not hasattr(self.cam, "MV_CC_SetBoolValue"):
+            raise CameraSDKError("当前 MVS Python 包装中不存在 MV_CC_SetBoolValue")
+        ret = self._call_variants(
+            self.cam.MV_CC_SetBoolValue,
+            [
+                (key, bool(value)),
+                (key.encode("ascii"), bool(value)),
+            ],
+            f"MV_CC_SetBoolValue({key})",
+        )
+        self._check(ret, f"MV_CC_SetBoolValue({key})")
+
+    def _timed_sdk_call(self, func, timeout_s: float, name: str):
+        """在辅助线程执行原生 SDK 调用，超时则标记挂起并让调用方返回错误。
+
+        无法真正中止 ctypes 调用；挂起后拒绝后续 SDK 操作，直到进程重启。
+        """
+        if self._sdk_hung:
+            raise CameraSDKError(f"{name} skipped: a previous MVS SDK call is still hung")
+        box: Dict[str, Any] = {}
+
+        def runner() -> None:
+            try:
+                box["result"] = func()
+            except Exception as exc:
+                box["error"] = exc
+
+        thread = threading.Thread(target=runner, name=f"mvs-{name}", daemon=True)
+        thread.start()
+        thread.join(timeout=max(float(timeout_s), 0.1))
+        if thread.is_alive():
+            self._sdk_hung = True
+            message = f"{name} timed out after {timeout_s}s; camera SDK may be hung"
+            self._record_error = message
+            raise CameraSDKError(message)
+        if "error" in box:
+            raise box["error"]
+        return box.get("result")
 
     def _get_int_value(self, key: str) -> int:
         MVCC_INTVALUE = self._sdk["MVCC_INTVALUE"]
@@ -560,13 +677,34 @@ class HikCameraController:
     def _cleanup_after_open_failure(self, step: str) -> None:
         """open() 中途失败时释放已创建的句柄和 SDK 全局状态。"""
         logger.error("camera open failed during %s; cleaning up partial resources", step)
-        self.close()
+        if not self.close():
+            logger.error(
+                "camera cleanup after %s did not finish; native handle may still be live",
+                step,
+            )
 
     def _run_open_step(self, step: str, func, *args):
         """执行 open() 的一个阶段；失败时统一清理，防止相机句柄残留。"""
         try:
             return func(*args)
         except Exception:
+            self._cleanup_after_open_failure(step)
+            raise
+
+    def _run_timed_open_native_step(self, step: str, timeout_s: float, func, *, flag: str) -> None:
+        """带超时的打开阶段。超时后按“句柄可能已创建”处理，避免后续误报空闲。"""
+        try:
+            self._timed_sdk_call(func, timeout_s, step)
+            if flag == "handle":
+                self._handle_created = True
+            elif flag == "device":
+                self._device_opened = True
+        except Exception:
+            if self._sdk_hung:
+                if flag == "handle":
+                    self._handle_created = True
+                elif flag == "device":
+                    self._device_opened = True
             self._cleanup_after_open_failure(step)
             raise
 
@@ -585,6 +723,11 @@ class HikCameraController:
 
     def open(self) -> None:
         with self._sdk_lock:
+            self._ensure_sdk_healthy("open camera")
+            # close() is idempotent, but a controller may be reopened by
+            # legacy scan code.  A new successful lifecycle must not inherit
+            # the previous close sentinel.
+            self._closed = False
             self._open_unlocked()
 
     def _open_unlocked(self) -> None:
@@ -611,6 +754,9 @@ class HikCameraController:
         if self.opened:
             return
 
+        # close() 会把该标志置 True；复用同一个 controller 重新 open 时必须开启新生命周期。
+        self._closed = False
+
         self._load_sdk()
         MvCamera = self._sdk["MvCamera"]
         self.cam = MvCamera()
@@ -621,30 +767,40 @@ class HikCameraController:
         dev_list = self._run_open_step("MV_CC_EnumDevices", self._enum_devices)
         self.device_info = self._run_open_step("select_device", self._select_device, dev_list)
 
-        ret = self._run_open_step(
+        self._run_timed_open_native_step(
             "MV_CC_CreateHandle",
-            self._call_variants,
-            self.cam.MV_CC_CreateHandle,
-            [
-                (self.device_info,),
-                (ctypes.byref(self.device_info),),
-            ],
-            "MV_CC_CreateHandle",
+            _SDK_OPEN_TIMEOUT_S,
+            lambda: self._check(
+                self._call_variants(
+                    self.cam.MV_CC_CreateHandle,
+                    [
+                        (self.device_info,),
+                        (ctypes.byref(self.device_info),),
+                    ],
+                    "MV_CC_CreateHandle",
+                ),
+                "MV_CC_CreateHandle",
+            ),
+            flag="handle",
         )
-        self._run_open_step("MV_CC_CreateHandle.check", self._check, ret, "MV_CC_CreateHandle")
 
         access_exclusive = int(self._sdk.get("MV_ACCESS_Exclusive", 1))
-        ret = self._run_open_step(
+        self._run_timed_open_native_step(
             "MV_CC_OpenDevice",
-            self._call_variants,
-            self.cam.MV_CC_OpenDevice,
-            [
-                (access_exclusive, 0),
-                (),
-            ],
-            "MV_CC_OpenDevice",
+            _SDK_OPEN_TIMEOUT_S,
+            lambda: self._check(
+                self._call_variants(
+                    self.cam.MV_CC_OpenDevice,
+                    [
+                        (access_exclusive, 0),
+                        (),
+                    ],
+                    "MV_CC_OpenDevice",
+                ),
+                "MV_CC_OpenDevice",
+            ),
+            flag="device",
         )
-        self._run_open_step("MV_CC_OpenDevice.check", self._check, ret, "MV_CC_OpenDevice")
 
         self._run_open_step("GevSCPSPacketSize", self._try_set_optimal_packet_size)
         self._run_open_step("PixelFormat", self._set_pixel_format)
@@ -666,6 +822,7 @@ class HikCameraController:
 
     def _try_set_optimal_packet_size(self) -> None:
         try:
+            self._ensure_sdk_healthy("MV_CC_GetOptimalPacketSize")
             packet_size = int(self.cam.MV_CC_GetOptimalPacketSize())
             if packet_size > 0:
                 try:
@@ -692,6 +849,115 @@ class HikCameraController:
         else:
             raise CameraSDKError(f"当前脚本只实现 software 触发，收到 trigger_source={self.trigger_source}")
 
+    def _configure_trigger_mode_unlocked(self, *, continuous: bool, fps: Optional[float] = None) -> None:
+        """录像时切到连续取流，结束后恢复软件触发；切换期间会短暂 Stop/StartGrabbing。"""
+        self._ensure_sdk_healthy("configure trigger mode")
+        continuous = bool(continuous)
+        if bool(self._record_continuous_mode) == continuous and not continuous:
+            return
+        was_grabbing = self.grabbing
+        try:
+            if was_grabbing:
+                self._stop_grabbing_unlocked()
+            if continuous:
+                self._set_enum("TriggerMode", int(self._sdk.get("MV_TRIGGER_MODE_OFF", 0)))
+                self._record_continuous_mode = True
+                self._apply_recording_stream_unlocked(float(fps or self._record_frame_rate or 10.0))
+                logger.info("camera trigger mode set to continuous for recording")
+            else:
+                self._set_trigger_mode()
+                self._record_continuous_mode = False
+                logger.info("camera trigger mode restored to software")
+        except Exception as exc:
+            # timed SDK call 的辅助线程仍可能在原生库内运行；此时绝不能再进入 SDK 做回滚。
+            if self._sdk_hung:
+                raise
+            try:
+                self._set_trigger_mode()
+                self._record_continuous_mode = False
+            except Exception as restore_exc:
+                logger.exception("failed to restore software trigger after trigger mode change error")
+                raise CameraSDKError(
+                    "continuous acquisition setup failed and software-trigger rollback also failed"
+                ) from restore_exc
+            raise
+        finally:
+            if was_grabbing and not self.grabbing and not self._sdk_hung:
+                self._start_grabbing_unlocked()
+                if self._record_continuous_mode:
+                    self._drain_stale_frames_unlocked()
+
+    def _apply_recording_stream_unlocked(self, fps: float) -> None:
+        """严格配置连续录像帧率和最新帧策略；任一步失败均由调用方回退。"""
+        if fps <= 0:
+            raise CameraSDKError(f"recording fps must be positive, got {fps}")
+        enable_set = False
+        enable_errors = []
+        for setter in (
+            lambda: self._set_bool("AcquisitionFrameRateEnable", True),
+            lambda: self._set_enum("AcquisitionFrameRateEnable", 1),
+            lambda: self._set_int("AcquisitionFrameRateEnable", 1),
+        ):
+            try:
+                setter()
+                enable_set = True
+                break
+            except Exception as exc:
+                if self._sdk_hung:
+                    raise
+                enable_errors.append(str(exc))
+        if not enable_set:
+            raise CameraSDKError(
+                "failed to enable AcquisitionFrameRate: " + "; ".join(enable_errors)
+            )
+
+        self._set_float("AcquisitionFrameRate", float(fps))
+
+        strategy = self._sdk.get("MV_GrabStrategy_LatestImagesOnly")
+        if strategy is None:
+            strategy = self._sdk.get("MV_GrabStrategy_LatestImages")
+        if strategy is None:
+            raise CameraSDKError("MVS SDK does not expose a latest-frame grab strategy")
+        if not hasattr(self.cam, "MV_CC_SetGrabStrategy"):
+            raise CameraSDKError("current MVS wrapper does not support MV_CC_SetGrabStrategy")
+
+        ret = self._call_variants(
+            self.cam.MV_CC_SetGrabStrategy,
+            [(int(strategy),), (int(strategy), 1)],
+            "MV_CC_SetGrabStrategy",
+        )
+        self._check(ret, "MV_CC_SetGrabStrategy")
+        logger.info(
+            "continuous recording stream configured: fps=%s latest_strategy=%s",
+            fps,
+            strategy,
+        )
+
+    def _drain_stale_frames_unlocked(self, *, max_frames: int = 4, timeout_ms: int = 1) -> None:
+        if not self._record_continuous_mode or not self.grabbing:
+            return
+        drained = 0
+        for _ in range(max_frames):
+            try:
+                self._grab_one_frame(timeout_ms, send_software_trigger=False)
+                drained += 1
+            except Exception:
+                break
+        if drained:
+            logger.info("drained %s stale frame(s) from continuous stream", drained)
+
+    def _resolve_record_grab_timeout_ms(self, timeout_ms: Optional[int]) -> int:
+        return resolve_record_grab_timeout_ms(
+            timeout_ms,
+            exposure_us=self.default_exposure_us,
+            default_ms=self.grab_timeout_ms,
+        )
+
+    def _join_timeout_for_recording_stop(self, join_timeout_s: float) -> float:
+        grab_s = max(int(self._record_grab_timeout_ms or self.grab_timeout_ms), 1) / 1000.0
+        needed = grab_s + _RECORD_STOP_JOIN_SLACK_S
+        return min(max(float(join_timeout_s), needed, 0.1), _RECORD_STOP_JOIN_MAX_S)
+
     def start_grabbing(self) -> None:
         with self._sdk_lock:
             self._start_grabbing_unlocked()
@@ -700,8 +966,11 @@ class HikCameraController:
         """开始取流。"""
         if self.grabbing:
             return
-        ret = self.cam.MV_CC_StartGrabbing()
-        self._check(ret, "MV_CC_StartGrabbing")
+        self._timed_sdk_call(
+            lambda: self._check(self.cam.MV_CC_StartGrabbing(), "MV_CC_StartGrabbing"),
+            _SDK_CLOSE_TIMEOUT_S,
+            "MV_CC_StartGrabbing",
+        )
         self.grabbing = True
 
     def stop_grabbing(self) -> None:
@@ -712,15 +981,29 @@ class HikCameraController:
         """停止取流。"""
         if self.cam is None or not self.grabbing:
             return
-        try:
-            ret = self.cam.MV_CC_StopGrabbing()
-            self._check(ret, "MV_CC_StopGrabbing")
-        finally:
-            self.grabbing = False
+        self._timed_sdk_call(
+            lambda: self._check(self.cam.MV_CC_StopGrabbing(), "MV_CC_StopGrabbing"),
+            _SDK_CLOSE_TIMEOUT_S,
+            "MV_CC_StopGrabbing",
+        )
+        self.grabbing = False
 
     def set_exposure_us(self, exposure_us: float) -> None:
         with self._sdk_lock:
             self._set_exposure_us_unlocked(exposure_us)
+
+    def set_exposure_auto(self, enabled: bool) -> None:
+        """Enable or disable continuous automatic exposure."""
+        with self._sdk_lock:
+            self._ensure_sdk_healthy("set automatic exposure")
+            value = int(
+                self._sdk.get("MV_EXPOSURE_AUTO_MODE_CONTINUOUS", 2)
+                if bool(enabled)
+                else self._sdk.get("MV_EXPOSURE_AUTO_MODE_OFF", 0)
+            )
+            self._set_enum("ExposureAuto", value)
+            if enabled:
+                self.default_exposure_us = None
 
     def _set_exposure_us_unlocked(self, exposure_us: float) -> None:
         """设置曝光时间，单位微秒。会先关闭自动曝光。"""
@@ -732,6 +1015,7 @@ class HikCameraController:
             except Exception:
                 pass
         self._set_float("ExposureTime", float(exposure_us))
+        self.default_exposure_us = float(exposure_us)
         logger.info("set exposure_us=%s", exposure_us)
 
     def get_exposure_us(self) -> float:
@@ -757,8 +1041,8 @@ class HikCameraController:
 
     @property
     def is_background_recording(self) -> bool:
-        with self._sdk_lock:
-            return self._is_background_recording_unlocked()
+        thread = self._record_thread
+        return bool(self.recording and thread is not None and thread.is_alive())
 
     def _is_background_recording_unlocked(self) -> bool:
         thread = self._record_thread
@@ -766,23 +1050,33 @@ class HikCameraController:
 
     def _fail_pending_snapshot_requests(self, error: Any) -> None:
         with self._snapshot_condition:
-            if not self._snapshot_requests:
-                return
-            for request in self._snapshot_requests:
-                request["error"] = error
-                request["done"] = True
-            self._snapshot_requests.clear()
-            self._snapshot_condition.notify_all()
+            self._fail_pending_snapshot_requests_unlocked(error)
 
-    def _grab_one_frame(self, timeout_ms: int):
-        if self.trigger_source == "software":
+    def _fail_pending_snapshot_requests_unlocked(self, error: Any) -> None:
+        if not self._snapshot_requests:
+            self._snapshot_condition.notify_all()
+            return
+        for request in self._snapshot_requests:
+            request["error"] = error
+            request["done"] = True
+        self._snapshot_requests.clear()
+        self._snapshot_condition.notify_all()
+
+    def _grab_one_frame(self, timeout_ms: int, *, send_software_trigger: bool | None = None):
+        if send_software_trigger is None:
+            send_software_trigger = self.trigger_source == "software" and not self._record_continuous_mode
+        if send_software_trigger:
             self._set_command("TriggerSoftware")
 
         MV_FRAME_OUT_INFO_EX = self._sdk["MV_FRAME_OUT_INFO_EX"]
         frame_info = MV_FRAME_OUT_INFO_EX()
         ctypes.memset(ctypes.byref(frame_info), 0, ctypes.sizeof(frame_info))
 
-        data_buf = (ctypes.c_ubyte * int(self.payload_size))()
+        payload_size = int(self.payload_size)
+        if self._grab_buffer is None or self._grab_buffer_size != payload_size:
+            self._grab_buffer = (ctypes.c_ubyte * payload_size)()
+            self._grab_buffer_size = payload_size
+        data_buf = self._grab_buffer
         ret = self._call_variants(
             self.cam.MV_CC_GetOneFrameTimeout,
             [
@@ -807,7 +1101,12 @@ class HikCameraController:
         录像线程在下一帧到达时复用同一帧数据保存图片，避免同时调用
         MV_CC_GetOneFrameTimeout 导致 SDK 取流竞争。
         """
-        timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
+        if timeout_ms is None:
+            frame_wait_ms = 0
+            if self._record_frame_rate > 0:
+                frame_wait_ms = int(2000.0 / max(float(self._record_frame_rate), 0.1))
+            timeout_ms = max(int(self.grab_timeout_ms), int(self._record_grab_timeout_ms or 0), frame_wait_ms)
+        timeout_ms = int(timeout_ms)
         request: Dict[str, Any] = {
             "save_path": str(Path(save_path)),
             "done": False,
@@ -816,12 +1115,14 @@ class HikCameraController:
         }
         Path(request["save_path"]).parent.mkdir(parents=True, exist_ok=True)
 
-        with self._sdk_lock:
-            if not self._is_background_recording_unlocked():
-                raise CameraSDKError("background recording is not running; cannot capture snapshot from recording frame")
-            with self._snapshot_condition:
-                self._snapshot_requests.append(request)
-                self._snapshot_condition.notify_all()
+        with self._snapshot_condition:
+            if not self._record_snapshot_accepting:
+                raise CameraSDKError(
+                    "background recording is not running; "
+                    "cannot capture snapshot from recording frame"
+                )
+            self._snapshot_requests.append(request)
+            self._snapshot_condition.notify_all()
 
         deadline = time.monotonic() + max(timeout_ms / 1000.0, 0.1)
         with self._snapshot_condition:
@@ -868,8 +1169,10 @@ class HikCameraController:
                 self._snapshot_condition.notify_all()
 
     def capture_once(self, save_path: str, timeout_ms: Optional[int] = None) -> FrameInfo:
+        if self._record_snapshot_accepting:
+            return self.capture_snapshot_during_recording(save_path, timeout_ms=timeout_ms)
         with self._sdk_lock:
-            if not self._is_background_recording_unlocked():
+            if not self._is_background_recording_unlocked() and not self._record_snapshot_accepting:
                 return self._capture_once_unlocked(save_path, timeout_ms=timeout_ms)
         return self.capture_snapshot_during_recording(save_path, timeout_ms=timeout_ms)
 
@@ -989,8 +1292,30 @@ class HikCameraController:
         record_param.enRecordFmtType = int(self._sdk.get("MV_FormatType_AVI", 1))
         record_param.strFilePath = str(save_path).encode("utf-8")
 
-        ret = self.cam.MV_CC_StartRecord(record_param)
-        self._check(ret, "MV_CC_StartRecord")
+        try:
+            self._configure_trigger_mode_unlocked(continuous=True, fps=frame_rate)
+        except Exception:
+            if self._sdk_hung:
+                raise
+            logger.warning(
+                "failed to switch camera to continuous acquisition for recording; "
+                "falling back to software trigger",
+                exc_info=True,
+            )
+
+        try:
+            self._timed_sdk_call(
+                lambda: self._check(self.cam.MV_CC_StartRecord(record_param), "MV_CC_StartRecord"),
+                _SDK_STOP_RECORD_TIMEOUT_S,
+                "MV_CC_StartRecord",
+            )
+        except Exception:
+            if self._record_continuous_mode:
+                try:
+                    self._configure_trigger_mode_unlocked(continuous=False)
+                except Exception:
+                    logger.exception("failed to restore software trigger after StartRecord failure")
+            raise
 
         self.recording = True
         self._record_path = save_path
@@ -1005,6 +1330,7 @@ class HikCameraController:
 
     def _input_record_frame(self, data_buf, frame_len: int) -> None:
         """把当前采集帧送入 MVS 录像编码器。"""
+        self._ensure_sdk_healthy("MV_CC_InputOneFrame")
         if not self.recording:
             raise CameraSDKError("录像尚未开始")
         if not hasattr(self.cam, "MV_CC_InputOneFrame"):
@@ -1027,8 +1353,8 @@ class HikCameraController:
         with self._sdk_lock:
             return self._record_one_frame_unlocked(timeout_ms=timeout_ms)
 
-    def _record_one_frame_unlocked(self, timeout_ms: Optional[int] = None) -> FrameInfo:
-        """触发并采集一帧，将其写入当前录像，并处理等待中的快照请求。"""
+    def _grab_encode_record_frame_unlocked(self, timeout_ms: Optional[int] = None):
+        """采集一帧并写入录像编码器；不处理快照，以便调用方把磁盘保存放到 SDK 锁外。"""
         if not self.opened:
             raise CameraSDKError("相机尚未打开，请先调用 open()")
         if not self.payload_size:
@@ -1036,10 +1362,18 @@ class HikCameraController:
         if not self.grabbing:
             self._start_grabbing_unlocked()
 
-        timeout_ms = int(timeout_ms if timeout_ms is not None else self.grab_timeout_ms)
-        data_buf, frame_info = self._grab_one_frame(timeout_ms)
+        grab_timeout_ms = self._resolve_record_grab_timeout_ms(timeout_ms)
+        data_buf, frame_info = self._grab_one_frame(
+            grab_timeout_ms,
+            send_software_trigger=not self._record_continuous_mode,
+        )
         _, _, frame_len, _, _ = self._validate_mono8_frame_info(frame_info, context="record frame")
         self._input_record_frame(data_buf, frame_len)
+        return data_buf, frame_info, frame_len
+
+    def _record_one_frame_unlocked(self, timeout_ms: Optional[int] = None) -> FrameInfo:
+        """采集一帧写入当前录像，并处理等待中的快照请求。"""
+        data_buf, frame_info, frame_len = self._grab_encode_record_frame_unlocked(timeout_ms=timeout_ms)
         self._fulfill_snapshot_requests(data_buf, frame_info)
 
         return FrameInfo(
@@ -1062,8 +1396,11 @@ class HikCameraController:
         if not hasattr(self.cam, "MV_CC_StopRecord"):
             raise CameraSDKError("当前 MVS Python 包装不支持 MV_CC_StopRecord")
 
-        ret = self.cam.MV_CC_StopRecord()
-        self._check(ret, "MV_CC_StopRecord")
+        self._timed_sdk_call(
+            lambda: self._check(self.cam.MV_CC_StopRecord(), "MV_CC_StopRecord"),
+            _SDK_STOP_RECORD_TIMEOUT_S,
+            "MV_CC_StopRecord",
+        )
 
         finished_at = time.time()
         started_at = float(self._record_started_at or finished_at)
@@ -1090,6 +1427,11 @@ class HikCameraController:
         self._record_bitrate_kbps = 0
         self._record_frame_count = 0
         logger.info("recording stopped: %s", info)
+        if self._record_continuous_mode:
+            try:
+                self._configure_trigger_mode_unlocked(continuous=False)
+            except Exception:
+                logger.exception("failed to restore software trigger after StopRecord")
         return info
 
     def record_video(
@@ -1123,6 +1465,7 @@ class HikCameraController:
         if float(duration_s) <= 0:
             raise ValueError("duration_s 必须大于 0")
 
+        self._record_grab_timeout_ms = self._resolve_record_grab_timeout_ms(timeout_ms)
         self._start_recording_unlocked(save_path, fps=fps, bitrate_kbps=bitrate_kbps)
         frame_interval = 1.0 / max(float(self._record_frame_rate), 0.001)
         deadline = time.monotonic() + float(duration_s)
@@ -1154,15 +1497,32 @@ class HikCameraController:
                 if now < next_frame_at:
                     self._record_stop_event.wait(min(next_frame_at - now, 0.01))
                     continue
+                data_buf = None
+                frame_info = None
                 with self._sdk_lock:
-                    self._record_one_frame_unlocked(timeout_ms=timeout_ms)
+                    if self._record_stop_event.is_set():
+                        break
+                    data_buf, frame_info, _frame_len = self._grab_encode_record_frame_unlocked(
+                        timeout_ms=timeout_ms
+                    )
+                if data_buf is not None and frame_info is not None:
+                    self._fulfill_snapshot_requests(data_buf, frame_info)
                 next_frame_at += frame_interval
+                now = time.monotonic()
+                if next_frame_at < now - frame_interval:
+                    # Drop missed scheduling slots and provide a real wait on
+                    # the next iteration.  Setting the deadline to now causes
+                    # an immediate lock reacquire and can starve control calls.
+                    next_frame_at = now + frame_interval
         except Exception as exc:
             self._record_error = str(exc)
             logger.exception("background recording failed")
-            self._fail_pending_snapshot_requests(exc)
         finally:
-            self._fail_pending_snapshot_requests("background recording stopped before snapshot was captured")
+            with self._snapshot_condition:
+                self._record_snapshot_accepting = False
+                self._fail_pending_snapshot_requests_unlocked(
+                    self._record_error or "background recording stopped before snapshot was captured"
+                )
 
     def start_background_recording(
         self,
@@ -1191,6 +1551,7 @@ class HikCameraController:
         """启动后台录像线程；调用方可继续执行拍照或流程调度。"""
         self._record_error = None
         self._record_stop_event.clear()
+        self._record_grab_timeout_ms = self._resolve_record_grab_timeout_ms(timeout_ms)
         self._start_recording_unlocked(save_path, fps=fps, bitrate_kbps=bitrate_kbps)
         self._record_thread = threading.Thread(
             target=self._recording_worker,
@@ -1198,60 +1559,105 @@ class HikCameraController:
             name="hik-camera-recording",
             daemon=True,
         )
-        self._record_thread.start()
+        with self._snapshot_condition:
+            self._record_snapshot_accepting = True
+        try:
+            self._record_thread.start()
+        except Exception:
+            with self._snapshot_condition:
+                self._record_snapshot_accepting = False
+            raise
 
     def stop_background_recording(self, join_timeout_s: float = 5.0) -> VideoRecordInfo:
-        """请求后台录像线程停止，并返回 MVS 录像结果。"""
-        with self._sdk_lock:
-            self._record_stop_event.set()
-            thread = self._record_thread
-        if thread is not None and thread.is_alive():
-            thread.join(timeout=max(float(join_timeout_s), 0.1))
+        """请求后台录像线程停止，并返回 MVS 录像结果。
+
+        必须先无锁设置停止事件再 join。若为了读线程引用而先拿 `_sdk_lock`，
+        录像线程卡在原生 SDK 调用时 stop 会一起被堵死。
+        """
+        self._record_stop_event.set()
+        with self._snapshot_condition:
+            self._record_snapshot_accepting = False
+            self._fail_pending_snapshot_requests_unlocked(
+                "background recording is stopping before snapshot was captured"
+            )
+        thread = self._record_thread
+        join_timeout_s = self._join_timeout_for_recording_stop(join_timeout_s)
+        if thread is not None and thread is not threading.current_thread() and thread.is_alive():
+            thread.join(timeout=join_timeout_s)
             if thread.is_alive():
                 message = f"后台录像线程未在 {join_timeout_s}s 内退出，已拒绝停止 MVS 录像以避免并发写帧"
-                with self._sdk_lock:
-                    if self._record_thread is thread:
-                        self._record_error = message
-                    self._fail_pending_snapshot_requests(message)
+                self._record_error = message
+                self._fail_pending_snapshot_requests(message)
                 raise CameraSDKError(message)
 
-        with self._sdk_lock:
+        if self._sdk_hung:
+            message = "停止录像时 SDK 已挂起，已拒绝继续调用原生接口"
+            self._record_error = message
+            raise CameraSDKError(message)
+        acquired = self._sdk_lock.acquire(timeout=_SDK_LOCK_STOP_ACQUIRE_TIMEOUT_S)
+        if not acquired:
+            message = "停止录像时无法获取 SDK 锁，相机调用可能已挂起"
+            self._record_error = message
+            raise CameraSDKError(message)
+        try:
             if self._record_thread is thread:
                 self._record_thread = None
             self._fail_pending_snapshot_requests("background recording stopped before snapshot was captured")
-            return self._stop_recording_unlocked()
+            info = self._stop_recording_unlocked()
+            background_error = self._record_error
+            if background_error:
+                raise CameraSDKError(
+                    f"background recording failed before stop completed: {background_error}"
+                )
+            return info
+        finally:
+            self._sdk_lock.release()
 
     def recording_status(self) -> Dict[str, Any]:
-        with self._sdk_lock:
-            now = time.time()
-            started_at = self._record_started_at
-            return {
-                "recording": bool(self.recording),
-                "background": bool(self._is_background_recording_unlocked()),
-                "saved_path": self._record_path,
-                "frame_rate": self._record_frame_rate,
-                "bitrate_kbps": self._record_bitrate_kbps,
-                "frame_count": self._record_frame_count,
-                "duration_s": float(now - started_at) if started_at else 0.0,
-                "error": self._record_error,
-            }
+        # 不得等待 _sdk_lock：录像线程会在取帧/编码期间长时间持有该锁。
+        now = time.time()
+        started_at = self._record_started_at
+        thread = self._record_thread
+        return {
+            "recording": bool(self.recording),
+            "background": bool(self.recording and thread is not None and thread.is_alive()),
+            "saved_path": self._record_path,
+            "frame_rate": self._record_frame_rate,
+            "bitrate_kbps": self._record_bitrate_kbps,
+            "frame_count": self._record_frame_count,
+            "duration_s": float(now - started_at) if started_at else 0.0,
+            "error": self._record_error or ("SDK hung" if self._sdk_hung else None),
+            "sdk_hung": bool(self._sdk_hung),
+            "opened": bool(self.opened),
+        }
 
-    def close(self) -> None:
-        with self._sdk_lock:
-            background_recording = self._is_background_recording_unlocked()
+    def close(self) -> bool:
+        if self._closed:
+            return True
+        if self._sdk_hung:
+            logger.error("camera close skipped: previous MVS SDK call is still hung")
+            return False
+        thread = self._record_thread
+        background_recording = bool(self.recording and thread is not None and thread.is_alive())
         if background_recording:
             try:
                 self.stop_background_recording()
             except Exception as exc:
                 logger.error("background recording did not stop cleanly; skip camera close to avoid SDK race: %s", exc)
-                return
-        with self._sdk_lock:
+                return False
+        acquired = self._sdk_lock.acquire(timeout=_SDK_LOCK_STOP_ACQUIRE_TIMEOUT_S)
+        if not acquired:
+            logger.error("camera close skipped: SDK lock still held, process may need restart")
+            return False
+        try:
             if self._is_background_recording_unlocked():
                 logger.error("background recording is still active; skip camera close to avoid SDK race")
-                return
-            self._close_unlocked()
+                return False
+            return self._close_unlocked()
+        finally:
+            self._sdk_lock.release()
 
-    def _close_unlocked(self) -> None:
+    def _close_unlocked(self) -> bool:
         """
         关闭相机并释放资源。
 
@@ -1262,41 +1668,58 @@ class HikCameraController:
         4. 销毁句柄
         5. 释放本实例持有的 SDK 生命周期引用；最后一个引用释放时才执行 MV_CC_Finalize
 
-        该方法允许在 open() 中途失败后调用，因此所有 SDK 释放动作都采用尽力清理。
-        如果后台录像线程在超时时间内没有退出，本方法会跳过底层关闭动作，
-        避免在工作线程仍可能写帧时并发调用 StopRecord/CloseDevice。
+        原生调用带硬超时。超时或 SDK 已挂起时不清理 Python 侧句柄，避免误报关闭成功。
         """
         if not self._sdk_loaded:
-            return
+            self._closed = True
+            return True
+        if self._sdk_hung:
+            return False
         try:
             if self.cam is not None:
                 if self.recording:
-                    try:
-                        self._stop_recording_unlocked()
-                    except Exception:
-                        pass
-                try:
+                    self._stop_recording_unlocked()
+                if self.grabbing:
                     self._stop_grabbing_unlocked()
-                except Exception:
-                    pass
-                try:
-                    self.cam.MV_CC_CloseDevice()
-                except Exception:
-                    pass
-                try:
-                    self.cam.MV_CC_DestroyHandle()
-                except Exception:
-                    pass
-        finally:
-            if self._sdk_initialized:
-                _release_mvs_sdk(self._sdk["MvCamera"])
-                self._sdk_initialized = False
-            self.opened = False
-            self.grabbing = False
-            self.recording = False
-            self.cam = None
-            self.payload_size = None
-            self.device_info = None
+                if self._device_opened:
+                    self._timed_sdk_call(
+                        lambda: self._check(self.cam.MV_CC_CloseDevice(), "MV_CC_CloseDevice"),
+                        _SDK_CLOSE_TIMEOUT_S,
+                        "MV_CC_CloseDevice",
+                    )
+                    self._device_opened = False
+                if self._handle_created:
+                    self._timed_sdk_call(
+                        lambda: self._check(self.cam.MV_CC_DestroyHandle(), "MV_CC_DestroyHandle"),
+                        _SDK_CLOSE_TIMEOUT_S,
+                        "MV_CC_DestroyHandle",
+                    )
+                    self._handle_created = False
+        except Exception:
+            logger.exception("camera close native call failed or timed out; keeping handle")
+            return False
+
+        if self._sdk_initialized:
+            finalized_cleanly = _release_mvs_sdk(self._sdk["MvCamera"])
+            self._sdk_initialized = False
+            if not finalized_cleanly:
+                self._sdk_hung = True
+                self._record_error = "MVS SDK finalization failed; worker process must be replaced"
+                return False
+        self.opened = False
+        self.grabbing = False
+        self.recording = False
+        self._record_continuous_mode = False
+        self._record_snapshot_accepting = False
+        self._handle_created = False
+        self._device_opened = False
+        self.cam = None
+        self.payload_size = None
+        self.device_info = None
+        self._grab_buffer = None
+        self._grab_buffer_size = 0
+        self._closed = True
+        return True
 
     def _save_frame(self, save_path: str, data_buf, frame_info) -> None:
         """

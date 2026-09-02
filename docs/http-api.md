@@ -1,6 +1,6 @@
 # HTTP API 后端联调契约与请求示例
 
-> 核对基线：2026-08-27，当前工作区源码，FastAPI 应用版本 `0.3.0`。
+> 核对基线：2026-09-01，当前工作区源码，FastAPI 应用版本 `0.4.0`。
 >
 > 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 14 个；FastAPI 自动文档路由另列在文末。真实硬件必须按 [硬件与安全](hardware.md) 分阶段验收。
 
@@ -9,9 +9,9 @@
 - 基础地址示例：`http://127.0.0.1:8000`。
 - JSON 接口使用 `Content-Type: application/json`。
 - 当前源码没有认证、授权、TLS 或 CORS 中间件。只能部署在受控内网；跨域浏览器调用需要由网关配置 CORS，公网暴露前必须补认证和 TLS。
-- 服务只能启动一个 worker。任务队列、硬件锁、录像对象和往复线程都是进程内状态。
+- API 服务只能启动一个 worker。MVS SDK 与相机句柄只存在于该 API worker 管理的独立相机子进程中；原生调用超时后会终止并重建子进程，不需要重启 API。
 - `POST /api/tasks/execute` 的 `202` 只表示入队成功，不代表业务字段、模型、配置或硬件检查通过。调用方必须轮询任务到终态。
-- `cancel`、录像 `stop` 和往复 `stop` 都不是硬件急停；运动设备旁仍需可用的物理急停。
+- 录像 `start`/`stop` 同样返回 `202`，只表示启停请求已受理；必须轮询录像状态。`cancel`、录像 `stop` 和往复 `stop` 都不是硬件急停；运动设备旁仍需可用的物理急停。
 
 启动命令：
 
@@ -28,8 +28,8 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 | 1 | `GET` | `/health` | 无 | 200 | HTTP 进程存活检查 |
 | 2 | `GET` | `/api/hardware/status` | 无 | 200 | 查询进程内硬件占用者 |
 | 3 | `GET` | `/api/camera/record/status` | 无 | 200 | 查询后台录像状态 |
-| 4 | `POST` | `/api/camera/record/start` | 必须为 JSON 对象，可传 `{}` | 200 | 启动后台录像 |
-| 5 | `POST` | `/api/camera/record/stop` | 无 | 200 | 停止录像并提交正式 AVI |
+| 4 | `POST` | `/api/camera/record/start` | 必须为 JSON 对象，可传 `{}` | 202 | 受理后台录像启动 |
+| 5 | `POST` | `/api/camera/record/stop` | 可省略、`null` 或 `{}` | 202 | 受理停止和 AVI 提交 |
 | 6 | `POST` | `/api/stage/reciprocation/start` | 可省略、`null` 或 JSON 对象 | 202 | 启动固定六孔位往复 |
 | 7 | `POST` | `/api/stage/reciprocation/stop` | 可省略、`null` 或 JSON 对象 | 200 | 协作式停止往复 |
 | 8 | `GET` | `/api/stage/reciprocation/status` | 无 | 200 | 查询往复状态 |
@@ -86,11 +86,10 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 
 | 位置 | 当前行为 |
 | --- | --- |
-| 往复启动请求 | 未知字段直接返回 422（`extra="forbid"`） |
-| 录像启动、往复停止、普通任务外层 | 未知字段目前会被 Pydantic 静默忽略 |
+| 录像启停、往复启停、普通任务外层 | 未知字段直接返回 422（`extra="forbid"`） |
 | `task` 内部 | OpenAPI 只声明为任意 JSON 对象，很多业务字段在后台线程中才检查 |
 
-因此，后端不能把“Swagger 提交成功”当成任务结构正确，也不要依赖未知字段被忽略这一现状。
+严格校验只覆盖各接口声明的外层模型；`task` 内部仍由后台业务校验。因此，后端不能把“Swagger 提交成功”当成任务业务结构正确。
 
 ### 3.4 任务 ID
 
@@ -136,7 +135,7 @@ Host: 127.0.0.1:8000
 }
 ```
 
-`owners` 可能同时列出一个普通硬件操作和一个 `camera_record`。当前实现允许已启动的录像相机被兼容的采集任务复用；该状态仍只是本进程的软件锁，不是硬件在线探测。
+`owners` 可能同时列出一个普通硬件操作和一个 `camera_record`。当前实现允许进入稳定 `recording` 状态的录像相机被兼容采集任务复用；`starting/stopping` 期间新任务会返回 409 `CAMERA_RECORD_TRANSITION`。若兼容任务已经在运行，停止录像会返回 409 `CAMERA_RECORD_STOP_BLOCKED`，必须先等待或取消该任务，避免中途关闭共享相机会话。该状态仍只是进程内软件锁，不是硬件在线探测。
 
 ## 5. 相机录像接口
 
@@ -153,22 +152,45 @@ Host: 127.0.0.1:8000
 
 ```json
 {
+  "state": "idle",
   "recording": false,
   "background": false,
-  "settings": {}
+  "starting": false,
+  "stopping": false,
+  "opened": false,
+  "sdk_hung": false,
+  "operation_id": null,
+  "session_id": null,
+  "worker_pid": 18120,
+  "worker_restart_count": 1,
+  "error": null,
+  "error_code": null,
+  "settings": {},
+  "last_video": {}
 }
 ```
 录像时：
 ```json
 {
+    "state": "recording",
     "recording": true,
     "background": true,
+    "starting": false,
+    "stopping": false,
+    "opened": true,
+    "sdk_hung": false,
+    "operation_id": "2fcfd0b1c10948cdb3c99d801d60dc27",
+    "session_id": "ad8cab0a98f9414b98890715f86a24c5",
+    "worker_pid": 18120,
+    "worker_restart_count": 1,
+    "last_frame_progress_at": 1788232105.482,
     "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
     "frame_rate": 10.0,
     "bitrate_kbps": 1000,
     "frame_count": 164,
     "duration_s": 45.87022662162781,
     "error": null,
+    "error_code": null,
     "settings": {
         "save_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
         "mvs_python_dir": "D:/colony_system/MvImport",
@@ -180,10 +202,13 @@ Host: 127.0.0.1:8000
         "gain": 0.0,
         "fps": 10.0,
         "bitrate_kbps": 1000,
-        "timeout_ms": null
+        "timeout_ms": 5000
     }
 }
 ```
+`state` 是权威状态，取值包括 `idle/opening/open/starting/recording/stopping/closing/recovering/faulted`。`starting` / `stopping` 期间不要再开另一路相机；状态查询只读取 API 进程内存，不调用 MVS SDK，因此即使原生调用卡住仍应快速响应。
+
+若子进程超时、异常退出、录像线程失败或关闭不完整，监督器会隔离旧 PID 并尝试创建新 PID。恢复成功后 `state=idle`、`worker_restart_count` 增加，`error/error_code` 保留最近故障供诊断；此时可直接重新启动录像，无需重启 API。只有 `state=faulted` 表示自动重建失败，下一次相机操作会再次尝试恢复。
 ### 5.2 `POST /api/camera/record/start`
 
 请求体本身必传，但所有字段都有默认值；最小合法请求体是：
@@ -191,6 +216,8 @@ Host: 127.0.0.1:8000
 ```json
 {}
 ```
+
+请求对象包含任何未声明字段（包括字段名拼写错误）时返回 422，不会启动相机操作。
 
 联调建议显式请求体：
 
@@ -211,6 +238,23 @@ Host: 127.0.0.1:8000
 }
 ```
 
+受理响应为 HTTP 202，通常在原生 `EnumDevices/OpenDevice/StartRecord` 完成前返回：
+
+```json
+{
+  "state": "starting",
+  "starting": true,
+  "recording": false,
+  "operation_id": "2fcfd0b1c10948cdb3c99d801d60dc27",
+  "worker_pid": null,
+  "saved_path": "D:\\colony_system\\data\\camera_records\\backend_joint_001.avi",
+  "error": null,
+  "error_code": null
+}
+```
+
+收到 202 后轮询 `/api/camera/record/status`：`state=recording` 表示启动成功；`state=idle` 且 `error` 非空表示启动失败并已完成清理/隔离；`state=faulted` 表示子进程重建仍失败。不要把 202 当作相机已经打开。
+
 字段契约：
 
 | 字段 | 类型 | 默认值 | Pydantic 约束/行为 |
@@ -226,13 +270,15 @@ Host: 127.0.0.1:8000
 | `gain` | number/null | 读取 YAML | 0–60 |
 | `fps` | number/null | 10.0 | 非 null 时 `0 < value <= 240` |
 | `bitrate_kbps` | integer | 1000 | 1–500000 |
-| `timeout_ms` | integer/null | null | 非 null 时 `0 < value <= 600000` |
+| `timeout_ms` | integer/null | null | 非 null 时 `0 < value <= 15000`；须 ≥ 曝光(ms)+2000ms 传输余量。null 时按该规则自动计算，并在 status.settings 中返回实际生效值 |
 
-录像先写同目录的 `.part.avi`，正常停止后再提交为正式 `.avi`。同一进程只能有一个后台录像。
+每次录像使用同目录、带唯一会话标识的 `*.part.avi`，正常停止并关闭相机后通过同文件系统原子替换提交为正式 `.avi`；异常终止会保留该临时文件供现场取证，不会与下次录像冲突。同一 API worker 只能有一个相机子进程和一个后台录像。打开命令默认 20 秒超时；超时会终止旧子进程并自动重建。
+
+服务正常退出时也会在受限时间内尝试停止活动录像并提交正式 AVI；如果原生调用超过退出预算，则终止相机子进程并保留唯一临时文件，保证 API 退出不会再次无限等待。
 
 ### 5.3 `POST /api/camera/record/stop`
 
-请求体：无。
+推荐不发送请求体；为兼容通用 JSON 客户端，也接受 `null` 或空对象 `{}`。任何非空对象都包含未声明字段，会返回 422，且不会执行停止操作。
 
 ```http
 POST /api/camera/record/stop HTTP/1.1
@@ -240,38 +286,54 @@ Host: 127.0.0.1:8000
 Content-Length: 0
 ```
 
-返回：
+受理响应为 HTTP 202；它不等待后台线程退出、`StopRecord`、相机关闭或文件提交：
 ```json
 {
-    "status": "stopped",
-    "video": {
-        "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
-        "width": 5120,
-        "height": 5120,
-        "pixel_type": 17301505,
-        "frame_rate": 10.0,
-        "bitrate_kbps": 1000,
-        "frame_count": 291,
-        "duration_s": 81.45140290260315,
-        "timestamp_started": 1787793958.6808152,
-        "timestamp_finished": 1787794040.1322181
-    },
-    "settings": {
-        "save_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
-        "mvs_python_dir": "D:/colony_system/MvImport",
-        "device_index": 0,
-        "serial_number": "DA8583237",
-        "camera_ip": "192.168.0.66",
-        "pixel_format": "mono8",
-        "exposure_us": 5000,
-        "gain": 0.0,
-        "fps": 10.0,
-        "bitrate_kbps": 1000,
-        "timeout_ms": null
-    }
+  "status": "stopping",
+  "state": "stopping",
+  "stopping": true,
+  "recording": false,
+  "operation_id": "2fcfd0b1c10948cdb3c99d801d60dc27",
+  "worker_pid": 18120,
+  "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
+  "video": {},
+  "error": null,
+  "error_code": null
 }
 ```
-没有活动录像时不是幂等成功，而是返回 409 `CAMERA_RECORD_STOP_FAILED`。成功时会停止后台线程、关闭相机，并把 `.part.avi` 提交为正式文件。
+
+随后轮询状态。停止成功时返回 `state=idle`、`error=null`，并在 `last_video` 中给出已提交的正式文件及帧数、时长等元数据。只有临时文件存在、非空且 `frame_count > 0` 才会提交正式 AVI。停止失败时同样回到可恢复的 `idle`，但 `error/error_code` 非空，未提交的唯一 `*.part.avi` 会保留；旧相机子进程会被终止并重建。停止命令默认总超时 75 秒，`StopRecord` 和关闭操作还有各自的内部上限，因此 API 进程与状态接口不会被无限卡住。
+
+没有活动录像时不是幂等成功，而是立即返回 409 `CAMERA_RECORD_STOP_FAILED`。兼容任务正在复用录像相机时返回 409 `CAMERA_RECORD_STOP_BLOCKED`。不要在 `stopping` 状态重复发送 stop，也不要在看到 HTTP 202 后立即读取正式 AVI；以 `state=idle + error=null + last_video.saved_path + last_video.frame_count>0` 作为完成条件。
+
+### 5.4 相机子进程超时与上线监控
+
+以下环境变量均为秒，必须是有限数字且落在源码允许范围内；非法值会让服务启动失败，而不是静默采用错误配置：
+
+| 环境变量 | 默认值 | 作用 |
+| --- | ---: | --- |
+| `COLONY_CAMERA_WORKER_STARTUP_TIMEOUT_S` | 8 | 子进程启动握手 |
+| `COLONY_CAMERA_OPEN_TIMEOUT_S` | 20 | 打开相机/启动录像命令 |
+| `COLONY_CAMERA_STOP_TIMEOUT_S` | 75 | 停止、关闭及文件元数据返回总时限 |
+| `COLONY_CAMERA_CLOSE_TIMEOUT_S` | 45 | 普通拍照/对焦会话关闭 |
+| `COLONY_CAMERA_CAPTURE_SLACK_S` | 5 | 单帧取帧超时之外的进程通信余量 |
+| `COLONY_CAMERA_TERMINATE_GRACE_S` | 2 | terminate 后升级为 kill 前的等待 |
+| `COLONY_CAMERA_MONITOR_INTERVAL_S` | 0.5 | 录像子进程健康轮询间隔 |
+| `COLONY_CAMERA_MONITOR_TIMEOUT_S` | 2 | 单次健康轮询时限 |
+| `COLONY_CAMERA_RECORD_STALL_MIN_S` | 20 | 录像帧计数无进展的最小容忍时长 |
+| `COLONY_CAMERA_RECORD_STALL_GRACE_S` | 5 | 取帧超时之外的停滞判定余量 |
+
+API 侧超时、隔离和 PID 重建记录在 `logs/api_server.log`；子进程内的 MVS/controller 阶段日志单独轮转到 `logs/camera_worker.log`（10 MiB × 6 份）。可用 `COLONY_CAMERA_WORKER_LOG_LEVEL` 调整子进程日志级别，用 `COLONY_CAMERA_WORKER_LOG_PATH` 覆盖文件路径；显式设为空字符串可关闭子进程文件日志。
+
+生产监控至少告警以下条件：`state=faulted`；终态 `error` 非空；`worker_restart_count` 增加；同目录持续积累唯一 `*.part.avi`。单次重建成功后系统可继续服务，但重建次数增长通常说明相机链路、MVS 驱动、网卡或设备供电仍不稳定，不能只靠自动重试掩盖。
+
+真实硬件上线前必须连续验证：启停和录像中快照；启动/停止阶段高频查询状态；拔网线或模拟 SDK 卡死后的 PID 替换和再次启动；录像时执行兼容采集及自动对焦；服务退出时无 `Overlapped ... pending operation at deallocation`；正式 AVI 可播放且帧数、时长合理。软件故障注入测试不能替代这组现场验收。
+
+正常链路可先运行 20 轮自动验收；脚本会校验 202 契约、状态延迟、终态、视频元数据和非预期 PID 重建：
+
+```powershell
+python tools\camera_record_soak.py --cycles 20 --record-seconds 10 --serial-number DA8583237
+```
 
 ## 6. 位移台固定往复接口
 
@@ -339,6 +401,8 @@ Content-Length: 0
 
 `join_timeout_s` 范围为 0–120 秒。响应 `status="stopping"` 表示只完成了停止请求，线程仍未退出；应继续查询状态，直到 `stopped` 或 `failed`。没有活动往复时调用会返回 `stopped`，可作幂等清理。
 
+除 `join_timeout_s` 外的任何字段都会返回 422，且不会执行停止操作。
+
 ### 6.3 `GET /api/stage/reciprocation/status`
 
 请求体：无。
@@ -377,6 +441,8 @@ Host: 127.0.0.1:8000
 | `persist_result` | 否 | true | 是否另行写总结果 JSON；任务索引仍会保存内嵌结果和状态 |
 
 推荐只传确实需要覆盖的外层字段。`handoff` 的配置固定由本机 `config/handoff.yaml` 读取，HTTP 外层没有 `handoff_path` 字段。
+
+外层对象除表中六个字段外出现任何未知字段都会同步返回 422；这一规则不改变 `task` 内部仍由后台校验的现有契约。
 
 提交成功响应示例：
 
@@ -932,11 +998,12 @@ Host: 127.0.0.1:8000
 | 契约内容 | 源码依据 |
 | --- | --- |
 | 14 个自定义路由、方法、成功状态 | `workflow/api_server.py` 的 `@app.get/@app.post` |
-| 四个声明式请求模型及数值范围 | `workflow/api_models.py` |
+| 五个声明式请求模型及数值范围 | `workflow/api_models.py` |
 | 外层和任务内路径白名单 | `workflow/path_guard.py` |
 | 202 入队、队列、取消和状态语义 | `workflow/task_runtime.py`、`workflow/task_store.py` |
 | capture/pipeline/compensate/handoff 字段消费 | `workflow/run_task.py` 及各 executor |
-| 录像默认值、覆盖顺序和 `.part.avi` | `workflow/camera_record_service.py`、`workflow/camera_executor.py` |
+| 录像异步契约、默认值、唯一 `.part.avi` 和硬件占用 | `workflow/camera_record_service.py`、`workflow/camera_executor.py`、`workflow/hardware_guard.py` |
+| MVS 子进程、状态机、超时隔离、PID 重建和状态字段 | `workflow/camera_process_supervisor.py` |
 | 固定往复路径、停止和状态 | `workflow/stage_reciprocation.py` |
 | 结果、分页、图片过滤和下载 | `workflow/task_artifacts.py` |
 | 错误响应结构 | `workflow/api_errors.py` |
@@ -946,7 +1013,7 @@ Host: 127.0.0.1:8000
 - pipeline 省略 `stages` 时只采集，不会自动检测。
 - 普通任务大部分业务错误是 202 后异步失败。
 - 往复启动空请求会按默认 800000 参数无限循环。
-- 往复启动拒绝未知字段，其他几个 Pydantic 请求模型目前会忽略未知字段。
+- 录像启停、往复启停和普通任务外层都拒绝未知字段；`task` 内部仍按后台业务规则校验。
 - 内置 4x v2 检测结果不能默认按 `purpose="pick"` 补偿；转 10x 必须用 `purpose="10x_centering"`。
 - 单孔与多孔产物目录规则不同；多孔会覆盖单孔级输出路径并按孔派生。
 - `page/page_size` 与 `limit/offset` 有明确覆盖优先级。

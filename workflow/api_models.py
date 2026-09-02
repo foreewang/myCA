@@ -6,7 +6,13 @@ from typing import Any, Dict
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ExecuteTaskRequest(BaseModel):
+class StrictApiRequest(BaseModel):
+    """Reject misspelled or undocumented top-level API fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ExecuteTaskRequest(StrictApiRequest):
     task: Dict[str, Any]
     camera_path: str | None = Field(default=None, description="可选，覆盖默认 camera.yaml")
     objectives_path: str | None = Field(default=None, description="可选，覆盖默认 objectives.yaml")
@@ -15,7 +21,7 @@ class ExecuteTaskRequest(BaseModel):
     persist_result: bool = Field(default=True, description="是否仍然把结果写到本地文件")
 
 
-class CameraRecordStartRequest(BaseModel):
+class CameraRecordStartRequest(StrictApiRequest):
     save_path: str = Field(default="data/camera_records/recording.avi", min_length=1)
     camera_path: str | None = None
     device_index: int | None = Field(default=None, ge=0, le=63)
@@ -27,12 +33,19 @@ class CameraRecordStartRequest(BaseModel):
     gain: float | None = Field(default=None, ge=0, le=60)
     fps: float | None = Field(default=10.0, gt=0, le=240)
     bitrate_kbps: int = Field(default=1000, ge=1, le=500_000)
-    timeout_ms: int | None = Field(default=None, gt=0, le=600_000)
+    timeout_ms: int | None = Field(
+        default=None,
+        gt=0,
+        le=15_000,
+        description="录像取帧超时，毫秒；须覆盖曝光时间加传输余量，上限 15000",
+    )
 
 
-class StageReciprocationStartRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class CameraRecordStopRequest(StrictApiRequest):
+    """Empty body contract used to reject accidental stop parameters."""
 
+
+class StageReciprocationStartRequest(StrictApiRequest):
     port: str = Field(default="COM3", min_length=1, max_length=64, description="XY 位移台 Modbus 串口号")
     baudrate: int = Field(default=115200, ge=1200, le=921600, description="Modbus 串口波特率")
     x_slave: int = Field(default=1, ge=1, le=247, description="X 轴 Modbus 从站地址")
@@ -47,5 +60,5 @@ class StageReciprocationStartRequest(BaseModel):
     max_cycles: int | None = Field(default=None, ge=1, le=1_000_000, description="最大往复周期数；不传表示持续运行直到 stop")
 
 
-class StageReciprocationStopRequest(BaseModel):
+class StageReciprocationStopRequest(StrictApiRequest):
     join_timeout_s: float = Field(default=5.0, ge=0, le=120, description="等待后台线程停止的最长时间，单位秒")

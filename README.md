@@ -29,7 +29,8 @@ colony_system/
 ├─ data/                     # 任务索引、运行输出、物镜状态
 ├─ docs/                     # 使用与联调文档（本 README 的专题拆分）
 ├─ third_party/XWJJJ260511/  # 第三方自动对焦
-├─ tools/                    # 标定与精度测试脚本
+├─ tools/                    # 发布门禁、标定与现场验收脚本
+├─ tests/                    # 全业务软件回归套件
 ├─ start_api.bat             # 工控机单实例启动脚本
 └─ README.md
 ```
@@ -38,12 +39,15 @@ colony_system/
 
 ## 快速开始
 
-1. Python 3.10+，安装运行依赖（4x 推理再选 GPU 或 CPU 其中一套，见 [环境与配置](docs/setup.md)）：
+1. 使用 64 位 Python 3.10，按目标机器选择 GPU 或 CPU 锁定环境（见 [环境与配置](docs/setup.md)）：
 
 ```powershell
-python -m venv .venv
+py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-lock-py310-gpu.txt
+python -m pip install -r requirements-test-lock-py310.txt
+python -m workflow.deployment_preflight
+python tools/release_gate.py
 ```
 
 2. 改完 YAML 先校验：
@@ -56,7 +60,7 @@ python -m workflow.config_validator
 
 ```powershell
 python workflow/run_task.py --task data/task_capture_single_well.json
-uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
+uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1 --lifespan on --timeout-graceful-shutdown 45
 ```
 
 任务 JSON 示例见 [任务与命令行](docs/tasks.md)。首次驱动新电机前先读 [硬件与安全](docs/hardware.md)。

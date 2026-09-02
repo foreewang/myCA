@@ -421,9 +421,8 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
     need_capture = "capture" in params.get("stages", [])
     need_autofocus = bool((params.get("autofocus_decision") or {}).get("should_run", False))
 
-    # 如果本任务需要 autofocus，暂时不提前打开共享相机。
-    # 原因：第三方 autofocus 会自己打开 MVS 相机，若 shared_cam 已占用相机，可能导致自动调焦无法取图。
-    # 后续更优方案是让 autofocus 复用项目 camera_executor 的相机对象。
+    # autofocus 会通过 camera_executor 获取一个受监督的短生命周期相机会话。
+    # 因此需要对焦时不提前持有普通 shared_cam；后台录像会话仍可按相机身份安全复用。
     open_shared_camera = need_capture and not need_autofocus
 
     try:

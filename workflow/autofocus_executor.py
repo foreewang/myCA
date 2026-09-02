@@ -99,27 +99,49 @@ def _validate_autofocus_config_path(config_path: Path) -> None:
 
 
 def _run_autofocus_reusing_recording_camera(config_path: Path, objective_name: str):
-    from workflow.camera_executor import get_recording_camera
-
-    recording_cam = get_recording_camera()
-    if recording_cam is None:
-        return None
-
     from third_party.XWJJJ260511 import run as autofocus_run
+    from workflow.camera_executor import close_camera, open_camera
 
     cfg = autofocus_run._load_yaml_config(config_path)
     motor_cfg = autofocus_run._section(cfg, "motor")
     cfg["motor"] = motor_cfg
     motor_cfg["objective"] = objective_name
 
-    work_dir = PROJECT_ROOT / "data" / "autofocus_recording_tmp"
-    camera = RecordingAutofocusCameraAdapter(recording_cam, work_dir)
-    result = autofocus_run._run_autofocus(camera, cfg)
-    autofocus_run._save_focus_log(
-        result.focus_log,
-        autofocus_run._get_output_path(cfg, "log_path"),
-        cfg,
+    camera_cfg = autofocus_run._section(cfg, "camera")
+    camera_settings, _camera_label = autofocus_run._resolve_camera_settings(camera_cfg, motor_cfg)
+    backend = str(camera_settings.get("backend", "opencv")).strip().lower()
+    if backend != "mvs":
+        # OpenCV does not enter the MVS native runtime and keeps the existing
+        # third-party implementation.
+        return None
+
+    exposure_auto = camera_settings.get("exposure_auto")
+    exposure_us = None
+    if not bool(exposure_auto):
+        exposure_us = camera_settings.get("exposure_time_us", camera_settings.get("exposure_us"))
+    camera = open_camera(
+        mvs_python_dir=camera_settings.get("mvs_python_dir") or camera_settings.get("mvs_sdk_path"),
+        device_index=int(camera_settings.get("device_index", 0)),
+        serial_number=camera_settings.get("serial_number"),
+        camera_ip=camera_settings.get("ip"),
+        pixel_format=str(camera_settings.get("pixel_format") or "mono8"),
+        exposure_us=exposure_us,
+        exposure_auto=bool(exposure_auto) if exposure_auto is not None else None,
+        gain=camera_settings.get("gain"),
     )
-    setattr(result, "reused_recording_camera", True)
-    return result
+    reused_recording_camera = bool(getattr(camera, "recording_shared", False))
+
+    work_dir = PROJECT_ROOT / "data" / "autofocus_recording_tmp"
+    adapter = RecordingAutofocusCameraAdapter(camera, work_dir)
+    try:
+        result = autofocus_run._run_autofocus(adapter, cfg)
+        autofocus_run._save_focus_log(
+            result.focus_log,
+            autofocus_run._get_output_path(cfg, "log_path"),
+            cfg,
+        )
+        setattr(result, "reused_recording_camera", reused_recording_camera)
+        return result
+    finally:
+        close_camera(camera)
 

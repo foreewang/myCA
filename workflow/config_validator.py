@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import math
+import re
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable, Mapping
@@ -24,6 +26,7 @@ SUPPORTED_AUTOFOCUS_BACKENDS = {"mvs"}
 SUPPORTED_AUTOFOCUS_MOTOR_TYPES = {"modbus"}
 SUPPORTED_AUTOFOCUS_TRIGGER_SCOPES = {"disabled", "once_per_task", "once_per_well"}
 SUPPORTED_AUTOFOCUS_RUN_AT = {"before_first_capture_after_stage_move"}
+SUPPORTED_OBJECTIVE_SWITCH_MODES = {"motor_manager"}
 LEGACY_PLATE_FIELDS = {
     "point_12",
     "point_12_d",
@@ -96,6 +99,12 @@ def validate_plates_file(path: str | Path) -> dict[str, Any]:
     return config
 
 
+def validate_objectives_file(path: str | Path) -> dict[str, Any]:
+    config = load_yaml_unique(path)
+    validate_objectives_config(config)
+    return config
+
+
 def validate_camera_file(path: str | Path, objectives_path: str | Path | None = None) -> dict[str, Any]:
     config = load_yaml_unique(path)
     validate_camera_config(
@@ -119,6 +128,7 @@ def validate_autofocus_file(
 ) -> dict[str, Any]:
     config = load_yaml_unique(path)
     objectives_cfg = load_yaml_unique(_resolve_objectives_path(path, objectives_path))
+    validate_objectives_config(objectives_cfg)
 
     resolved_camera_path = _resolve_camera_path(path, camera_path)
     camera_cfg = None
@@ -165,11 +175,233 @@ def _resolve_camera_path(config_path: str | Path, camera_path: str | Path | None
 
 
 def _load_objective_names(objectives_path: str | Path) -> set[str]:
-    config = load_yaml_unique(objectives_path)
+    config = validate_objectives_file(objectives_path)
+    objectives = config["objectives"]
+    return {str(name) for name in objectives.keys()}
+
+
+def validate_objectives_config(config: Mapping[str, Any]) -> None:
+    """Validate every value consumed by objective switching and scan planning."""
+
+    issues: list[ConfigIssue] = []
     objectives = config.get("objectives")
     if not isinstance(objectives, Mapping) or not objectives:
-        raise ConfigValidationError([ConfigIssue("objectives", f"required non-empty mapping is missing: {objectives_path}")])
-    return {str(name) for name in objectives.keys()}
+        raise ConfigValidationError([ConfigIssue("objectives", "required non-empty mapping is missing")])
+
+    state = config.get("state")
+    if not isinstance(state, Mapping):
+        issues.append(ConfigIssue("state", "required mapping is missing"))
+    else:
+        _validate_objective_state("state", state, objectives, issues)
+
+    hardware = config.get("hardware")
+    objective_switch_collision_limit: int | None = None
+    if not isinstance(hardware, Mapping):
+        issues.append(ConfigIssue("hardware", "required mapping is missing"))
+    else:
+        objective_switch_collision_limit = _validate_objective_hardware("hardware", hardware, issues)
+
+    seen_names: set[str] = set()
+    for raw_name, objective_cfg in objectives.items():
+        objective_name = str(raw_name)
+        objective_path = f"objectives.{objective_name}"
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            issues.append(ConfigIssue(objective_path, "objective name must be a non-empty string"))
+        elif raw_name != raw_name.strip():
+            issues.append(ConfigIssue(objective_path, "objective name must not contain leading or trailing whitespace"))
+        else:
+            folded = raw_name.casefold()
+            if folded in seen_names:
+                issues.append(ConfigIssue(objective_path, "objective name duplicates another name ignoring case"))
+            seen_names.add(folded)
+
+        if not isinstance(objective_cfg, Mapping):
+            issues.append(ConfigIssue(objective_path, "objective config must be a mapping"))
+            continue
+        _validate_objective_definition(
+            objective_path,
+            objective_name,
+            objective_cfg,
+            issues,
+            objective_switch_collision_limit=objective_switch_collision_limit,
+        )
+
+    if issues:
+        raise ConfigValidationError(issues)
+
+
+def _validate_objective_definition(
+    base: str,
+    objective_name: str,
+    objective: Mapping[str, Any],
+    issues: list[ConfigIssue],
+    *,
+    objective_switch_collision_limit: int | None,
+) -> None:
+    magnification = _require_number(
+        objective,
+        "magnification",
+        f"{base}.magnification",
+        issues,
+        minimum=0,
+        exclusive_min=True,
+    )
+    name_match = re.fullmatch(r"(\d+(?:\.\d+)?)x", objective_name.strip(), flags=re.IGNORECASE)
+    if magnification is not None and name_match is not None:
+        named_magnification = float(name_match.group(1))
+        if not math.isclose(magnification, named_magnification, rel_tol=1e-9, abs_tol=1e-9):
+            issues.append(
+                ConfigIssue(
+                    f"{base}.magnification",
+                    f"must match objective name {objective_name!r} ({named_magnification:g})",
+                )
+            )
+
+    fov = objective.get("fov_mm")
+    if not isinstance(fov, Mapping):
+        issues.append(ConfigIssue(f"{base}.fov_mm", "required mapping is missing"))
+    else:
+        _require_number(fov, "width", f"{base}.fov_mm.width", issues, minimum=0, exclusive_min=True)
+        _require_number(fov, "height", f"{base}.fov_mm.height", issues, minimum=0, exclusive_min=True)
+
+    switch = objective.get("switch")
+    if not isinstance(switch, Mapping):
+        issues.append(ConfigIssue(f"{base}.switch", "required mapping is missing"))
+        return
+
+    _require_bool(switch, "enabled", f"{base}.switch.enabled", issues)
+    _require_choice(
+        switch,
+        "mode",
+        f"{base}.switch.mode",
+        issues,
+        SUPPORTED_OBJECTIVE_SWITCH_MODES,
+    )
+    _require_int(
+        switch,
+        "objective_target_pos",
+        f"{base}.switch.objective_target_pos",
+        issues,
+    )
+    focus_target = _require_int(
+        switch,
+        "focus_target_pos",
+        f"{base}.switch.focus_target_pos",
+        issues,
+    )
+    focus_collision_limit = _require_int(
+        switch,
+        "focus_collision_limit_pos",
+        f"{base}.switch.focus_collision_limit_pos",
+        issues,
+    )
+    for key in (
+        "objective_profile_vel",
+        "objective_profile_acc",
+        "objective_profile_dec",
+        "focus_profile_vel",
+        "focus_profile_acc",
+        "focus_profile_dec",
+    ):
+        _require_int(switch, key, f"{base}.switch.{key}", issues, minimum=1)
+
+    # Positions are signed pulse counts.  The executor defines smaller focus
+    # values as closer to the plate, so both configured collision floors apply.
+    if focus_target is not None and focus_collision_limit is not None and focus_target < focus_collision_limit:
+        issues.append(
+            ConfigIssue(
+                f"{base}.switch.focus_target_pos",
+                f"must be >= focus_collision_limit_pos ({focus_collision_limit})",
+            )
+        )
+    if (
+        focus_target is not None
+        and objective_switch_collision_limit is not None
+        and focus_target < objective_switch_collision_limit
+    ):
+        issues.append(
+            ConfigIssue(
+                f"{base}.switch.focus_target_pos",
+                "must be >= hardware.focus_axis.objective_switch_collision_limit_pos "
+                f"({objective_switch_collision_limit})",
+            )
+        )
+
+
+def _validate_objective_state(
+    base: str,
+    state: Mapping[str, Any],
+    objectives: Mapping[Any, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    enabled = _require_bool(state, "enabled", f"{base}.enabled", issues)
+    if enabled is True or "state_file" in state:
+        _require_text(state, "state_file", f"{base}.state_file", issues)
+
+    assumed = state.get("assume_initial")
+    if assumed is None:
+        return
+    if not isinstance(assumed, str) or not assumed.strip():
+        issues.append(ConfigIssue(f"{base}.assume_initial", "must be null or a non-empty objective name"))
+        return
+    names = {str(name) for name in objectives.keys()}
+    if assumed not in names:
+        issues.append(ConfigIssue(f"{base}.assume_initial", f"references undefined objective {assumed!r}"))
+
+
+def _validate_objective_hardware(
+    base: str,
+    hardware: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> int | None:
+    modbus = hardware.get("modbus")
+    if not isinstance(modbus, Mapping):
+        issues.append(ConfigIssue(f"{base}.modbus", "required mapping is missing"))
+    else:
+        _require_text(modbus, "port", f"{base}.modbus.port", issues)
+        _require_int(modbus, "baudrate", f"{base}.modbus.baudrate", issues, minimum=1)
+
+    objective_axis = hardware.get("objective_axis")
+    objective_slave: int | None = None
+    if not isinstance(objective_axis, Mapping):
+        issues.append(ConfigIssue(f"{base}.objective_axis", "required mapping is missing"))
+    else:
+        objective_slave = _require_int(
+            objective_axis,
+            "slave",
+            f"{base}.objective_axis.slave",
+            issues,
+            minimum=1,
+        )
+
+    focus_axis = hardware.get("focus_axis")
+    focus_slave: int | None = None
+    collision_limit: int | None = None
+    if not isinstance(focus_axis, Mapping):
+        issues.append(ConfigIssue(f"{base}.focus_axis", "required mapping is missing"))
+    else:
+        focus_slave = _require_int(
+            focus_axis,
+            "slave",
+            f"{base}.focus_axis.slave",
+            issues,
+            minimum=1,
+        )
+        collision_limit = _require_int(
+            focus_axis,
+            "objective_switch_collision_limit_pos",
+            f"{base}.focus_axis.objective_switch_collision_limit_pos",
+            issues,
+        )
+
+    if objective_slave is not None and focus_slave is not None and objective_slave == focus_slave:
+        issues.append(
+            ConfigIssue(
+                f"{base}.focus_axis.slave",
+                "must differ from hardware.objective_axis.slave",
+            )
+        )
+    return collision_limit
 
 
 def validate_camera_config(
@@ -1185,6 +1417,9 @@ def _require_number(
         issues.append(ConfigIssue(path, "must be a number"))
         return None
     number = float(value)
+    if not math.isfinite(number):
+        issues.append(ConfigIssue(path, "must be a finite number"))
+        return None
     if minimum is not None:
         invalid = number <= minimum if exclusive_min else number < minimum
         if invalid:
@@ -1209,7 +1444,7 @@ def main() -> None:
     parser.add_argument(
         "--objectives",
         default=None,
-        help="Path to config/objectives.yaml, used when validating camera objective_settings",
+        help="Path to config/objectives.yaml; validates it and uses it for camera/autofocus cross-checks",
     )
     parser.add_argument(
         "--handoff",
@@ -1225,9 +1460,16 @@ def main() -> None:
 
     project_config_dir = Path(__file__).resolve().parent.parent / "config"
     targets = []
-    if args.plates is None and args.camera is None and args.handoff is None and args.autofocus is None:
+    if (
+        args.plates is None
+        and args.camera is None
+        and args.objectives is None
+        and args.handoff is None
+        and args.autofocus is None
+    ):
         targets.extend(
             [
+                ("objectives", project_config_dir / "objectives.yaml"),
                 ("camera", project_config_dir / "camera.yaml"),
                 ("plates", project_config_dir / "plates.yaml"),
                 ("autofocus", project_config_dir / "autofocus.yaml"),
@@ -1235,6 +1477,8 @@ def main() -> None:
             ]
         )
     else:
+        if args.objectives is not None:
+            targets.append(("objectives", Path(args.objectives)))
         if args.plates is not None:
             targets.append(("plates", Path(args.plates)))
         if args.camera is not None:
@@ -1245,7 +1489,9 @@ def main() -> None:
             targets.append(("handoff", Path(args.handoff)))
 
     for kind, path in targets:
-        if kind == "camera":
+        if kind == "objectives":
+            validate_objectives_file(path)
+        elif kind == "camera":
             validate_camera_file(path, objectives_path=args.objectives or project_config_dir / "objectives.yaml")
         elif kind == "plates":
             validate_plates_file(path)

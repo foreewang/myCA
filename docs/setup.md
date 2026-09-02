@@ -5,17 +5,29 @@
 代码使用 `X | None` 等语法，最低需要 Python 3.10。工控机部署使用 64 位 Python 3.10，并在项目根目录建虚拟环境：
 
 ```powershell
-python -m venv .venv
+py -3.10 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+# 二选一；生产不得使用开放下限的 requirements.txt 重装
+python -m pip install -r requirements-lock-py310-gpu.txt
+# python -m pip install -r requirements-lock-py310-cpu.txt
+python -m workflow.deployment_preflight
 ```
 
-`requirements.txt` 包含设备应用运行依赖，主要包括 FastAPI、uvicorn、pydantic、PyYAML、numpy、OpenCV、Pillow、pymodbus 和 pyserial。
+生产锁文件包含应用与对应视觉运行时的全部传递版本。`requirements.txt` 仅用于开发维护；发布候选锁仍须在目标工控机完成模型、MVS 和硬件验收后归档。
+
+生成发布候选或在工控机执行软件门禁时，再叠加安装精确锁定的测试环境并运行完整回归：
+
+```powershell
+python -m pip install -r requirements-test-lock-py310.txt
+python tools/release_gate.py
+```
+
+门禁要求核心任务/运动/视觉回归文件存在、至少收集 200 项测试且不得有任何 skip。`requirements-test-lock-py310.txt` 不属于 API 运行时依赖；若生产镜像需最小化，可在完成并归档门禁报告后从最终运行镜像移除测试环境。
 
 ## 4x 模型运行时
 
-推理依赖与应用依赖分开。同一环境只装下面其中一套，不要同时装 GPU 和 CPU 的 onnxruntime：
+维护依赖时可分别解析下面两套运行时，不要在同一环境同时安装 GPU 和 CPU 的 onnxruntime；生产安装使用上一节的完整锁文件：
 
 ```powershell
 # 本机 RTX / Python 3.10（CUDA 12.1 + cuDNN 9.1，适配现有驱动）
@@ -78,6 +90,7 @@ python -m workflow.config_validator
 只校验一部分：
 
 ```powershell
+python -m workflow.config_validator --objectives config/objectives.yaml
 python -m workflow.config_validator --camera config/camera.yaml --objectives config/objectives.yaml
 python -m workflow.config_validator --plates config/plates.yaml
 python -m workflow.config_validator --autofocus config/autofocus.yaml --objectives config/objectives.yaml --camera config/camera.yaml
@@ -86,6 +99,7 @@ python -m workflow.config_validator --handoff config/handoff.yaml
 
 校验覆盖的主要项：
 
+- `objectives.yaml`：物镜名/倍率、正且有限的 FOV、切换模式、整数脉冲目标、正整数速度参数、状态引用、Modbus/slave 及两层焦点碰撞限位
 - `camera.yaml`：SDK 路径、序列号/IP/index、分辨率、曝光、增益、全部物镜的 `objective_settings`、`trigger_mode`、`pixel_format`
 - `plates.yaml`：板型几何、轴方向、限位、运行保护、旧字段和错误缩进
 - `autofocus.yaml`：触发策略、MVS 配置、关闭自动曝光、物镜覆盖、调焦范围、串口与物镜硬件一致
