@@ -92,8 +92,8 @@ def atomic_write_text(
     """Write text through a same-directory temp file and atomic replacement.
 
     This prevents readers from seeing a partially written JSON/text file. The
-    retry loop handles short Windows handle contention from readers, antivirus,
-    or file indexers.
+    retry loop handles short-lived reader contention on Windows and Linux,
+    including antivirus or file indexers.
     """
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

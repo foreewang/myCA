@@ -6,7 +6,7 @@
 
 先进入这个目录，再安装依赖：
 
-```powershell
+```bash
 cd XWJJJ260511
 pip install -r requirements.txt
 ```
@@ -15,44 +15,44 @@ pip install -r requirements.txt
 
 如果已经 `cd` 到 `XWJJJ260511` 目录，默认读取 `config.yaml`：
 
-```powershell
+```bash
 python run.py
 ```
 
-也可以用批处理入口：
+也可以用脚本入口：
 
-```powershell
-.\run.bat
+```bash
+./run.sh
 ```
 
 也可以指定配置文件：
 
-```powershell
+```bash
 python run.py -c config_real_example.yaml
 ```
 
 外部程序只知道当前倍镜时，把倍镜传进来即可，调焦范围由 YAML 里的 `motor.objective_ranges` 维护：
 
-```powershell
+```bash
 python run.py --objective 4x
 python run.py --objective 10x
 ```
 
-如果用 `run.bat`，可以这样指定：
+如果用 `run.sh`，可以这样指定：
 
-```powershell
-.\run.bat -c config_real_example.yaml
+```bash
+./run.sh -c config_real_example.yaml
 ```
 
 临时只预览相机，不移动电机：
 
-```powershell
+```bash
 python run.py --preview
 ```
 
 如果你站在 `XWJJJ260511` 的上一级目录，也可以运行：
 
-```powershell
+```bash
 python -m XWJJJ260511
 ```
 
@@ -108,7 +108,7 @@ from XWJJJ260511.autofocus_api import run_realtime_autofocus
 
 result = run_realtime_autofocus(
     use_modbus_motor=True,
-    motor_port="COM3",
+    motor_port="/dev/ttyUSB0",
     motor_baudrate=115200,
     focus_slave=3,
     objective="10x",
@@ -171,7 +171,7 @@ motor:
 然后按实际设备修改：
 
 ```yaml
-port: COM3
+port: /dev/ttyUSB0
 baudrate: 115200
 focus_slave: 3
 objective: 4x
@@ -207,7 +207,7 @@ camera:
   serial_number: DA8583237
   ip: 192.168.0.66
   net_export_ip: 192.168.0.10
-  mvs_sdk_path: D:/colony_system/MvImport
+  mvs_sdk_path: /opt/MVS/Samples/64/Python/MvImport
 ```
 
 `serial_number` 是相机身份校验值，`ip` 是相机 IP，`net_export_ip` 是连接相机的电脑有线网卡 IP。只调相机时建议先运行 `python run.py --preview`，这样不会进入电机自动对焦流程。

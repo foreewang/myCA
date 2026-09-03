@@ -41,7 +41,7 @@ def to_gray_u8(img):
 def load_image(image_path, flags=cv2.IMREAD_UNCHANGED):
     """从磁盘读取图片，读取失败时抛出清晰异常。
 
-    Windows 下部分 OpenCV 构建的 ``imread`` 不能可靠处理中文路径。
+    Windows 与 Linux 下部分 OpenCV 构建的 ``imread`` 都不能可靠处理非 ASCII 路径。
     先由 NumPy 读取原始字节，再交给 ``imdecode``，可以保持完整 Unicode
     路径，同时仍由 OpenCV 负责图片格式解码。
     """

@@ -35,11 +35,11 @@
     "observe_scope": "single_well",
     "target": { "well_name": "A1" },
     "capture": {
-      "save_dir": "D:/colony_system/data/local_tasks/capture_A1_local_001/images",
+      "save_dir": "/opt/colony_system/data/local_tasks/capture_A1_local_001/images",
       "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
     },
     "motion": {
-      "port": "COM3",
+      "port": "/dev/ttyUSB0",
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
@@ -52,28 +52,28 @@
       "overlap": 0.1,
       "use_objective_fov": true,
       "settle_s": 0.8,
-      "output_json": "D:/colony_system/data/local_tasks/capture_A1_local_001/scan_result.json"
+      "output_json": "/opt/colony_system/data/local_tasks/capture_A1_local_001/scan_result.json"
     },
     "output": {
-      "result_json": "D:/colony_system/data/local_tasks/capture_A1_local_001/result.json"
+      "result_json": "/opt/colony_system/data/local_tasks/capture_A1_local_001/result.json"
     }
   }
 }
 ```
 
-```powershell
-cd D:\colony_system
+```bash
+cd /opt/colony_system
 python workflow/run_task.py --task data/task_capture_single_well.json
 ```
 
 覆盖配置路径：
 
-```powershell
-python workflow/run_task.py `
-  --task data/task_capture_single_well.json `
-  --camera config/camera.yaml `
-  --objectives config/objectives.yaml `
-  --plates config/plates.yaml `
+```bash
+python workflow/run_task.py \
+  --task data/task_capture_single_well.json \
+  --camera config/camera.yaml \
+  --objectives config/objectives.yaml \
+  --plates config/plates.yaml \
   --dump-json data/my_result.json
 ```
 
@@ -87,13 +87,13 @@ handoff 示例 `data/task_handoff_load_in.json`：
     "plate_type": "24-well",
     "handoff": { "action": "load_in" },
     "output": {
-      "result_json": "D:/colony_system/data/local_tasks/handoff_load_in_local_001/result.json"
+      "result_json": "/opt/colony_system/data/local_tasks/handoff_load_in_local_001/result.json"
     }
   }
 }
 ```
 
-```powershell
+```bash
 python workflow/run_task.py --task data/task_handoff_load_in.json --handoff config/handoff.yaml
 ```
 
@@ -163,7 +163,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 ```json
 {
   "compensate": {
-    "input_detect_json": "D:/colony_system/data/tasks/pipeline_C3_001/C3/detect_result.json",
+    "input_detect_json": "/opt/colony_system/data/tasks/pipeline_C3_001/C3/detect_result.json",
     "selector": {
       "mode": "image_and_clone",
       "purpose": "10x_centering",
@@ -184,7 +184,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 {
   "closed_loop": {
     "enabled": true,
-    "save_dir": "D:/colony_system/data/compensate_eval/closed_loop/C3_index04_c01",
+    "save_dir": "/opt/colony_system/data/compensate_eval/closed_loop/C3_index04_c01",
     "filename_pattern": "closed_loop_{task_id}_{well}_iter{iteration:02d}.bmp",
     "max_iterations": 2,
     "tolerance_px": 10,

@@ -10,6 +10,7 @@ from workflow.camera_executor import (
     capture_with_opened_camera,
 )
 from workflow.file_io import atomic_write_json
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT
 from workflow.stage_executor import move_to_absolute
 from workflow.task_control import TaskCanceled, raise_if_cancel_requested, report_progress
 
@@ -232,7 +233,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 f"moving to scan point {point_index}/{total_points}",
             )
             motion_result = move_to_absolute(
-                port=motion.get("port", "COM3"),
+                port=motion.get("port", DEFAULT_MODBUS_PORT),
                 x_target=int(point["stage_x_target"]),
                 y_target=int(point["stage_y_target"]),
                 profile_vel=int(motion["profile_vel"]),

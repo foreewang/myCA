@@ -316,13 +316,21 @@ class HikrobotCamera(CameraBase):
             self._cap = None
 
     def _load_mvs_module(self):
-        # 找到 MvImport 路径。
-        sdk_path = self._resolve_mvs_sdk_path()
-        # 把路径加入 sys.path，方便 import MvCameraControl_class。
+        try:
+            from devices.mvs_runtime import ensure_mvs_native_libraries, resolve_existing_mvs_python_dir
+        except ImportError:
+            ensure_mvs_native_libraries = None
+            resolve_existing_mvs_python_dir = None
+        if ensure_mvs_native_libraries is not None:
+            ensure_mvs_native_libraries()
+        sdk_path = None
+        if resolve_existing_mvs_python_dir is not None:
+            sdk_path = resolve_existing_mvs_python_dir(self._mvs_sdk_path)
+        if sdk_path is None:
+            sdk_path = self._resolve_mvs_sdk_path()
         if sdk_path and str(sdk_path) not in sys.path:
             sys.path.append(str(sdk_path))
         try:
-            # 导入海康 MVS Python 封装。
             return importlib.import_module("MvCameraControl_class")
         except ImportError as exc:
             raise RuntimeError(
@@ -330,23 +338,23 @@ class HikrobotCamera(CameraBase):
             ) from exc
 
     def _resolve_mvs_sdk_path(self) -> Optional[Path]:
-        # 候选 SDK 路径列表，按优先级尝试。
         candidates = []
-        # 配置文件里写的路径优先。
         if self._mvs_sdk_path:
             candidates.append(Path(str(self._mvs_sdk_path)))
-        # MVS 安装后通常会设置 MVCAM_COMMON_RUNENV 环境变量。
         env_root = os.getenv("MVCAM_COMMON_RUNENV")
         if env_root:
-            candidates.append(Path(env_root) / "Samples" / "Python" / "MvImport")
-        # 本部署版本的工控机固定路径兜底。
-        candidates.append(Path("D:/colony_system/MvImport"))
-        # 找到包含完整 MVS Python 导入文件的目录就返回。
+            root = Path(env_root)
+            for base in (root, root.parent):
+                candidates.append(base / "Samples" / "64" / "Python" / "MvImport")
+                candidates.append(base / "Samples" / "Python" / "MvImport")
+                candidates.append(base / "Samples" / "aarch64" / "Python" / "MvImport")
+        candidates.append(Path("/opt/MVS/Samples/64/Python/MvImport"))
+        candidates.append(Path("/opt/MVS/Samples/Python/MvImport"))
+        candidates.append(Path("/opt/colony_system/MvImport"))
         required_files = ("MvCameraControl_class.py", "CameraParams_header.py", "CameraParams_const.py")
         for path in candidates:
             if all((path / filename).is_file() for filename in required_files):
                 return path
-        # 没找到时返回 None，后续 import 会失败并给出提示。
         return None
 
     def _make_mvs_device_info(self, mvs):

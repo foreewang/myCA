@@ -200,7 +200,7 @@ def _run_autofocus(camera: Any, cfg: dict[str, Any]):
         motor=motor,
         camera=camera,
         use_modbus_motor=use_modbus_motor,
-        motor_port=str(motor_cfg.get("port", "COM3")),
+        motor_port=str(motor_cfg.get("port", "/dev/ttyUSB0")),
         motor_baudrate=int(motor_cfg.get("baudrate", 115200)),
         focus_slave=int(motor_cfg.get("focus_slave", 3)),
         min_pos=min_pos,
@@ -320,7 +320,7 @@ def _run_motor_status(cfg: Mapping[str, Any]) -> None:
 
     # 创建电机对象；后面只读当前位置，不发送移动命令。
     motor = ModbusFocusMotor(
-        port=str(motor_cfg.get("port", "COM3")),
+        port=str(motor_cfg.get("port", "/dev/ttyUSB0")),
         baudrate=int(motor_cfg.get("baudrate", 115200)),
         slave=int(motor_cfg.get("focus_slave", 3)),
         min_pos=min_pos,

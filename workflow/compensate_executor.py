@@ -10,6 +10,7 @@ from workflow.camera_executor import capture_single_image
 from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT
 from workflow.stage_executor import move_to_absolute_with_approach
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
@@ -180,7 +181,7 @@ def _move_to_compensate_target(
     if bool(runtime_guard.get("enabled", False)) and bool(runtime_guard.get("abort_on_motion_failure", True)):
         arrival_tolerance = int(runtime_guard.get("max_err_to_target_pulse", 3000))
     result = move_to_absolute_with_approach(
-        port=motion.get("port", "COM3"),
+        port=motion.get("port", DEFAULT_MODBUS_PORT),
         x_target=target_x,
         y_target=target_y,
         profile_vel=int(motion["profile_vel"]),

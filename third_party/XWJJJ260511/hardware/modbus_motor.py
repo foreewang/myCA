@@ -36,8 +36,8 @@ class ModbusFocusMotor(MotorBase):
     def __init__(
         self,
         *,
-        # 电机串口号，Windows 下一般是 COM3、COM4 这种名字。
-        port: str = "COM3",
+        # 电机串口号，Linux 工控机一般为 /dev/ttyUSB0，也可用 /dev/serial/by-id/ 下的稳定名。
+        port: str = "/dev/ttyUSB0",
         # 串口波特率，必须和电机驱动器设置一致。
         baudrate: int = 115200,
         # Modbus 从站号，也就是当前聚焦轴驱动器的站号。
@@ -60,7 +60,7 @@ class ModbusFocusMotor(MotorBase):
         """初始化聚焦电机。
 
         参数说明：
-        - port: 串口号，例如 COM3。
+        - port: 串口号，例如 /dev/ttyUSB0。
         - baudrate: 波特率，需要和驱动器一致。
         - slave: Modbus 从站号。你现在的聚焦轴示例里是 slave=3。
         - min_pos/max_pos: 自动对焦允许搜索的安全位置范围。

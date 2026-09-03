@@ -13,6 +13,7 @@ from workflow.path_guard import CONFIG_ROOT, DATA_ROOT, OUTPUTS_ROOT, PROJECT_RO
 _TRUE_VALUES = {"1", "true", "yes", "on", "prod", "production"}
 _FALSE_VALUES = {"0", "false", "no", "off", "debug", "development"}
 _WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"[A-Za-z]:[\\/][^\s,;)\]}'\"]+")
+_POSIX_ABSOLUTE_PATH_RE = re.compile(r"(?<![A-Za-z:])(/[^\s,;)\]}'\"<]+/[^\s,;)\]}'\"<]+)")
 _TASK_ID_KV_RE = re.compile(r"(?i)\b(task_id)\s*=\s*(['\"]?)([^,\s;)}\]'\"]+)\2")
 _TASK_ID_JSON_RE = re.compile(r"(?i)([\"']task_id[\"']\s*:\s*[\"'])([^\"']+)([\"'])")
 
@@ -61,7 +62,8 @@ def _redacted_path_label(raw_path: str) -> str:
 
 
 def _redact_paths(text: str) -> str:
-    return _WINDOWS_ABSOLUTE_PATH_RE.sub(lambda match: _redacted_path_label(match.group(0)), text)
+    text = _WINDOWS_ABSOLUTE_PATH_RE.sub(lambda match: _redacted_path_label(match.group(0)), text)
+    return _POSIX_ABSOLUTE_PATH_RE.sub(lambda match: _redacted_path_label(match.group(0)), text)
 
 
 def _task_hash(task_id: str) -> str:

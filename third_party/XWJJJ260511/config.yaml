@@ -19,7 +19,7 @@ camera:
   serial_number: DA8583237
   ip: 192.168.0.66
   net_export_ip: 192.168.0.10
-  mvs_sdk_path: D:/colony_system/MvImport
+  mvs_sdk_path: /opt/MVS/Samples/64/Python/MvImport
   opencv_index: 0
   # 曝光控制：
   # - exposure_auto 留空表示不改相机当前设置
@@ -41,7 +41,7 @@ motor:
   type: modbus
 
   # Modbus 真实电机参数，仅 motor.type=modbus 时生效
-  port: COM3
+  port: /dev/ttyUSB0
   baudrate: 115200
   focus_slave: 3
 

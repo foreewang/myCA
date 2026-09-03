@@ -66,16 +66,16 @@ vision.vision.detect_pipeline:process_image
 
 模型后端：
 
-```powershell
-python vision/run_detect.py path\to\image.bmp --backend model `
-  --model-dir D:/colony_system/vision/models/ipsc_4x/production --provider cuda `
+```bash
+python vision/run_detect.py path/to/image.bmp --backend model \
+  --model-dir /opt/colony_system/vision/models/ipsc_4x/production --provider cuda \
   --out-dir data/vision_debug
 ```
 
 旧规则算法：
 
-```powershell
-python vision/run_detect.py path\to\image.bmp --backend legacy --out-dir data/vision_debug
+```bash
+python vision/run_detect.py path/to/image.bmp --backend legacy --out-dir data/vision_debug
 ```
 
 任务 JSON 里的检测字段见 [任务与命令行](tasks.md)。

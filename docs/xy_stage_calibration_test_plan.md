@@ -30,12 +30,12 @@
 
 ## 2. 部署包静态检查
 
-部署支线不包含开发测试套件。在 `D:\colony_system` 使用项目虚拟环境执行静态编译和配置校验：
+部署支线不包含开发测试套件。在 `/opt/colony_system` 使用项目虚拟环境执行静态编译和配置校验：
 
-```powershell
-Set-Location D:\colony_system
-.\.venv\Scripts\python.exe -m compileall -q workflow devices vision third_party
-.\.venv\Scripts\python.exe -m workflow.config_validator --plates config/plates.yaml --handoff config/handoff.yaml --camera config/camera.yaml --autofocus config/autofocus.yaml --objectives config/objectives.yaml
+```bash
+cd /opt/colony_system
+.venv/bin/python -m compileall -q workflow devices vision third_party
+.venv/bin/python -m workflow.config_validator --plates config/plates.yaml --handoff config/handoff.yaml --camera config/camera.yaml --autofocus config/autofocus.yaml --objectives config/objectives.yaml
 ```
 
 完整自动化回归应在 `improve` 开发支线执行；这里的检查只确认部署文件可导入且现场 YAML 通过校验，不能替代硬件验收。
@@ -53,14 +53,14 @@ Set-Location D:\colony_system
 
 X 轴 10 mm 往复：
 
-```powershell
-C:\miniforge3\envs\ca\python.exe tools/stage_reciprocation_accuracy.py --axis x --point-a-x 5000000 --point-a-y 0 --point-b-x 5655360 --point-b-y 0 --cycles 10 --warmup-cycles 1 --profile-vel 100000 --plate-type 24-well --execute
+```bash
+.venv/bin/python tools/stage_reciprocation_accuracy.py --axis x --point-a-x 5000000 --point-a-y 0 --point-b-x 5655360 --point-b-y 0 --cycles 10 --warmup-cycles 1 --profile-vel 100000 --plate-type 24-well --execute
 ```
 
 Y 轴 10 mm 往复：
 
-```powershell
-C:\miniforge3\envs\ca\python.exe tools/stage_reciprocation_accuracy.py --axis y --point-a-x 5000000 --point-a-y 0 --point-b-x 5000000 --point-b-y 1310720 --cycles 10 --warmup-cycles 1 --profile-vel 100000 --plate-type 24-well --execute
+```bash
+.venv/bin/python tools/stage_reciprocation_accuracy.py --axis y --point-a-x 5000000 --point-a-y 0 --point-b-x 5000000 --point-b-y 1310720 --cycles 10 --warmup-cycles 1 --profile-vel 100000 --plate-type 24-well --execute
 ```
 
 验收要求：

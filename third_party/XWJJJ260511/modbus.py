@@ -76,18 +76,18 @@ class ModbusRTUClient:
     REG_DEC_38C_HIGH = 0x38C            # 减速度高16位
     REG_DEC_TIME_38E = 0x38E            # 减速度时间（16位）
 
-    def __init__(self, port="COM3", baudrate=115200, bytesize=8, parity="N", stopbits=1, timeout=1):
+    def __init__(self, port="/dev/ttyUSB0", baudrate=115200, bytesize=8, parity="N", stopbits=1, timeout=1):
         """
         初始化 Modbus RTU 客户端。
 
-        :param port:     串口号，例如 "COM3" 或 "/dev/ttyUSB0"
+        :param port:     串口号，例如 "/dev/ttyUSB0" 或 "COM3"
         :param baudrate: 波特率，常见值 9600, 19200, 115200 等
         :param bytesize: 数据位，通常为 8
         :param parity:   校验位，"N" 无校验，"E" 偶校验，"O" 奇校验
         :param stopbits: 停止位，1 或 2
         :param timeout:  串口通信超时时间（秒）
         """
-        # 保存串口号，例如 COM3。
+        # 保存串口号，例如 /dev/ttyUSB0。
         self.port = port
         # 保存波特率，例如 115200。
         self.baudrate = baudrate
@@ -119,7 +119,7 @@ class ModbusRTUClient:
             return False
         # 创建 Modbus RTU 串口客户端。
         self._client = ModbusSerialClient(
-            method="rtu", port=self.port, baudrate=self.baudrate,
+            port=self.port, baudrate=self.baudrate,
             bytesize=self.bytesize, parity=self.parity, stopbits=self.stopbits,
             timeout=self.timeout,
         )

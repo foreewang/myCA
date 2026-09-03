@@ -72,13 +72,13 @@ handoff：
 
 默认 dry-run，不连硬件。下面的坐标只演示格式，必须换成当前设备、且在软件安全限位内的点：
 
-```powershell
-python tools/stage_reciprocation_accuracy.py `
-  --axis x `
-  --plate-type 24-well `
-  --point-a-x 1000000 --point-a-y 1000000 `
-  --point-b-x 1200000 --point-b-y 1000000 `
-  --cycles 20 `
+```bash
+python tools/stage_reciprocation_accuracy.py \
+  --axis x \
+  --plate-type 24-well \
+  --point-a-x 1000000 --point-a-y 1000000 \
+  --point-b-x 1200000 --point-b-y 1000000 \
+  --cycles 20 \
   --warmup-cycles 2
 ```
 

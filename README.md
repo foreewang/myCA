@@ -31,7 +31,9 @@ colony_system/
 ├─ third_party/XWJJJ260511/  # 第三方自动对焦
 ├─ tools/                    # 发布门禁、标定与现场验收脚本
 ├─ tests/                    # 全业务软件回归套件
-├─ start_api.bat             # 工控机单实例启动脚本
+├─ start_api.sh             # Linux 工控机单实例启动脚本
+├─ start_api.bat            # Windows 兼容启动脚本
+├─ deploy/                  # systemd 单元等 Linux 部署文件
 └─ README.md
 ```
 
@@ -41,9 +43,9 @@ colony_system/
 
 1. 使用 64 位 Python 3.10，按目标机器选择 GPU 或 CPU 锁定环境（见 [环境与配置](docs/setup.md)）：
 
-```powershell
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements-lock-py310-gpu.txt
 python -m pip install -r requirements-test-lock-py310.txt
 python -m workflow.deployment_preflight
@@ -52,13 +54,13 @@ python tools/release_gate.py
 
 2. 改完 YAML 先校验：
 
-```powershell
+```bash
 python -m workflow.config_validator
 ```
 
 3. 本地跑采集，或启动 API（必须 `--workers 1`）：
 
-```powershell
+```bash
 python workflow/run_task.py --task data/task_capture_single_well.json
 uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1 --lifespan on --timeout-graceful-shutdown 45
 ```
@@ -69,7 +71,7 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1 --lifespa
 
 | 文档 | 内容 |
 | --- | --- |
-| [服务端口与启动说明](服务端口与启动说明.md) | `D:\colony_system` 部署、TCP 8000、启动与验收 |
+| [服务端口与启动说明](服务端口与启动说明.md) | `/opt/colony_system` 部署、TCP 8000、启动与验收 |
 | [环境与配置](docs/setup.md) | Python / 视觉运行时、相机与电机约定、YAML 校验 |
 | [任务与命令行](docs/tasks.md) | 任务字段、CLI 示例、补偿、输出目录 |
 | [HTTP API](docs/http-api.md) | 启停服务、任务队列、录像、往复扫描、日志 |

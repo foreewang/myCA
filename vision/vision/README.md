@@ -23,9 +23,9 @@ are hard errors and never cause an empty result or a silent legacy fallback.
 
 CLI example:
 
-```powershell
-python -m vision.run_detect image.bmp --backend model `
-  --model-dir D:/colony_system/vision/models/ipsc_4x/production --provider cuda `
+```bash
+python -m vision.run_detect image.bmp --backend model \
+  --model-dir /opt/colony_system/vision/models/ipsc_4x/production --provider cuda \
   --out-dir outputs/image_001
 ```
 

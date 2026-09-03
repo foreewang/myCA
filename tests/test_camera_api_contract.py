@@ -100,10 +100,12 @@ class CameraApiContractTests(unittest.TestCase):
         self.assertEqual(upper_bound.value, 15_000)
 
     def test_start_script_enforces_lifespan_and_bounded_graceful_shutdown(self) -> None:
-        script = (PROJECT_ROOT / "start_api.bat").read_text(encoding="utf-8")
+        script = (PROJECT_ROOT / "start_api.sh").read_text(encoding="utf-8")
         self.assertIn("--workers 1", script)
         self.assertIn("--lifespan on", script)
         self.assertIn("--timeout-graceful-shutdown 45", script)
+        self.assertIn("MVCAM_COMMON_RUNENV", script)
+        self.assertIn("LD_LIBRARY_PATH", script)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# D:/colony_system/config/objectives.yaml
+# /opt/colony_system/config/objectives.yaml
 # 物镜配置文件。
 # workflow/config_loader.py 会根据 task.objective_name 读取对应物镜的视野大小；
 # workflow/objective_executor.py 会根据 switch 配置执行真实物镜切换和调焦轴预定位。
@@ -102,7 +102,7 @@ hardware:
   # Modbus 串口配置，物镜轴和调焦轴共用该串口客户端。
   modbus:
     # 串口号，需要与物镜/调焦控制器实际连接的串口一致。
-    port: "COM3"
+    port: "/dev/ttyUSB0"
     # 串口波特率，需要与控制器参数一致。
     baudrate: 115200
 

@@ -1,4 +1,4 @@
-# D:/colony_system/config/plates.yaml
+# /opt/colony_system/config/plates.yaml
 # 培养板几何配置文件。
 # workflow/config_loader.py 会根据 task.plate_type 选择对应板型；
 # workflow/plate_geometry.py 和 workflow/scan_planner.py 会用这些参数把孔位名转换成位移台坐标。

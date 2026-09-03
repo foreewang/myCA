@@ -6,7 +6,7 @@ import ipaddress
 import math
 import re
 from dataclasses import dataclass
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping
 
 import yaml
@@ -1015,7 +1015,11 @@ def _validate_autofocus_output(base: str, output: Mapping[str, Any], issues: lis
 
 
 def _is_absolute_config_path(value: str) -> bool:
-    return Path(value).is_absolute() or PureWindowsPath(value).is_absolute()
+    return (
+        Path(value).is_absolute()
+        or PureWindowsPath(value).is_absolute()
+        or PurePosixPath(value).is_absolute()
+    )
 
 
 def _is_plain_number(value: Any) -> bool:

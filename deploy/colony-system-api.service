@@ -1,0 +1,23 @@
+[Unit]
+Description=Colony System API
+Documentation=file:/opt/colony_system/服务端口与启动说明.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/colony_system
+ExecStart=/opt/colony_system/start_api.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+KillMode=mixed
+KillSignal=SIGINT
+LimitNOFILE=65535
+# Uncomment after creating a dedicated account that can open the Modbus tty:
+# User=colony
+# Group=dialout
+# SupplementaryGroups=dialout video
+
+[Install]
+WantedBy=multi-user.target

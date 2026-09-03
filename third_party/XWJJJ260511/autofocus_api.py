@@ -122,7 +122,7 @@ def run_realtime_autofocus(
     # True 表示用真实 Modbus 电机；False 表示用虚拟电机。
     use_modbus_motor: bool = True,
     # 真实电机串口号。
-    motor_port: str = "COM3",
+    motor_port: str = "/dev/ttyUSB0",
     # 真实电机串口波特率。
     motor_baudrate: int = 115200,
     # 聚焦轴 Modbus 从站号。
@@ -176,7 +176,7 @@ def run_realtime_autofocus(
 
         result = run_realtime_autofocus(
             use_modbus_motor=True,
-            motor_port="COM3",
+            motor_port="/dev/ttyUSB0",
             focus_slave=3,
             objective="4x",
             focus_ranges={

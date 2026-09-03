@@ -295,7 +295,10 @@ def _camera_settings_match(left: Mapping[str, Any], right: Mapping[str, Any]) ->
 def _build_controller(settings: Mapping[str, Any]):
     if str(DEVICES_DIR) not in sys.path:
         sys.path.insert(0, str(DEVICES_DIR))
+    from mvs_runtime import ensure_mvs_native_libraries  # type: ignore
     from camera_controller import HikCameraController  # type: ignore
+
+    ensure_mvs_native_libraries()
 
     return HikCameraController(
         mvs_python_dir=settings.get("mvs_python_dir"),
@@ -371,6 +374,13 @@ def _camera_worker_main(command_connection) -> None:
     """Child process entry point.  Never call this function in the API process."""
 
     _configure_camera_worker_logging()
+    if str(DEVICES_DIR) not in sys.path:
+        sys.path.insert(0, str(DEVICES_DIR))
+    try:
+        from mvs_runtime import ensure_mvs_native_libraries  # type: ignore
+        ensure_mvs_native_libraries()
+    except Exception:
+        logger.exception("camera worker could not preload MVS native libraries")
     logger.info("camera worker booting pid=%s parent_pid=%s", os.getpid(), os.getppid())
     cam = None
     session_id: str | None = None

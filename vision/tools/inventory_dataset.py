@@ -45,7 +45,7 @@ def iter_image_paths(root: Path) -> Iterable[Path]:
 
 
 def read_image_metadata(path: Path) -> dict[str, Any]:
-    """Read only image header metadata; ``Path`` keeps Windows Unicode paths safe."""
+    """Read only image header metadata; ``Path`` keeps Unicode paths safe on Windows and Linux."""
 
     with Image.open(path) as image:
         width, height = image.size

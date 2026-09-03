@@ -1,4 +1,4 @@
-# D:/colony_system/config/camera.yaml
+# /opt/colony_system/config/camera.yaml
 # 主拍照相机配置文件。
 # workflow/config_loader.py 会读取顶层 camera 字段，workflow/run_task.py 会把其中的相机参数
 # 传给 workflow/camera_executor.py，用于打开海康相机、设置曝光/增益并保存采集图像。
@@ -9,9 +9,10 @@ camera:
   # 当 serial_number 为 null 时，程序按这个索引从已发现的相机列表中选择设备；0 通常表示第一台。
   device_index: 0
 
-  # MVS Python SDK import directory.
-  # Use forward slashes in YAML to avoid Windows backslash escaping issues.
-  mvs_python_dir: D:/colony_system/MvImport
+  # MVS Python SDK import directory from the Hikrobot Linux installer.
+  # Copy-only fallback is /opt/colony_system/MvImport; native .so files still
+  # come from /opt/MVS/lib/64 or /opt/MVS/lib/aarch64.
+  mvs_python_dir: /opt/MVS/Samples/64/Python/MvImport
 
   # 相机序列号。
   # null 表示不按序列号指定相机；如果现场有多台相机，建议填写具体序列号以避免选错设备。

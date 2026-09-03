@@ -30,6 +30,11 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Dict
 
+try:
+    from .mvs_runtime import DEFAULT_MVS_PYTHON_DIR, ensure_mvs_native_libraries
+except ImportError:  # imported as a top-level module after inserting devices/ on sys.path
+    from mvs_runtime import DEFAULT_MVS_PYTHON_DIR, ensure_mvs_native_libraries
+
 # 当前模块日志器
 logger = logging.getLogger(__name__)
 
@@ -38,8 +43,7 @@ class CameraSDKError(RuntimeError):
     """相机 SDK 相关异常。"""
     pass
 
-# DEFAULT_MVS_PYTHON_DIR = r"/opt/MVS/Samples/64/Python/MvImport"
-DEFAULT_MVS_PYTHON_DIR = r"D:\colony_system\MvImport"
+
 MVS_PIXEL_FORMAT_FALLBACKS = {
     "mono8": 0x01080001,
 }
@@ -201,7 +205,8 @@ class HikCameraController:
     MVS Python 模块默认从以下优先级寻找：
     1. 构造参数 mvs_python_dir
     2. 环境变量 MVS_PYTHON_DIR
-    3. DEFAULT_MVS_PYTHON_DIR
+    3. DEFAULT_MVS_PYTHON_DIR（Linux 工控机为 /opt/MVS/Samples/64/Python/MvImport）
+    导入前会预加载 /opt/MVS 下的原生 .so，避免仅设置 LD_LIBRARY_PATH 对已启动进程无效。
     """
 
     def __init__(
@@ -299,6 +304,8 @@ class HikCameraController:
         if self._sdk_loaded:
             return
 
+        ensure_mvs_native_libraries()
+
         candidate_dirs = []
         if self.mvs_python_dir:
             candidate_dirs.append(self.mvs_python_dir)
@@ -312,9 +319,14 @@ class HikCameraController:
             hdr_mod = importlib.import_module("CameraParams_header")
             const_mod = importlib.import_module("CameraParams_const")
         except Exception as e:
+            logger.exception(
+                "failed to import MVS Python modules from %s",
+                self.mvs_python_dir,
+            )
             raise CameraSDKError(
                 "无法导入海康 MVS Python 模块。请确认 MvImport 路径正确。\n"
                 f"当前尝试路径: {self.mvs_python_dir}\n"
+                f"原因: {type(e).__name__}: {e}\n"
                 "建议检查：\n"
                 "1) MVS 已安装；\n"
                 "2) 目录中存在 MvCameraControl_class.py、CameraParams_header.py 和 CameraParams_const.py；\n"

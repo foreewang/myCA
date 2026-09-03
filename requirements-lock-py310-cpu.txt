@@ -1,6 +1,7 @@
-# Release-candidate lock for Windows x64 / CPython 3.10.
-# Generated and tested on 2026-09-02.  Promote the exact wheel set only after
-# the real-camera soak and CPU vision acceptance gates have passed.
+# Release-candidate lock for Linux x64 / CPython 3.10.
+# Generated as a Linux port of the 2026-09-02 Windows lock.  Promote the exact
+# wheel set only after the target IPC completes pip install, MVS, serial, and
+# CPU vision acceptance gates.
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.14.2
@@ -23,7 +24,6 @@ protobuf==7.36.1
 pydantic==2.13.5
 pydantic_core==2.46.5
 pymodbus==3.6.9
-pyreadline3==3.5.6
 pyserial==3.5
 python-dotenv==1.2.3
 PyYAML==6.0.3

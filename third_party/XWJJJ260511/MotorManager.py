@@ -246,7 +246,7 @@ x10_focal = -2998604
 # ========== 使用示例 ==========
 if __name__ == "__main__":
     # 创建 Modbus 客户端并连接
-    with ModbusRTUClient(port="COM3", baudrate=115200) as client:
+    with ModbusRTUClient(port="/dev/ttyUSB0", baudrate=115200) as client:
         # 为从站地址 1 的电机创建管理器
         # x 轴
         x = MotorManager(client, slave=1)

@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from workflow.config_validator import validate_plates_file
 from workflow.plate_geometry import compute_well_start
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT
 from workflow.stage_executor import StageMotionError, move_to_absolute
 
 
@@ -99,7 +100,7 @@ class StageReciprocationController:
             raise StageReciprocationError("max_cycles must be positive, or omitted to run until stop")
 
         return {
-            "port": str(cfg.get("port", "COM3")),
+            "port": str(cfg.get("port", DEFAULT_MODBUS_PORT)),
             "baudrate": int(cfg.get("baudrate", 115200)),
             "x_slave": int(cfg.get("x_slave", 1)),
             "y_slave": int(cfg.get("y_slave", 2)),

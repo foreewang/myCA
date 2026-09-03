@@ -4,9 +4,9 @@
 
 代码使用 `X | None` 等语法，最低需要 Python 3.10。工控机部署使用 64 位 Python 3.10，并在项目根目录建虚拟环境：
 
-```powershell
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 # 二选一；生产不得使用开放下限的 requirements.txt 重装
 python -m pip install -r requirements-lock-py310-gpu.txt
@@ -18,7 +18,7 @@ python -m workflow.deployment_preflight
 
 生成发布候选或在工控机执行软件门禁时，再叠加安装精确锁定的测试环境并运行完整回归：
 
-```powershell
+```bash
 python -m pip install -r requirements-test-lock-py310.txt
 python tools/release_gate.py
 ```
@@ -29,7 +29,7 @@ python tools/release_gate.py
 
 维护依赖时可分别解析下面两套运行时，不要在同一环境同时安装 GPU 和 CPU 的 onnxruntime；生产安装使用上一节的完整锁文件：
 
-```powershell
+```bash
 # 本机 RTX / Python 3.10（CUDA 12.1 + cuDNN 9.1，适配现有驱动）
 python -m pip install -r requirements-vision-runtime-gpu.txt
 
@@ -43,8 +43,8 @@ python -m pip install -r requirements-vision-runtime-cpu.txt
 
 ## 相机与 SDK
 
-- 工控机海康 MVS Python SDK 导入目录为 `D:/colony_system/MvImport`，并同时写入 `config/camera.yaml` 与 `config/autofocus.yaml` 的 `camera.mvs_python_dir`。
-- 该目录须由现场安装或复制 MVS SDK 文件后提供，其中必须包含 `MvCameraControl_class.py`、`CameraParams_header.py` 和 `CameraParams_const.py`；项目部署包不会自动生成 SDK 文件。
+- 工控机海康 MVS Python SDK 导入目录为 `/opt/MVS/Samples/64/Python/MvImport`，并同时写入 `config/camera.yaml` 与 `config/autofocus.yaml` 的 `camera.mvs_python_dir`。
+- 该目录须由现场安装海康 Linux MVS 后提供，其中必须包含 `MvCameraControl_class.py`、`CameraParams_header.py` 和 `CameraParams_const.py`；原生库位于 `/opt/MVS/lib/64` 或 `/opt/MVS/lib/aarch64`。项目部署包不会自动生成 SDK 文件。
 - 旧字段 `mvs_sdk_path` 只是兼容别名。
 - 选相机优先级：`serial_number` > `ip` > `device_index`。
 - 生产采集要求 `pixel_format: mono8`。
@@ -52,7 +52,7 @@ python -m pip install -r requirements-vision-runtime-cpu.txt
 
 ## 电机与坐标约定
 
-默认 Modbus RTU：`COM3`、`115200`、8N1。
+默认 Modbus RTU：`/dev/ttyUSB0`、`115200`、8N1。现场设备名不同时改 YAML，推荐 `/dev/serial/by-id/` 下的稳定名。运行用户需属于 `dialout` 组。
 
 | 电机 | 角色 |
 | --- | --- |
@@ -83,13 +83,13 @@ X/Y 是软件业务坐标，不按丝杆长短自动判断。
 
 改完 YAML 先跑机器校验：
 
-```powershell
+```bash
 python -m workflow.config_validator
 ```
 
 只校验一部分：
 
-```powershell
+```bash
 python -m workflow.config_validator --objectives config/objectives.yaml
 python -m workflow.config_validator --camera config/camera.yaml --objectives config/objectives.yaml
 python -m workflow.config_validator --plates config/plates.yaml

@@ -1,5 +1,5 @@
-# Release-candidate lock for Windows x64 / CPython 3.10 with CUDA 12.1.
-# The common application stack is software-tested.  Promote this GPU profile
+# Release-candidate lock for Linux x64 / CPython 3.10 with CUDA 12.1.
+# The nvidia-* wheels are Linux CUDA pip packages.  Promote this GPU profile
 # only after model loading and inference have passed on the target IPC.
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -30,7 +30,6 @@ protobuf==7.36.1
 pydantic==2.13.5
 pydantic_core==2.46.5
 pymodbus==3.6.9
-pyreadline3==3.5.6
 pyserial==3.5
 python-dotenv==1.2.3
 PyYAML==6.0.3

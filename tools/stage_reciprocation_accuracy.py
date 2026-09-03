@@ -30,6 +30,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT  # noqa: E402
+
 DEFAULT_PLATES_PATH = PROJECT_ROOT / "config" / "plates.yaml"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "stage_accuracy"
 
@@ -453,7 +455,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--point-b-y", type=int, required=True, help="B 点 Y 绝对坐标，单位 pulse")
     parser.add_argument("--cycles", type=int, default=10, help="测量周期数，A->B->A 为一周期")
     parser.add_argument("--warmup-cycles", type=int, default=1, help="不计入统计的预热周期数")
-    parser.add_argument("--port", default="COM3")
+    parser.add_argument("--port", default=DEFAULT_MODBUS_PORT)
     parser.add_argument("--baudrate", type=int, default=115200)
     parser.add_argument("--x-slave", type=int, default=1, help="软件 X/电机 1 从站号")
     parser.add_argument("--y-slave", type=int, default=2, help="软件 Y/电机 2 从站号")

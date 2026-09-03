@@ -5,6 +5,8 @@ from typing import Any, Dict
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT
+
 
 class StrictApiRequest(BaseModel):
     """Reject misspelled or undocumented top-level API fields."""
@@ -46,7 +48,7 @@ class CameraRecordStopRequest(StrictApiRequest):
 
 
 class StageReciprocationStartRequest(StrictApiRequest):
-    port: str = Field(default="COM3", min_length=1, max_length=64, description="XY 位移台 Modbus 串口号")
+    port: str = Field(default=DEFAULT_MODBUS_PORT, min_length=1, max_length=64, description="XY 位移台 Modbus 串口号")
     baudrate: int = Field(default=115200, ge=1200, le=921600, description="Modbus 串口波特率")
     x_slave: int = Field(default=1, ge=1, le=247, description="X 轴 Modbus 从站地址")
     y_slave: int = Field(default=2, ge=1, le=247, description="Y 轴 Modbus 从站地址")

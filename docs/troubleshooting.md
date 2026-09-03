@@ -4,9 +4,9 @@
 
 若 `uvicorn` 已在跑，改 `.py` 后必须重启服务。只改 JSON/YAML 或请求体通常不用重启。
 
-## PowerShell 发 JSON 报错
+## curl 发 JSON 报错
 
-用 `ConvertTo-Json` 和 `Invoke-RestMethod`，不要手写复杂转义。示例见 [HTTP API](http-api.md)。
+用文件或 here-doc 提交 JSON，不要在 shell 里手写复杂转义。示例见 [HTTP API](http-api.md)。
 
 ## overlay 仍是黄框红点
 
@@ -38,7 +38,7 @@
 ```json
 "compensate": {
   "closed_loop": {
-    "save_dir": "D:/colony_system/data/compensate_eval/closed_loop"
+    "save_dir": "/opt/colony_system/data/compensate_eval/closed_loop"
   }
 }
 ```
@@ -47,7 +47,7 @@
 
 ## 串口或相机被占用
 
-确认没有其它进程占用同一 COM 口或 MVS 相机。
+确认没有其它进程占用同一串口或 MVS 相机。
 
 录像期间 workflow 复用共享录像相机。非录像时，autofocus 和正式采集避免提前打开相机抢句柄。
 

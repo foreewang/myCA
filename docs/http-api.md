@@ -15,7 +15,7 @@
 
 启动命令：
 
-```powershell
+```bash
 uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
@@ -73,7 +73,7 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 
 ### 3.2 路径边界
 
-相对路径按项目根目录 `D:/colony_system` 解析。HTTP 层会把下列路径规范化成绝对路径：
+相对路径按项目根目录 `/opt/colony_system` 解析。HTTP 层会把下列路径规范化成绝对路径：
 
 | 允许目录 | 字段 |
 | --- | --- |
@@ -184,7 +184,7 @@ Host: 127.0.0.1:8000
     "worker_pid": 18120,
     "worker_restart_count": 1,
     "last_frame_progress_at": 1788232105.482,
-    "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
+    "saved_path": "/opt/colony_system/data/camera_records/recording.avi",
     "frame_rate": 10.0,
     "bitrate_kbps": 1000,
     "frame_count": 164,
@@ -192,8 +192,8 @@ Host: 127.0.0.1:8000
     "error": null,
     "error_code": null,
     "settings": {
-        "save_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
-        "mvs_python_dir": "D:/colony_system/MvImport",
+        "save_path": "/opt/colony_system/data/camera_records/recording.avi",
+        "mvs_python_dir": "/opt/MVS/Samples/64/Python/MvImport",
         "device_index": 0,
         "serial_number": "DA8583237",
         "camera_ip": "192.168.0.66",
@@ -228,7 +228,7 @@ Host: 127.0.0.1:8000
   "device_index": 0,
   "serial_number": "DA8583237",
   "ip": "192.168.0.66",
-  "mvs_python_dir": "D:/colony_system/MvImport",
+  "mvs_python_dir": "/opt/MVS/Samples/64/Python/MvImport",
   "pixel_format": "mono8",
   "exposure_us": 5000,
   "gain": 0.0,
@@ -247,7 +247,7 @@ Host: 127.0.0.1:8000
   "recording": false,
   "operation_id": "2fcfd0b1c10948cdb3c99d801d60dc27",
   "worker_pid": null,
-  "saved_path": "D:\\colony_system\\data\\camera_records\\backend_joint_001.avi",
+  "saved_path": "/opt/colony_system/data/camera_records/backend_joint_001.avi",
   "error": null,
   "error_code": null
 }
@@ -295,7 +295,7 @@ Content-Length: 0
   "recording": false,
   "operation_id": "2fcfd0b1c10948cdb3c99d801d60dc27",
   "worker_pid": 18120,
-  "saved_path": "D:\\colony_system\\data\\camera_records\\recording.avi",
+  "saved_path": "/opt/colony_system/data/camera_records/recording.avi",
   "video": {},
   "error": null,
   "error_code": null
@@ -327,12 +327,12 @@ API 侧超时、隔离和 PID 重建记录在 `logs/api_server.log`；子进程�
 
 生产监控至少告警以下条件：`state=faulted`；终态 `error` 非空；`worker_restart_count` 增加；同目录持续积累唯一 `*.part.avi`。单次重建成功后系统可继续服务，但重建次数增长通常说明相机链路、MVS 驱动、网卡或设备供电仍不稳定，不能只靠自动重试掩盖。
 
-真实硬件上线前必须连续验证：启停和录像中快照；启动/停止阶段高频查询状态；拔网线或模拟 SDK 卡死后的 PID 替换和再次启动；录像时执行兼容采集及自动对焦；服务退出时无 `Overlapped ... pending operation at deallocation`；正式 AVI 可播放且帧数、时长合理。软件故障注入测试不能替代这组现场验收。
+真实硬件上线前必须连续验证：启停和录像中快照；启动/停止阶段高频查询状态；拔网线或模拟 SDK 卡死后的 PID 替换和再次启动；录像时执行兼容采集及自动对焦；服务退出时无异常 `CancelledError` 或 lifespan 报错；正式 AVI 可播放且帧数、时长合理。软件故障注入测试不能替代这组现场验收。
 
 正常链路可先运行 20 轮自动验收；脚本会校验 202 契约、状态延迟、终态、视频元数据和非预期 PID 重建：
 
-```powershell
-python tools\camera_record_soak.py --cycles 20 --record-seconds 10 --serial-number DA8583237
+```bash
+python tools/camera_record_soak.py --cycles 20 --record-seconds 10 --serial-number DA8583237
 ```
 
 ## 6. 位移台固定往复接口
@@ -347,7 +347,7 @@ python tools\camera_record_soak.py --cycles 20 --record-seconds 10 --serial-numb
 
 ```json
 {
-  "port": "COM3",
+  "port": "/dev/ttyUSB0",
   "baudrate": 115200,
   "x_slave": 1,
   "y_slave": 2,
@@ -366,7 +366,7 @@ python tools\camera_record_soak.py --cycles 20 --record-seconds 10 --serial-numb
 
 | 字段 | 类型 | 默认值 | 范围 |
 | --- | --- | ---: | --- |
-| `port` | string | `COM3` | 长度 1–64 |
+| `port` | string | `/dev/ttyUSB0` | 长度 1–64 |
 | `baudrate` | integer | 115200 | 1200–921600 |
 | `x_slave` | integer | 1 | 1–247 |
 | `y_slave` | integer | 2 | 1–247 |
@@ -454,7 +454,7 @@ Host: 127.0.0.1:8000
   "observe_scope": "single_well",
   "objective_name": "4x",
   "message": "task accepted",
-  "result_json_path": "D:/colony_system/data/interface_tasks/capture_A1_20260827_001/result.json"
+  "result_json_path": "/opt/colony_system/data/interface_tasks/capture_A1_20260827_001/result.json"
 }
 ```
 
@@ -488,7 +488,7 @@ Host: 127.0.0.1:8000
 | --- | --- | --- |
 | `capture.save_dir` | 采集时必填 | 单孔为图片目录；多孔为基础目录，实际写入 `<save_dir>/<well>/images/` |
 | `capture.filename_pattern` | 采集时必填 | 支持 `task_id/well/index/row/col/vdown/vright/x/y` 格式化字段 |
-| `motion.port` | `COM3` | XY Modbus 串口 |
+| `motion.port` | `/dev/ttyUSB0` | XY Modbus 串口 |
 | `motion.baudrate` | 115200 | 波特率 |
 | `motion.x_slave/y_slave` | 1 / 2 | XY 从站 |
 | `motion.profile_vel/acc/dec` | 采集和补偿时必填 | 运行时要求正整数 |
@@ -524,7 +524,7 @@ Host: 127.0.0.1:8000
       "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
     },
     "motion": {
-      "port": "COM3",
+      "port": "/dev/ttyUSB0",
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
@@ -575,7 +575,7 @@ Host: 127.0.0.1:8000
       "filename_pattern": "{well}_{index:03d}_row{row:02d}_col{col:02d}.bmp"
     },
     "motion": {
-      "port": "COM3",
+      "port": "/dev/ttyUSB0",
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
@@ -682,7 +682,7 @@ Host: 127.0.0.1:8000
       "well_name": "C3"
     },
     "motion": {
-      "port": "COM3",
+      "port": "/dev/ttyUSB0",
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
@@ -812,7 +812,7 @@ Host: 127.0.0.1:8000
       "action": "load_in"
     },
     "motion": {
-      "port": "COM3",
+      "port": "/dev/ttyUSB0",
       "baudrate": 115200,
       "x_slave": 1,
       "y_slave": 2,
@@ -957,9 +957,9 @@ Host: 127.0.0.1:8000
 {
   "task_id": "pipeline_C3_C5_20260827_001",
   "well_name": "C3",
-  "image_dir": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/images",
-  "capture_result_json": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/scan_result.json",
-  "detect_result_json": "D:/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/detect_result.json",
+  "image_dir": "/opt/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/images",
+  "capture_result_json": "/opt/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/scan_result.json",
+  "detect_result_json": "/opt/colony_system/data/interface_tasks/pipeline_C3_C5_20260827_001/C3/detect_result.json",
   "compensate_result_json": null,
   "images": [
     "C3_001_row00_col00.bmp",

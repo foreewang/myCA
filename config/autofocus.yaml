@@ -1,4 +1,4 @@
-# D:/colony_system/config/autofocus.yaml
+# /opt/colony_system/config/autofocus.yaml
 # 生产环境自动对焦配置。
 # 本文件同时承担两类用途：
 # 1. workflow 层读取其中的启用状态和触发策略；
@@ -34,7 +34,7 @@ camera:
   # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
   net_export_ip: "192.168.0.10"
   # 海康 MVS Python SDK 的导入目录。
-  mvs_python_dir: D:/colony_system/MvImport
+  mvs_python_dir: /opt/MVS/Samples/64/Python/MvImport
 
   # 关闭自动曝光，使不同焦点位置的清晰度分数具有可比性。
   exposure_auto: false
@@ -56,7 +56,7 @@ motor:
   # 电机后端类型；当前只支持 Modbus。
   type: modbus
   # 调焦轴 Modbus 串口。
-  port: COM3
+  port: /dev/ttyUSB0
   # 调焦轴 Modbus 波特率。
   baudrate: 115200
   # 调焦细准焦电机从站号。
@@ -103,6 +103,6 @@ output:
   # 是否为每次运行创建带时间戳的输出目录。
   timestamp_folder: true
   # 最清晰图像保存路径；启用时间戳目录时会在派生目录中保存。
-  image_path: D:/colony_system/data/autofocus/sharpest.png
+  image_path: /opt/colony_system/data/autofocus/sharpest.png
   # 对焦过程日志保存路径；启用时间戳目录时会在派生目录中保存。
-  log_path: D:/colony_system/data/autofocus/focus_log.csv
+  log_path: /opt/colony_system/data/autofocus/focus_log.csv
