@@ -2,18 +2,31 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from typing import Any, Callable, Dict, Mapping
 
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient
+from workflow.hardware_guard import latch_hardware_unsafe
 
 logger = logging.getLogger(__name__)
 
 
 class StageMotionError(RuntimeError):
     """Raised when an XY stage move cannot be completed safely."""
+
+
+class StageMotionStopFailed(StageMotionError):
+    """Raised when one or more axes cannot confirm a requested quick stop."""
+
+
+class _StageMotionTriggerUnknown(StageMotionError):
+    """Internal marker for a trigger write whose execution is ambiguous."""
+
+
+_CANCEL_POLL_SLICE_S = 0.05
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -31,6 +44,8 @@ def _non_negative_float(value: Any, name: str) -> float:
         number = float(value)
     except Exception as exc:
         raise StageMotionError(f"{name} must be a number") from exc
+    if not math.isfinite(number):
+        raise StageMotionError(f"{name} must be finite")
     if number < 0:
         raise StageMotionError(f"{name} must be non-negative")
     return number
@@ -118,15 +133,47 @@ def _check_arrival_tolerance(
             raise StageMotionError(f"{axis} arrival error is too large: err={err}, tolerance={tolerance}")
 
 
-def _quick_stop_xy(x_motor: MotorManager | None, y_motor: MotorManager | None) -> None:
+def _stop_requested(stop_event: threading.Event | None) -> bool:
+    return stop_event is not None and bool(stop_event.is_set())
+
+
+def _wait_interruptibly(stop_event: threading.Event | None, duration_s: float) -> bool:
+    """Wait in short slices and return whether cancellation was requested."""
+
+    remaining_s = max(0.0, float(duration_s))
+    if _stop_requested(stop_event):
+        return True
+    while remaining_s > 0:
+        delay_s = min(_CANCEL_POLL_SLICE_S, remaining_s)
+        time.sleep(delay_s)
+        remaining_s -= delay_s
+        if _stop_requested(stop_event):
+            return True
+    return False
+
+
+def _quick_stop_xy(
+    x_motor: MotorManager | None,
+    y_motor: MotorManager | None,
+    *,
+    context: str = "stage motion",
+) -> None:
+    failures = []
     for axis_name, motor in (("x", x_motor), ("y", y_motor)):
         if motor is None:
             continue
         try:
             if not motor.client.quick_stop(motor.slave):
-                logger.warning("quick stop returned false for %s axis slave=%s", axis_name, motor.slave)
-        except Exception:
-            logger.exception("quick stop failed for %s axis slave=%s", axis_name, motor.slave)
+                failures.append(f"{axis_name} axis slave={motor.slave} returned false")
+        except BaseException as exc:
+            failures.append(f"{axis_name} axis slave={motor.slave} raised {type(exc).__name__}: {exc}")
+
+    if not failures:
+        return
+
+    message = f"XY quick stop could not be confirmed during {context}: {'; '.join(failures)}"
+    latch_hardware_unsafe("STAGE_QUICK_STOP_FAILED", message)
+    raise StageMotionStopFailed(message)
 
 
 def _ensure_xy_ready(x_motor: MotorManager, y_motor: MotorManager) -> None:
@@ -156,23 +203,38 @@ def _write_axis_pp_target(
         raise StageMotionError(f"{axis_name} axis failed to set target position")
 
 
-def _trigger_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+def _trigger_axis_pp(
+    motor: MotorManager,
+    *,
+    axis_name: str,
+    stop_event: threading.Event | None = None,
+) -> bool:
     client = motor.client
     slave = motor.slave
     if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION):
         raise StageMotionError(f"{axis_name} axis failed to clear PP trigger bit")
-    time.sleep(0.02)
-    if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10):
-        raise StageMotionError(f"{axis_name} axis failed to trigger PP move")
+    if _wait_interruptibly(stop_event, 0.02):
+        return False
+    try:
+        triggered = bool(
+            client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10)
+        )
+    except BaseException as exc:
+        raise _StageMotionTriggerUnknown(
+            f"{axis_name} axis PP trigger raised; the drive may already be moving"
+        ) from exc
+    if not triggered:
+        raise _StageMotionTriggerUnknown(
+            f"{axis_name} axis PP trigger was not acknowledged; the drive may already be moving"
+        )
+    return True
 
 
-def _finish_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+def _restore_axis_after_pp(motor: MotorManager, *, axis_name: str) -> None:
     client = motor.client
     slave = motor.slave
     if not client._restore_enabled_state(slave):
         raise StageMotionError(f"{axis_name} axis failed to restore enabled state")
-    if not client.quick_stop(slave):
-        raise StageMotionError(f"{axis_name} axis failed to quick stop after arrival")
 
 
 def _snapshot_positions(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, int]:
@@ -231,12 +293,12 @@ def _wait_xy_arrival(
 ) -> Dict[str, Any]:
     deadline = time.monotonic() + timeout_s
     poll_s = max(0.02, float(poll_s))
-    last_pos = _snapshot_positions(x_motor, y_motor)
+    last_pos: Dict[str, int] | None = None
     while True:
-        if stop_event is not None and stop_event.is_set():
-            _quick_stop_xy(x_motor, y_motor)
+        if _stop_requested(stop_event):
+            _quick_stop_xy(x_motor, y_motor, context="arrival cancellation")
             return {
-                "current": last_pos,
+                "current": dict(last_pos or {"x": None, "y": None}),
                 "stopped_by_request": True,
             }
 
@@ -245,6 +307,12 @@ def _wait_xy_arrival(
         _check_current_within_hard_limits(current=current, stage_limits=stage_limits)
         if progress_callback is not None:
             progress_callback(dict(current))
+        if _stop_requested(stop_event):
+            _quick_stop_xy(x_motor, y_motor, context="arrival cancellation")
+            return {
+                "current": dict(current),
+                "stopped_by_request": True,
+            }
         if abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance:
             return {
                 "current": current,
@@ -257,7 +325,13 @@ def _wait_xy_arrival(
                 "xy move timed out: "
                 f"target=({x_target},{y_target}), current=({last_pos['x']},{last_pos['y']}), timeout_s={timeout_s}"
             )
-        time.sleep(poll_s)
+        remaining_s = max(0.0, deadline - time.monotonic())
+        if _wait_interruptibly(stop_event, min(poll_s, remaining_s)):
+            _quick_stop_xy(x_motor, y_motor, context="arrival cancellation")
+            return {
+                "current": dict(last_pos),
+                "stopped_by_request": True,
+            }
 
 
 def snapshot_axis(motor: MotorManager, axis_name: str) -> Dict[str, Any]:
@@ -275,6 +349,78 @@ def snapshot_xy(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, Any]:
     return {
         "x": snapshot_axis(x_motor, "x"),
         "y": snapshot_axis(y_motor, "y"),
+    }
+
+
+def _motion_params(
+    *,
+    port: str,
+    baudrate: int,
+    x_slave: int,
+    y_slave: int,
+    profile_vel: int,
+    profile_acc: int,
+    profile_dec: int,
+    settle_s: float,
+    timeout_s: float,
+    poll_s: float,
+    arrival_tolerance_pulse: int | None,
+) -> Dict[str, Any]:
+    return {
+        "port": port,
+        "baudrate": baudrate,
+        "x_slave": x_slave,
+        "y_slave": y_slave,
+        "profile_vel": profile_vel,
+        "profile_acc": profile_acc,
+        "profile_dec": profile_dec,
+        "settle_s": settle_s,
+        "timeout_s": timeout_s,
+        "poll_s": poll_s,
+        "arrival_tolerance_pulse": arrival_tolerance_pulse,
+        "move_mode": "simultaneous_pp",
+    }
+
+
+def _stopped_move_result(
+    *,
+    x_target: int,
+    y_target: int,
+    x_slave: int,
+    y_slave: int,
+    motion_params: Mapping[str, Any],
+    before: Mapping[str, Any] | None = None,
+    current: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    current = dict(current or {})
+    before_result = (
+        dict(before)
+        if before is not None
+        else {
+            "x": {"axis": "x", "slave": x_slave, "current_pos": None, "statusword": None},
+            "y": {"axis": "y", "slave": y_slave, "current_pos": None, "statusword": None},
+        }
+    )
+    return {
+        "target": {"x": x_target, "y": y_target},
+        "before": before_result,
+        "after": {
+            "x": {"axis": "x", "slave": x_slave, "current_pos": current.get("x"), "statusword": None},
+            "y": {"axis": "y", "slave": y_slave, "current_pos": current.get("y"), "statusword": None},
+        },
+        "err_to_target": {
+            "x": None if current.get("x") is None else int(current["x"]) - x_target,
+            "y": None if current.get("y") is None else int(current["y"]) - y_target,
+        },
+        "stopped_by_request": True,
+        "motion_params": dict(motion_params),
+    }
+
+
+def _positions_from_snapshot(snapshot: Mapping[str, Any]) -> Dict[str, int | None]:
+    return {
+        axis: snapshot.get(axis, {}).get("current_pos")
+        for axis in ("x", "y")
     }
 
 
@@ -325,18 +471,67 @@ def move_to_absolute(
         stage_limits=stage_limits,
         label="target",
     )
+    move_params = _motion_params(
+        port=port,
+        baudrate=baudrate,
+        x_slave=x_slave,
+        y_slave=y_slave,
+        profile_vel=profile_vel,
+        profile_acc=profile_acc,
+        profile_dec=profile_dec,
+        settle_s=settle_s,
+        timeout_s=timeout_s,
+        poll_s=poll_s,
+        arrival_tolerance_pulse=arrival_tolerance_pulse,
+    )
+
+    # A request that was already canceled must not even open the motion bus.
+    if _stop_requested(stop_event):
+        return _stopped_move_result(
+            x_target=x_target,
+            y_target=y_target,
+            x_slave=x_slave,
+            y_slave=y_slave,
+            motion_params=move_params,
+        )
 
     x_motor: MotorManager | None = None
     y_motor: MotorManager | None = None
     with ModbusRTUClient(port=port, baudrate=baudrate) as client:
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
+        hardware_armed = False
+        motion_may_be_active = False
         try:
             before = snapshot_xy(x_motor, y_motor)
             _require_axis_position(before["x"], "x")
             _require_axis_position(before["y"], "y")
+            before_positions = _positions_from_snapshot(before)
 
+            if _stop_requested(stop_event):
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=before_positions,
+                )
+
+            hardware_armed = True
             _ensure_xy_ready(x_motor, y_motor)
+            if _stop_requested(stop_event):
+                _quick_stop_xy(x_motor, y_motor, context="cancellation before target setup")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=before_positions,
+                )
             _write_axis_pp_target(
                 x_motor,
                 target_pos=x_target,
@@ -345,6 +540,17 @@ def move_to_absolute(
                 profile_dec=profile_dec,
                 axis_name="x",
             )
+            if _stop_requested(stop_event):
+                _quick_stop_xy(x_motor, y_motor, context="cancellation during target setup")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=before_positions,
+                )
             _write_axis_pp_target(
                 y_motor,
                 target_pos=y_target,
@@ -353,9 +559,63 @@ def move_to_absolute(
                 profile_dec=profile_dec,
                 axis_name="y",
             )
-            time.sleep(0.02)
-            _trigger_axis_pp(x_motor, axis_name="x")
-            _trigger_axis_pp(y_motor, axis_name="y")
+            if _wait_interruptibly(stop_event, 0.02):
+                _quick_stop_xy(x_motor, y_motor, context="cancellation before PP trigger")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=before_positions,
+                )
+            try:
+                x_triggered = _trigger_axis_pp(x_motor, axis_name="x", stop_event=stop_event)
+            except _StageMotionTriggerUnknown:
+                _quick_stop_xy(x_motor, y_motor, context="ambiguous x-axis PP trigger")
+                message = "X 轴运动触发结果未知，虽已发送停止命令但无法证明机构停稳"
+                latch_hardware_unsafe("STAGE_MOTION_STATE_UNKNOWN", message)
+                raise StageMotionStopFailed(message)
+            if not x_triggered:
+                _quick_stop_xy(x_motor, y_motor, context="cancellation before x-axis PP trigger")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=before_positions,
+                )
+            motion_may_be_active = True
+            if _stop_requested(stop_event):
+                _quick_stop_xy(x_motor, y_motor, context="cancellation between XY PP triggers")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                )
+            try:
+                y_triggered = _trigger_axis_pp(y_motor, axis_name="y", stop_event=stop_event)
+            except _StageMotionTriggerUnknown:
+                _quick_stop_xy(x_motor, y_motor, context="ambiguous y-axis PP trigger")
+                message = "Y 轴运动触发结果未知，虽已发送停止命令但无法证明机构停稳"
+                latch_hardware_unsafe("STAGE_MOTION_STATE_UNKNOWN", message)
+                raise StageMotionStopFailed(message)
+            if not y_triggered:
+                _quick_stop_xy(x_motor, y_motor, context="cancellation before y-axis PP trigger")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                )
 
             wait_result = _wait_xy_arrival(
                 x_motor=x_motor,
@@ -371,40 +631,45 @@ def move_to_absolute(
             )
             if wait_result.get("stopped_by_request"):
                 current = dict(wait_result.get("current") or {})
-                return {
-                    "target": {"x": x_target, "y": y_target},
-                    "before": before,
-                    "after": {
-                        "x": {"axis": "x", "slave": x_slave, "current_pos": current.get("x"), "statusword": None},
-                        "y": {"axis": "y", "slave": y_slave, "current_pos": current.get("y"), "statusword": None},
-                    },
-                    "err_to_target": {
-                        "x": None if current.get("x") is None else int(current["x"]) - x_target,
-                        "y": None if current.get("y") is None else int(current["y"]) - y_target,
-                    },
-                    "stopped_by_request": True,
-                    "motion_params": {
-                        "port": port,
-                        "baudrate": baudrate,
-                        "x_slave": x_slave,
-                        "y_slave": y_slave,
-                        "profile_vel": profile_vel,
-                        "profile_acc": profile_acc,
-                        "profile_dec": profile_dec,
-                        "settle_s": settle_s,
-                        "timeout_s": timeout_s,
-                        "poll_s": poll_s,
-                        "arrival_tolerance_pulse": arrival_tolerance_pulse,
-                        "move_mode": "simultaneous_pp",
-                    },
-                }
-            _finish_axis_pp(x_motor, axis_name="x")
-            _finish_axis_pp(y_motor, axis_name="y")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=current,
+                )
+            _restore_axis_after_pp(x_motor, axis_name="x")
+            _restore_axis_after_pp(y_motor, axis_name="y")
+            _quick_stop_xy(x_motor, y_motor, context="normal arrival")
 
-            time.sleep(settle_s)
+            arrival_current = dict(wait_result.get("current") or {})
+            if _wait_interruptibly(stop_event, settle_s):
+                _quick_stop_xy(x_motor, y_motor, context="settle cancellation")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current=arrival_current,
+                )
             after = snapshot_xy(x_motor, y_motor)
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
+            if _stop_requested(stop_event):
+                _quick_stop_xy(x_motor, y_motor, context="cancellation after settle")
+                return _stopped_move_result(
+                    x_target=x_target,
+                    y_target=y_target,
+                    x_slave=x_slave,
+                    y_slave=y_slave,
+                    motion_params=move_params,
+                    before=before,
+                    current={"x": after_x, "y": after_y},
+                )
             cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
             err_to_target = {
@@ -426,23 +691,20 @@ def move_to_absolute(
                 },
                 "after": after,
                 "err_to_target": err_to_target,
-                "motion_params": {
-                    "port": port,
-                    "baudrate": baudrate,
-                    "x_slave": x_slave,
-                    "y_slave": y_slave,
-                    "profile_vel": profile_vel,
-                    "profile_acc": profile_acc,
-                    "profile_dec": profile_dec,
-                    "settle_s": settle_s,
-                    "timeout_s": timeout_s,
-                    "poll_s": poll_s,
-                    "arrival_tolerance_pulse": arrival_tolerance_pulse,
-                    "move_mode": "simultaneous_pp",
-                },
+                "motion_params": move_params,
             }
-        except Exception:
-            _quick_stop_xy(x_motor, y_motor)
+        except StageMotionStopFailed:
+            raise
+        except BaseException as exc:
+            if hardware_armed:
+                _quick_stop_xy(x_motor, y_motor, context="motion exception cleanup")
+            if motion_may_be_active:
+                message = (
+                    "XY 运动启动后发生异常，虽已发送停止命令但无法证明机构停稳："
+                    f"{type(exc).__name__}: {exc}"
+                )
+                latch_hardware_unsafe("STAGE_MOTION_STATE_UNKNOWN", message)
+                raise StageMotionStopFailed(message) from exc
             raise
 
 

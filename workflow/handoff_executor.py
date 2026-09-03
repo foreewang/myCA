@@ -1,9 +1,10 @@
 """根据交接配置驱动位移台移动到指定交接点并校验到位误差。"""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from workflow.stage_executor import StageMotionError, move_to_absolute
+from workflow.task_control import CancellationSignal, TaskCanceled
 
 
 class HandoffError(RuntimeError):
@@ -106,7 +107,10 @@ def execute_handoff_task(
     task_cfg: Dict[str, Any],
     handoff_root_cfg: Dict[str, Any],
     plate_cfg: Dict[str, Any] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> Dict[str, Any]:
+    if cancel_check is not None and bool(cancel_check()):
+        raise TaskCanceled("handoff task canceled before stage move")
     root_cfg = _get_root_cfg(handoff_root_cfg)
 
     task_id = str(task_cfg.get("task_id") or "")
@@ -141,9 +145,15 @@ def execute_handoff_task(
             poll_s=motion_cfg["poll_s"],
             arrival_tolerance_pulse=motion_cfg["arrival_tolerance_pulse"],
             stage_limits=(plate_cfg or {}).get("stage_limits"),
+            stop_event=CancellationSignal(cancel_check) if cancel_check is not None else None,
         )
     except StageMotionError as exc:
         raise HandoffError(str(exc)) from exc
+
+    if move_result.get("stopped_by_request"):
+        raise TaskCanceled("handoff stage move stopped by request")
+    if cancel_check is not None and bool(cancel_check()):
+        raise TaskCanceled("handoff task canceled after stage move")
 
     return {
         "task_id": task_id,

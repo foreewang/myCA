@@ -22,7 +22,7 @@ import time
 from dataclasses import dataclass
 from collections.abc import Mapping
 # List/Optional/Tuple 用于类型标注，方便看懂参数和返回值。
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 # OpenCV 用来保存最终最清晰图像。
 import cv2
@@ -33,6 +33,7 @@ import numpy as np
 from .focus import auto_focus, compute_focus_metric
 # MotorBase 是统一电机接口；VirtualMotor 是不控制真实硬件的虚拟电机。
 from .hardware import MotorBase, VirtualMotor
+from .modbus import MotionCanceled
 # HikrobotCamera 是统一相机接口，内部支持 MVS 或 OpenCV。
 from .hardware.hikrobot_camera import HikrobotCamera
 
@@ -113,6 +114,18 @@ class AutoFocusResult:
     """本次自动对焦耗时，单位秒。"""
 
 
+class AutoFocusCanceled(RuntimeError):
+    """Raised after a requested autofocus cancellation has stopped motion."""
+
+
+class _CallbackStopSignal:
+    def __init__(self, checker: Callable[[], bool]) -> None:
+        self._checker = checker
+
+    def is_set(self) -> bool:
+        return bool(self._checker())
+
+
 def run_realtime_autofocus(
     *,
     # 外部已经创建好的电机对象；为空时函数内部自动创建。
@@ -141,6 +154,7 @@ def run_realtime_autofocus(
     profile_acc: int = 100000,
     # 电机 PP 位置模式减速度。
     profile_dec: int = 100000,
+    motor_move_timeout_s: float = 30.0,
     # 搜索位置收敛精度。
     tol: float = 5,
     # 最大搜索迭代次数。
@@ -169,6 +183,7 @@ def run_realtime_autofocus(
     camera_exposure_auto: Optional[bool] = None,
     # 手动曝光时间，单位微秒；None 表示不改相机当前设置。
     camera_exposure_time_us: Optional[float] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> AutoFocusResult:
     """执行一次实时自动对焦。
 
@@ -203,6 +218,26 @@ def run_realtime_autofocus(
     - camera_exposure_auto/camera_exposure_time_us: 自动创建相机时的曝光配置。
     """
 
+    def raise_if_canceled(stage: str) -> None:
+        if cancel_check is not None and bool(cancel_check()):
+            raise AutoFocusCanceled(f"autofocus canceled: {stage}")
+
+    def wait_settle_or_cancel(delay_s: float, stage: str) -> None:
+        deadline = time.monotonic() + max(0.0, float(delay_s))
+        while True:
+            raise_if_canceled(stage)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            time.sleep(min(remaining, 0.05))
+
+    def move_motor(position: float, stage: str) -> None:
+        try:
+            motor.move_to(position)
+        except MotionCanceled as exc:
+            raise AutoFocusCanceled(f"autofocus canceled: {stage}") from exc
+
+    raise_if_canceled("before_setup")
     if focus_ranges is not None:
         min_pos, max_pos = _resolve_focus_range(objective, focus_ranges)
 
@@ -241,6 +276,8 @@ def run_realtime_autofocus(
                 profile_vel=profile_vel,
                 profile_acc=profile_acc,
                 profile_dec=profile_dec,
+                timeout=motor_move_timeout_s,
+                stop_event=_CallbackStopSignal(cancel_check) if cancel_check is not None else None,
             )
         else:
             # 虚拟电机只记录位置，不会写串口和寄存器，适合离线测试算法。
@@ -258,14 +295,17 @@ def run_realtime_autofocus(
     def move_and_capture(position: float) -> float:
         """搜索算法每试一个位置，就会调用一次这个函数。"""
 
+        raise_if_canceled("before_move")
         # 1. 电机移动到指定位置。
-        motor.move_to(position)
+        move_motor(position, "move")
+        raise_if_canceled("after_move")
 
         # 2. 等机械和画面稳定。
-        time.sleep(settle_sec)
+        wait_settle_or_cancel(settle_sec, "settle")
 
         # 3. 相机采一帧。
         frame = camera.capture()
+        raise_if_canceled("after_capture")
 
         # 4. 算清晰度。这里用 focus.py 里的 Laplacian 方差。
         value = compute_focus_metric(frame, center_roi=roi, downsample=downsample)
@@ -290,9 +330,12 @@ def run_realtime_autofocus(
         elapsed = time.perf_counter() - t0
 
         # 搜索结束后，再把电机移动到最佳位置，并重新采一帧作为最终结果图。
-        motor.move_to(best_pos)
-        time.sleep(settle_sec)
+        raise_if_canceled("before_final_move")
+        move_motor(best_pos, "final_move")
+        raise_if_canceled("after_final_move")
+        wait_settle_or_cancel(settle_sec, "final_settle")
         frame = camera.capture()
+        raise_if_canceled("after_final_capture")
 
         # 如果指定了输出路径，就保存最终最佳位置处重新采集的一帧。
         if output_path:

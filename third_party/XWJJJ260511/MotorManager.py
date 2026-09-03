@@ -15,7 +15,7 @@ import time
 
 # 假设已有 modbus 模块中的 ModbusRTUClient 类
 # ModbusRTUClient 负责真正读写驱动器寄存器。
-from .modbus import ModbusRTUClient
+from .modbus import ModbusRTUClient, MotionCanceled, MotionStopFailed
 
 # 当前模块日志对象，前缀会显示 XWJJJ260511.MotorManager。
 logger = logging.getLogger(__name__)
@@ -98,7 +98,8 @@ class MotorManager:
         profile_vel: int,
         profile_acc: int,
         profile_dec: int,
-        timeout: float = 120.0
+        timeout: float = 120.0,
+        stop_event=None,
     ) -> Optional[int]:
         """
         轮廓位置模式下的绝对运动。
@@ -111,12 +112,42 @@ class MotorManager:
         :param timeout:      运动超时时间（秒）
         :return:             位置误差（当前位置-指令位置），失败返回 None
         """
+        if stop_event is not None and stop_event.is_set():
+            raise MotionCanceled(f"position move canceled before enable for slave={self.slave}")
         # 绝对位置运动必须先切到 PP 模式并确保使能。
         if not self._ensure_mode_and_enable(self.MODE_PROFILE_POSITION,True):
             return None
+        try:
+            canceled_after_enable = stop_event is not None and stop_event.is_set()
+        except BaseException as exc:
+            try:
+                self.client.quick_stop(self.slave)
+            except BaseException as stop_exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after cancellation check failure for slave={self.slave}"
+                ) from stop_exc
+            raise MotionStopFailed(
+                f"cancellation check failed after enable for slave={self.slave}; motor state is unknown"
+            ) from exc
+        if canceled_after_enable:
+            try:
+                stopped = bool(self.client.quick_stop(self.slave))
+            except BaseException as exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after enable for slave={self.slave}"
+                ) from exc
+            if not stopped:
+                raise MotionStopFailed(f"quick_stop failed after enable for slave={self.slave}")
+            raise MotionCanceled(f"position move canceled after enable for slave={self.slave}")
         # 交给底层客户端写寄存器并等待到位。
         return self.client.move_absolute_pp(
-            self.slave, target_pos, profile_vel, profile_acc, profile_dec, timeout
+            self.slave,
+            target_pos,
+            profile_vel,
+            profile_acc,
+            profile_dec,
+            timeout,
+            stop_event=stop_event,
         )
 
     def pp_relative_move(

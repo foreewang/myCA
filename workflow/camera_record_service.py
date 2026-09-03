@@ -5,9 +5,17 @@ import os
 from typing import Any, Callable, Dict
 
 from workflow.api_models import CameraRecordStartRequest
-from workflow.config_validator import ConfigValidationError, resolve_mvs_python_dir, validate_camera_config, validate_camera_file
+from workflow.config_validator import (
+    ConfigValidationError,
+    resolve_mvs_python_dir,
+    validate_camera_config,
+    validate_camera_file,
+)
 from workflow.hardware_guard import (
     acquire_hardware_operation,
+    begin_camera_record_stop_transition,
+    cancel_camera_record_stop_transition,
+    confirm_hardware_operation,
     current_hardware_owners,
     release_hardware_operation,
 )
@@ -106,7 +114,8 @@ def start_camera_recording(
     *,
     settings_loader: Callable[[CameraRecordStartRequest], Dict[str, Any]] = load_camera_settings_for_recording,
 ) -> Dict[str, Any]:
-    from workflow.camera_executor import start_recording_camera
+    from workflow.camera_executor import recording_camera_is_busy, start_recording_camera
+    from camera_controller import CameraSDKError, resolve_record_grab_timeout_ms
 
     try:
         settings = settings_loader(req)
@@ -117,8 +126,21 @@ def start_camera_recording(
                 "CAMERA_RECORD_SAVE_PATH_REQUIRED",
                 "录像保存路径不能为空",
             )
+        timeout_ms = resolve_record_grab_timeout_ms(
+            req.timeout_ms,
+            exposure_us=settings.get("exposure_us"),
+        )
     except CameraRecordServiceError:
         raise
+    except CameraSDKError as exc:
+        raise CameraRecordServiceError(
+            400,
+            "CAMERA_RECORD_TIMEOUT_INVALID",
+            str(exc),
+            log_detail=str(exc),
+            cause=exc,
+            log_exception=False,
+        ) from exc
     except Exception as exc:
         raise _config_error_from_exception(exc) from exc
 
@@ -127,6 +149,7 @@ def start_camera_recording(
     try:
         result = start_recording_camera(
             save_path=str(save_path),
+            camera_path=str(settings.get("camera_path") or "") or None,
             mvs_python_dir=settings.get("mvs_python_dir"),
             device_index=int(settings.get("device_index", 0)),
             serial_number=settings.get("serial_number"),
@@ -136,12 +159,17 @@ def start_camera_recording(
             gain=settings.get("gain"),
             fps=req.fps,
             bitrate_kbps=int(req.bitrate_kbps),
-            timeout_ms=req.timeout_ms,
+            timeout_ms=timeout_ms,
         )
+        # begin_start_recording has now atomically reserved STARTING.  Remove
+        # the short acquisition grace so an asynchronous failure can release
+        # its owner on the very next guard/status synchronization.
+        confirm_hardware_operation("camera_record", operation_id)
         result["camera_path"] = settings.get("camera_path")
         return result
     except Exception as exc:
-        release_hardware_operation("camera_record", operation_id)
+        if not recording_camera_is_busy():
+            release_hardware_operation("camera_record", operation_id)
         raise CameraRecordServiceError(
             409,
             "CAMERA_RECORD_START_FAILED",
@@ -153,19 +181,36 @@ def start_camera_recording(
 
 
 def stop_camera_recording() -> Dict[str, Any]:
-    from workflow.camera_executor import stop_recording_camera
+    from workflow.camera_executor import recording_camera_is_busy, stop_recording_camera
 
+    reservation = begin_camera_record_stop_transition()
+    reservation_id = str((reservation or {}).get("operation_id") or "")
     try:
         result = stop_recording_camera()
-        camera_owner = None
-        for owner in current_hardware_owners():
-            if owner.get("kind") == "camera_record":
-                camera_owner = owner
-                break
-        if camera_owner is not None:
-            release_hardware_operation("camera_record", str(camera_owner.get("operation_id") or ""))
+        if result.get("status") != "stopping":
+            if reservation_id:
+                cancel_camera_record_stop_transition(reservation_id)
+            camera_owner = None
+            for owner in current_hardware_owners():
+                if owner.get("kind") == "camera_record":
+                    camera_owner = owner
+                    break
+            if camera_owner is not None:
+                release_hardware_operation("camera_record", str(camera_owner.get("operation_id") or ""))
         return result
     except Exception as exc:
+        if reservation_id:
+            cancel_camera_record_stop_transition(reservation_id)
+        # A timed-out native call causes the supervisor to terminate and
+        # recreate the worker.  Once no recording lifecycle is active, do not
+        # leave a stale camera_record owner behind.
+        if not recording_camera_is_busy():
+            for owner in current_hardware_owners():
+                if owner.get("kind") == "camera_record":
+                    release_hardware_operation(
+                        "camera_record", str(owner.get("operation_id") or "")
+                    )
+                    break
         raise CameraRecordServiceError(
             409,
             "CAMERA_RECORD_STOP_FAILED",

@@ -11,7 +11,7 @@ from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
 from workflow.stage_executor import move_to_absolute_with_approach
-from workflow.task_control import raise_if_cancel_requested, report_progress
+from workflow.task_control import cancellation_signal, raise_if_cancel_requested, report_progress
 
 
 def _image_center_distance2(image_item: Dict[str, Any], clone_item: Dict[str, Any]) -> float:
@@ -194,8 +194,11 @@ def _move_to_compensate_target(
         poll_s=float(motion.get("poll_s", 0.05)),
         arrival_tolerance_pulse=arrival_tolerance,
         stage_limits=plate.get("stage_limits"),
+        stop_event=cancellation_signal(params),
         approach_cfg=params.get("compensate_approach") or {},
     )
+    if result.get("stopped_by_request"):
+        raise_if_cancel_requested(params, "compensate_move_stopped")
     raise_if_cancel_requested(params, "after_compensate_move")
     return result
 

@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Any, Callable, Dict
 
 from workflow.api_models import ExecuteTaskRequest
-from workflow.hardware_guard import acquire_hardware_operation, release_hardware_operation
+from workflow.hardware_guard import (
+    HardwareGuardError,
+    acquire_hardware_operation,
+    confirm_hardware_operation,
+    require_hardware_safe,
+    release_hardware_operation,
+)
 from workflow.path_guard import normalize_execute_task_values
 from workflow.run_task import execute_task_request as default_execute_task_request
 from workflow.task_artifacts import count_images
@@ -84,6 +90,16 @@ def register_task_cancel_event(task_id: str, cancel_event: threading.Event) -> N
 def unregister_task_cancel_event(task_id: str) -> None:
     with _TASK_CANCEL_LOCK:
         _TASK_CANCEL_EVENTS.pop(sanitize_task_id(task_id), None)
+
+
+def request_all_task_cancellations() -> int:
+    """Publish cancellation to every queued or active task in this process."""
+
+    with _TASK_CANCEL_LOCK:
+        events = list(_TASK_CANCEL_EVENTS.values())
+        for event in events:
+            event.set()
+        return len(events)
 
 
 def is_task_cancel_requested(task_id: str) -> bool:
@@ -366,43 +382,83 @@ class TaskRuntimeManager:
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._worker: threading.Thread | None = None
+        self._worker_done = threading.Event()
+        self._worker_done.set()
         self._accepting = False
 
     def start(self) -> None:
         with self._lock:
             if self._worker is not None and self._worker.is_alive():
+                if self._stop_event.is_set() or not self._accepting:
+                    raise RuntimeError("task runtime worker is still shutting down")
                 self._accepting = True
                 return
             self._stop_event.clear()
+            self._worker_done.clear()
             self._accepting = True
-            self._worker = threading.Thread(
-                target=self._worker_loop,
-                name="TaskRuntimeWorker",
-                daemon=False,
-            )
-            self._worker.start()
+            try:
+                self._worker = threading.Thread(
+                    target=self._worker_loop,
+                    name="TaskRuntimeWorker",
+                    daemon=False,
+                )
+                self._worker.start()
+            except BaseException:
+                self._worker = None
+                self._accepting = False
+                self._stop_event.set()
+                self._worker_done.set()
+                raise
+
+    def request_stop(self) -> None:
+        """Publish shutdown without waiting for manager locks, I/O, or joins."""
+
+        # submit() intentionally performs durable task-record I/O while
+        # holding _lock.  Shutdown must still reach already-running hardware
+        # immediately if that filesystem call stalls, so publish all atomic
+        # signals before phase two takes the manager lock and joins.
+        self._accepting = False
+        self._stop_event.set()
+        request_all_task_cancellations()
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:
+            pass
 
     def stop(self, timeout_s: float = TASK_WORKER_STOP_TIMEOUT_S) -> bool:
+        self.request_stop()
         with self._lock:
-            self._accepting = False
-            self._stop_event.set()
             worker = self._worker
             if worker is None:
-                return True
-            if worker.is_alive():
-                try:
-                    self._queue.put_nowait(None)
-                except queue.Full:
-                    pass
+                self._worker_done.set()
+
+        if worker is None:
+            self._discard_pending_items("task runtime stopped before queued task started")
+            return True
 
         worker.join(timeout=max(0.0, float(timeout_s)))
         stopped = not worker.is_alive()
-        self._discard_pending_items()
+        self._discard_pending_items("API shutdown canceled queued task before it started")
         if stopped:
             with self._lock:
                 if self._worker is worker:
                     self._worker = None
         return stopped
+
+    def is_quiescent(self) -> bool:
+        with self._lock:
+            worker = self._worker
+            return bool(
+                self._worker_done.is_set()
+                and (worker is None or not worker.is_alive())
+                and not self._accepting
+            )
+
+    def wait_until_quiescent(self, timeout_s: float | None = None) -> bool:
+        timeout = None if timeout_s is None else max(0.0, float(timeout_s))
+        if not self._worker_done.wait(timeout=timeout):
+            return False
+        return self.is_quiescent()
 
     def is_running(self) -> bool:
         with self._lock:
@@ -422,6 +478,10 @@ class TaskRuntimeManager:
         if not task_id:
             raise TaskRuntimeError(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
 
+        # Reject an already-latched generation synchronously instead of first
+        # returning HTTP 202 and failing the queued task later.
+        require_hardware_safe()
+
         with self._lock:
             if not self._accepting or self._worker is None or not self._worker.is_alive():
                 raise TaskRuntimeError(
@@ -440,6 +500,10 @@ class TaskRuntimeManager:
             cancel_event = threading.Event()
             register_task_cancel_event(task_id, cancel_event)
             try:
+                # Close the check -> event registration race.  If a latch is
+                # engaged after this check, its broadcast sees this event;
+                # if it happened just before, this check rejects the request.
+                require_hardware_safe()
                 record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
                 if access_logger is not None:
                     access_logger.info("execute_task queued accepted record: task_id=%s", task_id)
@@ -477,21 +541,28 @@ class TaskRuntimeManager:
         }
 
     def _worker_loop(self) -> None:
-        while True:
-            if self._stop_event.is_set():
-                return
-            item = self._queue.get()
-            try:
-                if item is None:
+        current = threading.current_thread()
+        try:
+            while True:
+                if self._stop_event.is_set():
                     return
-                if item.cancel_event.is_set() or is_task_cancel_requested(str(item.task.get("task_id") or "")):
-                    self._mark_queued_task_canceled(item, "operator canceled before task started")
-                    continue
-                self._execute_queued_task(item)
-            finally:
-                self._queue.task_done()
+                item = self._queue.get()
+                try:
+                    if item is None:
+                        return
+                    if item.cancel_event.is_set() or is_task_cancel_requested(str(item.task.get("task_id") or "")):
+                        self._mark_queued_task_canceled(item, "operator canceled before task started")
+                        continue
+                    self._execute_queued_task(item)
+                finally:
+                    self._queue.task_done()
+        finally:
+            with self._lock:
+                if self._worker is current:
+                    self._accepting = False
+            self._worker_done.set()
 
-    def _discard_pending_items(self) -> None:
+    def _discard_pending_items(self, reason: str) -> None:
         while True:
             try:
                 item = self._queue.get_nowait()
@@ -499,7 +570,15 @@ class TaskRuntimeManager:
                 return
             try:
                 if item is not None:
-                    unregister_task_cancel_event(str(item.task.get("task_id") or ""))
+                    item.cancel_event.set()
+                    try:
+                        self._mark_queued_task_canceled(item, reason)
+                    except Exception:
+                        logger.exception(
+                            "failed to mark discarded queued task canceled: task_id=%s",
+                            str(item.task.get("task_id") or ""),
+                        )
+                        unregister_task_cancel_event(str(item.task.get("task_id") or ""))
             finally:
                 self._queue.task_done()
 
@@ -507,6 +586,16 @@ class TaskRuntimeManager:
         task_id = str(item.task.get("task_id") or "").strip()
         try:
             acquire_hardware_operation("task", task_id)
+            confirm_hardware_operation("task", task_id)
+        except HardwareGuardError as exc:
+            logger.warning(
+                "hardware admission rejected queued task: task_id=%s error_code=%s",
+                task_id,
+                exc.error_code,
+            )
+            self._mark_queued_task_failed(item, exc.message, exc.error_code)
+            unregister_task_cancel_event(task_id)
+            return
         except Exception as exc:
             logger.exception("failed to acquire hardware for queued task: %s", task_id)
             self._mark_queued_task_failed(item, "硬件正在执行其他任务，请稍后重试", "HARDWARE_BUSY")
@@ -549,6 +638,18 @@ def start_task_runtime_manager() -> None:
 
 def stop_task_runtime_manager(timeout_s: float = TASK_WORKER_STOP_TIMEOUT_S) -> bool:
     return DEFAULT_TASK_RUNTIME_MANAGER.stop(timeout_s=timeout_s)
+
+
+def request_task_runtime_shutdown() -> None:
+    DEFAULT_TASK_RUNTIME_MANAGER.request_stop()
+
+
+def task_runtime_manager_is_quiescent() -> bool:
+    return DEFAULT_TASK_RUNTIME_MANAGER.is_quiescent()
+
+
+def wait_for_task_runtime_manager(timeout_s: float | None = None) -> bool:
+    return DEFAULT_TASK_RUNTIME_MANAGER.wait_until_quiescent(timeout_s=timeout_s)
 
 
 def submit_task_request(

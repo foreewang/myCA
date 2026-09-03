@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from workflow.config_validator import validate_plates_file
+from workflow.hardware_guard import require_hardware_safe
 from workflow.plate_geometry import compute_well_start
 from workflow.stage_executor import StageMotionError, move_to_absolute
 
@@ -26,18 +27,39 @@ class StageReciprocationController:
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
+        self._thread_done = threading.Event()
+        self._thread_done.set()
+        self._shutdown_requested = False
         self._status: Dict[str, Any] = {
             "status": "stopped",
             "message": "not running",
         }
 
     def start(self, cfg: Dict[str, Any]) -> Dict[str, Any]:
+        # Config loading may touch disk and safety admission takes the global
+        # hardware lock. Keep both outside the controller lock so status/stop
+        # calls remain responsive and the lock order cannot invert.
+        require_hardware_safe()
+        normalized = self._normalize_cfg(cfg)
         with self._lock:
+            if self._shutdown_requested:
+                raise StageReciprocationError("stage controller is shutting down")
             if self._thread is not None and self._thread.is_alive():
                 raise StageReciprocationError("stage scan is already running")
 
-            normalized = self._normalize_cfg(cfg)
             self._stop_event.clear()
+            try:
+                # Close the acquire -> latch -> start race.  If the latch was
+                # engaged just before clear(), restore cancellation and refuse
+                # to create the motion thread.  A later latch calls
+                # request_stop(), whose Event.set() never waits on this lock.
+                require_hardware_safe()
+                if self._shutdown_requested:
+                    raise StageReciprocationError("stage controller is shutting down")
+            except BaseException:
+                self._stop_event.set()
+                raise
+            self._thread_done.clear()
             self._status = {
                 "status": "starting",
                 "message": "starting 24-well stage scan",
@@ -48,15 +70,40 @@ class StageReciprocationController:
                 target=self._run,
                 args=(normalized,),
                 name="stage-scan",
-                daemon=True,
+                daemon=False,
             )
-            self._thread.start()
+            try:
+                self._thread.start()
+            except BaseException:
+                self._thread = None
+                self._thread_done.set()
+                raise
             return dict(self._status)
+
+    def request_stop(self) -> None:
+        """Publish a non-blocking stop request, including during start races."""
+
+        self._stop_event.set()
+
+    def request_shutdown(self) -> None:
+        """Close local admission and signal motion without joining its thread."""
+
+        # These assignments intentionally precede any controller lock.  The
+        # motion loop must observe shutdown even if start/status is stalled
+        # while holding that lock.
+        self._shutdown_requested = True
+        self._stop_event.set()
 
     def stop(self, join_timeout_s: float = 5.0) -> Dict[str, Any]:
         with self._lock:
             thread = self._thread
             if thread is None or not thread.is_alive():
+                self._thread_done.set()
+                if self._status.get("status") == "failed":
+                    # A failed quick-stop or motion must remain visible.  The
+                    # operator-facing stop endpoint is not evidence that the
+                    # hardware reached a safe stopped state.
+                    return dict(self._status)
                 self._status = {
                     **self._status,
                     "status": "stopped",
@@ -76,6 +123,28 @@ class StageReciprocationController:
                     "message": "stop requested; waiting for stage motion to stop",
                 }
             return dict(self._status)
+
+    def is_quiescent(self) -> bool:
+        with self._lock:
+            thread = self._thread
+            return bool(self._thread_done.is_set() and (thread is None or not thread.is_alive()))
+
+    def wait_until_quiescent(self, timeout_s: float | None = None) -> bool:
+        timeout = None if timeout_s is None else max(0.0, float(timeout_s))
+        if not self._thread_done.wait(timeout=timeout):
+            return False
+        return self.is_quiescent()
+
+    def initialize(self) -> None:
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                raise StageReciprocationError("previous stage scan is still shutting down")
+            self._shutdown_requested = False
+
+    def shutdown(self, join_timeout_s: float = 5.0) -> bool:
+        self.request_shutdown()
+        self.stop(join_timeout_s=join_timeout_s)
+        return self.is_quiescent()
 
     def status(self) -> Dict[str, Any]:
         with self._lock:
@@ -147,6 +216,12 @@ class StageReciprocationController:
         return targets, limits
 
     def _run(self, cfg: Dict[str, Any]) -> None:
+        try:
+            self._run_impl(cfg)
+        finally:
+            self._thread_done.set()
+
+    def _run_impl(self, cfg: Dict[str, Any]) -> None:
         cycles = 0
         target_index = 0
         targets = list(cfg["targets"])
@@ -154,6 +229,7 @@ class StageReciprocationController:
             raise StageReciprocationError("scan target list is empty")
 
         try:
+            require_hardware_safe()
             with self._lock:
                 self._status = {
                     **self._status,
@@ -165,6 +241,7 @@ class StageReciprocationController:
                 }
 
             while not self._stop_event.is_set():
+                require_hardware_safe()
                 target = targets[target_index]
                 move = self._move_target(target, cfg, cycles)
                 if move.get("stopped_by_request") or self._stop_event.is_set():
@@ -288,3 +365,23 @@ class StageReciprocationController:
 
 
 stage_reciprocation_controller = StageReciprocationController()
+
+
+def initialize_stage_reciprocation_controller() -> None:
+    stage_reciprocation_controller.initialize()
+
+
+def shutdown_stage_reciprocation_controller(join_timeout_s: float = 5.0) -> bool:
+    return stage_reciprocation_controller.shutdown(join_timeout_s=join_timeout_s)
+
+
+def request_stage_reciprocation_shutdown() -> None:
+    stage_reciprocation_controller.request_shutdown()
+
+
+def stage_reciprocation_is_quiescent() -> bool:
+    return stage_reciprocation_controller.is_quiescent()
+
+
+def wait_for_stage_reciprocation(timeout_s: float | None = None) -> bool:
+    return stage_reciprocation_controller.wait_until_quiescent(timeout_s=timeout_s)

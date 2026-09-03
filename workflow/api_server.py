@@ -1,11 +1,13 @@
 """提供 Colony Workflow 的 FastAPI 服务入口并挂载任务、硬件、录像和产物查询接口。"""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import threading
 import time
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, AsyncIterator, Dict
+from typing import Annotated, Any, AsyncIterator, Callable, Dict
 
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
@@ -17,6 +19,7 @@ from workflow.api_errors import (
     register_api_error_handlers,
 )
 from workflow.api_models import (
+    CameraRecordStopRequest,
     CameraRecordStartRequest,
     ExecuteTaskRequest,
     StageReciprocationStartRequest,
@@ -29,10 +32,17 @@ from workflow.camera_record_service import (
 )
 from workflow.file_io import read_json_with_retry
 from workflow.hardware_guard import (
+    HardwareGuardError,
     STAGE_TERMINAL_STATUSES,
     acquire_hardware_operation,
+    close_hardware_admission_for_shutdown,
+    confirm_hardware_operation,
     current_hardware_owners,
+    hardware_safety_shutdown_fence_ready,
+    hardware_safety_status,
+    open_hardware_admission_after_startup,
     release_hardware_operation,
+    restore_persisted_hardware_safety_latch,
 )
 from workflow.path_guard import PROJECT_ROOT
 from workflow.process_guard import SingleInstanceLock, assert_single_worker_config
@@ -46,9 +56,11 @@ from workflow.task_runtime import (
     cancel_task_request,
     logger as task_runtime_logger,
     normalize_execute_task_request,
+    request_task_runtime_shutdown,
     start_task_runtime_manager,
     stop_task_runtime_manager,
     submit_task_request,
+    task_runtime_manager_is_quiescent,
 )
 from workflow.task_artifacts import (
     build_task_result_response,
@@ -57,17 +69,125 @@ from workflow.task_artifacts import (
 )
 
 logger = logging.getLogger(__name__)
+camera_supervisor_logger = logging.getLogger("workflow.camera_process_supervisor")
+_RETAINED_INSTANCE_LOCKS_LOCK = threading.RLock()
+_RETAINED_INSTANCE_LOCKS: list[SingleInstanceLock] = []
 
 
 def _configure_api_file_logging() -> None:
-    _configure_api_file_logging_base(extra_loggers=(logger, access_logger, task_runtime_logger))
+    _configure_api_file_logging_base(
+        extra_loggers=(logger, access_logger, task_runtime_logger, camera_supervisor_logger)
+    )
 
 
 _configure_api_file_logging()
 
+
+async def _await_thread_cleanup(
+    call: Callable[[], Any],
+) -> tuple[Any, asyncio.CancelledError | None, BaseException | None]:
+    """Run bounded blocking cleanup to completion without losing cancellation.
+
+    ``asyncio.to_thread`` does not stop its worker when the awaiting task is
+    cancelled.  Shielding and then waiting for the bounded cleanup prevents a
+    half-shutdown state (camera admission still open or the API lock retained),
+    while returning the cancellation so the caller can re-raise it afterwards.
+    """
+
+    task = asyncio.create_task(asyncio.to_thread(call))
+    cancellation: asyncio.CancelledError | None = None
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError as exc:
+            if cancellation is None:
+                cancellation = exc
+        except BaseException:
+            break
+    try:
+        return task.result(), cancellation, None
+    except BaseException as exc:
+        return None, cancellation, exc
+
+
+def _log_cleanup_error(message: str, exc: BaseException) -> None:
+    logger.error(
+        "%s: %s",
+        message,
+        exc,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+
+
+def _managed_runtime_is_quiescent() -> bool:
+    from workflow.camera_process_supervisor import camera_process_supervisors_are_quiescent
+    from workflow.stage_reciprocation import stage_reciprocation_is_quiescent
+
+    return bool(
+        task_runtime_manager_is_quiescent()
+        and stage_reciprocation_is_quiescent()
+        and camera_process_supervisors_are_quiescent()
+        and hardware_safety_shutdown_fence_ready()
+    )
+
+
+def _request_stage_runtime_shutdown() -> None:
+    from workflow.stage_reciprocation import request_stage_reciprocation_shutdown
+
+    request_stage_reciprocation_shutdown()
+
+
+def _request_camera_runtime_shutdown() -> None:
+    from workflow.camera_process_supervisor import request_camera_process_supervisor_shutdown
+
+    request_camera_process_supervisor_shutdown()
+
+
+def _retain_instance_lock_until_quiescent(lock: SingleInstanceLock) -> None:
+    """Keep the cross-process generation fence while old work can still act."""
+
+    with _RETAINED_INSTANCE_LOCKS_LOCK:
+        _RETAINED_INSTANCE_LOCKS.append(lock)
+
+    def release_when_safe() -> None:
+        quiescence_error_logged = False
+        while True:
+            try:
+                if _managed_runtime_is_quiescent():
+                    break
+            except BaseException as exc:
+                if not quiescence_error_logged:
+                    _log_cleanup_error("failed to evaluate retained runtime quiescence", exc)
+                    quiescence_error_logged = True
+            time.sleep(0.05)
+        try:
+            lock.release()
+        except BaseException as exc:
+            _log_cleanup_error("failed to release retained API single-worker lock", exc)
+            return
+        with _RETAINED_INSTANCE_LOCKS_LOCK:
+            if lock in _RETAINED_INSTANCE_LOCKS:
+                _RETAINED_INSTANCE_LOCKS.remove(lock)
+
+    watcher = threading.Thread(
+        target=release_when_safe,
+        name="ApiGenerationLockDrain",
+        # Keeping this watcher non-daemon makes the retained generation fence
+        # survive a failed graceful shutdown.  The service manager may kill the
+        # old process only after operators have made the hardware safe.
+        daemon=False,
+    )
+    watcher.start()
+
+
 @asynccontextmanager
 async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     single_worker_lock: SingleInstanceLock | None = None
+    generation_owned = False
+    camera_supervisor_initialized = False
+    stage_controller_initialized = False
+    task_runtime_cleanup_required = False
+    body_error: BaseException | None = None
     try:
         configured_workers = assert_single_worker_config()
         if configured_workers is not None:
@@ -77,19 +197,175 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
             owner=f"pid={os.getpid()}",
         )
         single_worker_lock.acquire()
+        generation_owned = True
         logger.info("api single-worker lock acquired: %s", single_worker_lock.path)
+        close_hardware_admission_for_shutdown()
+        restore_persisted_hardware_safety_latch()
         recover_interrupted_task_records()
+        # Validate all camera-process timeout environment variables during
+        # lifespan startup.  This creates only the local supervisor; the MVS
+        # child process remains lazy until the first camera operation.
+        from workflow.camera_process_supervisor import initialize_camera_process_supervisor
+        from workflow.stage_reciprocation import initialize_stage_reciprocation_controller
+
+        initialize_camera_process_supervisor()
+        camera_supervisor_initialized = True
+        initialize_stage_reciprocation_controller()
+        stage_controller_initialized = True
+        # If start fails after partially creating a worker, this generation is
+        # still responsible for the bounded cleanup in finally.
+        task_runtime_cleanup_required = True
         start_task_runtime_manager()
+        open_hardware_admission_after_startup()
         yield
+    except BaseException as exc:
+        body_error = exc
+        raise
     finally:
-        stopped = stop_task_runtime_manager()
-        if not stopped:
-            logger.warning("task runtime worker did not stop within timeout")
-        if single_worker_lock is not None:
-            single_worker_lock.release()
+        cleanup_error: BaseException | None = None
+        cleanup_cancellation: asyncio.CancelledError | None = None
+
+        # Phase one publishes every cancellation/stop gate before any join or
+        # native shutdown call.  A stalled task-record write must not delay the
+        # stage or camera from observing shutdown.
+        if generation_owned:
+            try:
+                close_hardware_admission_for_shutdown()
+            except BaseException as exc:
+                cleanup_error = exc
+                _log_cleanup_error("failed to close hardware admission during API shutdown", exc)
+
+            shutdown_requests: tuple[tuple[bool, Callable[[], Any], str], ...] = (
+                (
+                    task_runtime_cleanup_required,
+                    request_task_runtime_shutdown,
+                    "failed to publish task runtime shutdown",
+                ),
+                (
+                    stage_controller_initialized,
+                    _request_stage_runtime_shutdown,
+                    "failed to publish stage runtime shutdown",
+                ),
+                (
+                    camera_supervisor_initialized,
+                    _request_camera_runtime_shutdown,
+                    "failed to publish camera runtime shutdown",
+                ),
+            )
+            for enabled, request_shutdown, failure_message in shutdown_requests:
+                if not enabled:
+                    continue
+                try:
+                    request_shutdown()
+                except BaseException as exc:
+                    cleanup_error = cleanup_error or exc
+                    _log_cleanup_error(failure_message, exc)
+
+        # Phase two performs bounded joins, native stop/finalization, and only
+        # then permits the generation marker/API lock to be released.
+        try:
+            if task_runtime_cleanup_required:
+                try:
+                    stopped, cancellation, error = await _await_thread_cleanup(
+                        stop_task_runtime_manager
+                    )
+                    if cancellation is not None:
+                        cleanup_cancellation = cancellation
+                    if error is not None:
+                        if isinstance(error, asyncio.CancelledError):
+                            cleanup_cancellation = cleanup_cancellation or error
+                        else:
+                            cleanup_error = error
+                            _log_cleanup_error(
+                                "failed to stop task runtime during API shutdown", error
+                            )
+                    elif not stopped:
+                        logger.warning("task runtime worker did not stop within timeout")
+                except asyncio.CancelledError as exc:
+                    cleanup_cancellation = cleanup_cancellation or exc
+                except BaseException as exc:
+                    cleanup_error = cleanup_error or exc
+                    _log_cleanup_error("failed to schedule task runtime shutdown", exc)
+
+            if stage_controller_initialized:
+                try:
+                    from workflow.stage_reciprocation import shutdown_stage_reciprocation_controller
+
+                    stage_stopped, cancellation, error = await _await_thread_cleanup(
+                        shutdown_stage_reciprocation_controller
+                    )
+                    if cancellation is not None:
+                        cleanup_cancellation = cleanup_cancellation or cancellation
+                    if error is not None:
+                        if isinstance(error, asyncio.CancelledError):
+                            cleanup_cancellation = cleanup_cancellation or error
+                        else:
+                            cleanup_error = cleanup_error or error
+                            _log_cleanup_error("failed to stop stage reciprocation during API shutdown", error)
+                    elif not stage_stopped:
+                        logger.error("stage reciprocation did not stop within timeout")
+                    else:
+                        release_hardware_operation("stage_reciprocation", "stage_reciprocation")
+                except asyncio.CancelledError as exc:
+                    cleanup_cancellation = cleanup_cancellation or exc
+                except BaseException as exc:
+                    cleanup_error = cleanup_error or exc
+                    _log_cleanup_error("failed to schedule stage reciprocation shutdown", exc)
+
+            if camera_supervisor_initialized:
+                try:
+                    from workflow.camera_executor import shutdown_recording_camera
+
+                    _, cancellation, error = await _await_thread_cleanup(shutdown_recording_camera)
+                    if cancellation is not None:
+                        cleanup_cancellation = cleanup_cancellation or cancellation
+                    if error is not None:
+                        if isinstance(error, asyncio.CancelledError):
+                            cleanup_cancellation = cleanup_cancellation or error
+                        else:
+                            _log_cleanup_error("failed to stop camera recording during API shutdown", error)
+                except asyncio.CancelledError as exc:
+                    cleanup_cancellation = cleanup_cancellation or exc
+                except BaseException as exc:
+                    _log_cleanup_error("failed to schedule camera shutdown", exc)
+        finally:
+            if generation_owned and single_worker_lock is not None:
+                try:
+                    managed_runtime_quiescent = _managed_runtime_is_quiescent()
+                except BaseException as exc:
+                    managed_runtime_quiescent = False
+                    cleanup_error = cleanup_error or exc
+                    _log_cleanup_error("failed to evaluate managed runtime quiescence", exc)
+                if managed_runtime_quiescent:
+                    try:
+                        single_worker_lock.release()
+                    except BaseException as exc:
+                        cleanup_error = cleanup_error or exc
+                        _log_cleanup_error("failed to release API single-worker lock", exc)
+                else:
+                    try:
+                        _retain_instance_lock_until_quiescent(single_worker_lock)
+                    except BaseException as exc:
+                        cleanup_error = cleanup_error or exc
+                        _log_cleanup_error("failed to retain API generation lock", exc)
+                    cleanup_error = cleanup_error or RuntimeError(
+                        "managed hardware work outlived API shutdown; generation lock retained"
+                    )
+                    logger.critical(
+                        "managed hardware work outlived API shutdown; refusing to release generation lock"
+                    )
+
+        # Preserve an exception raised by startup or the lifespan body.  On a
+        # normal exit, cancellation has priority and is deliberately re-raised
+        # only after every cleanup stage and the cross-process lock release.
+        if body_error is None:
+            if cleanup_cancellation is not None:
+                raise cleanup_cancellation
+            if cleanup_error is not None:
+                raise cleanup_error
 
 
-app = FastAPI(title="Colony Workflow API", version="0.3.0", lifespan=_api_lifespan)
+app = FastAPI(title="Colony Workflow API", version="0.4.0", lifespan=_api_lifespan)
 register_api_error_handlers(app)
 
 
@@ -135,14 +411,17 @@ def get_camera_record_status() -> Dict[str, Any]:
 @app.get("/api/hardware/status")
 def get_hardware_status() -> Dict[str, Any]:
     owners = current_hardware_owners()
+    safety = hardware_safety_status()
     return {
-        "busy": bool(owners),
+        "busy": bool(owners) or not bool(safety["safe"]),
+        "safe": bool(safety["safe"]),
+        "safety_latch": safety,
         "owners": owners,
         "owner": owners[0] if owners else {},
     }
 
 
-@app.post("/api/camera/record/start")
+@app.post("/api/camera/record/start", status_code=202)
 def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
     try:
         return start_camera_recording(req)
@@ -156,8 +435,8 @@ def start_camera_record(req: CameraRecordStartRequest) -> Dict[str, Any]:
         ) from exc
 
 
-@app.post("/api/camera/record/stop")
-def stop_camera_record() -> Dict[str, Any]:
+@app.post("/api/camera/record/stop", status_code=202)
+def stop_camera_record(_req: CameraRecordStopRequest | None = None) -> Dict[str, Any]:
     try:
         return stop_camera_recording()
     except CameraRecordServiceError as exc:
@@ -179,7 +458,12 @@ def start_stage_reciprocation(req: StageReciprocationStartRequest | None = None)
     operation_id = "stage_reciprocation"
     acquire_hardware_operation("stage_reciprocation", operation_id)
     try:
-        return stage_reciprocation_controller.start(cfg)
+        result = stage_reciprocation_controller.start(cfg)
+        confirm_hardware_operation("stage_reciprocation", operation_id)
+        return result
+    except HardwareGuardError:
+        release_hardware_operation("stage_reciprocation", operation_id)
+        raise
     except Exception as exc:
         release_hardware_operation("stage_reciprocation", operation_id)
         raise _api_error(

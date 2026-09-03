@@ -9,12 +9,21 @@ Modbus RTU 客户端模块，基于 pymodbus 库实现。
 """
 
 import logging
+import math
 import time
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class MotionCanceled(RuntimeError):
+    """Raised only after a requested position move was safely stopped."""
+
+
+class MotionStopFailed(RuntimeError):
+    """Raised when position motion may still be active after a stop attempt."""
 
 
 class ModbusRTUClient:
@@ -200,15 +209,18 @@ class ModbusRTUClient:
         """
         等待状态字的指定掩码位达到期望值。
         """
-        start = time.time()
-        while time.time() - start < timeout:
+        timeout_s = float(timeout)
+        if not math.isfinite(timeout_s) or timeout_s <= 0:
+            raise ValueError("status wait timeout must be finite and positive")
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
             status = self._read_statusword(slave)
-            logger.info(status & mask)
-            logger.info(expected)
-            logger.info((status & mask) == expected)
             if status is None:
                 time.sleep(0.02)
                 continue
+            logger.info(status & mask)
+            logger.info(expected)
+            logger.info((status & mask) == expected)
             if (status & mask) == expected:
                 return True
             time.sleep(0.02)
@@ -332,10 +344,36 @@ class ModbusRTUClient:
         return False
 
     # ------------------ 轮廓位置模式控制逻辑 ---------------------------
+    def _require_quick_stop(self, slave: int, reason: str) -> None:
+        try:
+            stopped = bool(self.quick_stop(slave))
+        except BaseException as exc:
+            raise MotionStopFailed(f"quick_stop raised for slave={slave} after {reason}") from exc
+        if not stopped:
+            raise MotionStopFailed(f"quick_stop failed for slave={slave} after {reason}")
+
+    def _raise_if_position_move_canceled(self, slave: int, stop_event) -> None:
+        if stop_event is None:
+            return
+        try:
+            requested = bool(stop_event.is_set())
+        except BaseException:
+            self._require_quick_stop(slave, "cancellation check failure")
+            raise
+        if not requested:
+            return
+        logger.warning("收到运动停止请求，从站 %s 执行 quick_stop", slave)
+        self._require_quick_stop(slave, "cancellation")
+        raise MotionCanceled(f"position move canceled for slave={slave}")
+
     def move_absolute_pp(self, slave: int, target_pos: int,
                          profile_vel: int, profile_acc: int, profile_dec: int,
-                         timeout: float = 120.0) -> int | None:
+                         timeout: float = 120.0, stop_event=None) -> int | None:
         """轮廓位置模式（PP）下的绝对位置运动。"""
+        timeout_s = float(timeout)
+        if not math.isfinite(timeout_s) or timeout_s <= 0:
+            raise ValueError("position move timeout must be finite and positive")
+        self._raise_if_position_move_canceled(slave, stop_event)
         status = self._read_statusword(slave)
         if status is None:
             logger.error("无法读取状态字")
@@ -360,17 +398,25 @@ class ModbusRTUClient:
             logger.error("设置目标位置失败")
             return None
         time.sleep(0.02)
+        self._raise_if_position_move_canceled(slave, stop_event)
 
         # 触发运动：控制字 = ENABLE_OPERATION + 新位置位 (0x10)
         trigger_cmd = self.CMD_ENABLE_OPERATION | 0x10  # 0x1F
         if not self._write_controlword(slave, trigger_cmd):
             logger.error("触发运动失败")
-            return None
+            # A lost Modbus response cannot prove that the drive rejected the
+            # set-point.  Request stop, then surface an explicitly unknown
+            # motion state even if that stop write was acknowledged.
+            self._require_quick_stop(slave, "ambiguous motion trigger failure")
+            raise MotionStopFailed(
+                f"motion trigger acknowledgement failed for slave={slave}; actual motion state is unknown"
+            )
 
         # 等待当前位置等于目标位置
-        start_time = time.time()
+        deadline = time.monotonic() + timeout_s
         current_pos = None
-        while time.time() - start_time < timeout:
+        while time.monotonic() < deadline:
+            self._raise_if_position_move_canceled(slave, stop_event)
             current_pos = self._read_32bit(slave, self.REG_CURRENT_POS)
             if current_pos is None:
                 time.sleep(0.05)
@@ -381,11 +427,12 @@ class ModbusRTUClient:
             status = self._read_statusword(slave)
             if status is not None and (status & self.STAT_FAULT):
                 logger.error("运动过程中发生故障")
+                self._require_quick_stop(slave, "axis fault")
                 return None
             time.sleep(0.05)
         else:
-            logger.error(f"运动超时（{timeout}秒），当前位置 {current_pos} != 目标 {target_pos}")
-            self._restore_enabled_state(slave)
+            logger.error(f"运动超时（{timeout_s}秒），当前位置 {current_pos} != 目标 {target_pos}")
+            self._require_quick_stop(slave, "motion timeout")
             return None
 
         # 运动正常结束，恢复使能
@@ -393,7 +440,7 @@ class ModbusRTUClient:
             logger.warning("恢复使能状态失败，但运动已完成")
         else:
             logger.info("运动完成，电机已恢复使能")
-        self.quick_stop(slave=slave)
+        self._require_quick_stop(slave, "completed position move")
         logger.info("运动完成，电机停止")
         # 计算位置误差
         final_pos = self._read_32bit(slave, self.REG_CURRENT_POS)

@@ -421,9 +421,8 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
     need_capture = "capture" in params.get("stages", [])
     need_autofocus = bool((params.get("autofocus_decision") or {}).get("should_run", False))
 
-    # 如果本任务需要 autofocus，暂时不提前打开共享相机。
-    # 原因：第三方 autofocus 会自己打开 MVS 相机，若 shared_cam 已占用相机，可能导致自动调焦无法取图。
-    # 后续更优方案是让 autofocus 复用项目 camera_executor 的相机对象。
+    # autofocus 会通过 camera_executor 获取一个受监督的短生命周期相机会话。
+    # 因此需要对焦时不提前持有普通 shared_cam；后台录像会话仍可按相机身份安全复用。
     open_shared_camera = need_capture and not need_autofocus
 
     try:
@@ -561,6 +560,7 @@ def run_handoff_task(
     raw_task_cfg: Dict[str, Any],
     handoff_path: str | None = None,
     plates_path: str | None = None,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> Dict[str, Any]:
     from workflow.handoff_executor import execute_handoff_task
     from workflow.config_validator import validate_handoff_file, validate_plates_file
@@ -575,7 +575,12 @@ def run_handoff_task(
     plate_cfg = (plates_root_cfg.get("plates") or {}).get(plate_type)
     if not isinstance(plate_cfg, dict):
         raise KeyError(f"plates.yaml 中不存在板型: {plate_type}")
-    return execute_handoff_task(task, handoff_root_cfg, plate_cfg=plate_cfg)
+    return execute_handoff_task(
+        task,
+        handoff_root_cfg,
+        plate_cfg=plate_cfg,
+        cancel_check=cancel_check,
+    )
 
 
 def execute_task_request(
@@ -611,7 +616,9 @@ def execute_task_request(
             raw_task_cfg,
             handoff_path=handoff_path,
             plates_path=plates_path,
+            cancel_check=cancel_check,
         )
+        raise_if_cancel_requested(cancel_params, "after_handoff")
         report_progress(cancel_params, "handoff", 95, None, "handoff completed")
         output_path = dump_json or ((task.get("output", {}) or {}).get("result_json"))
         if persist_result:
@@ -657,6 +664,7 @@ def execute_task_request(
         task_cfg=task,
         objectives_root_cfg=objectives_root_cfg,
         extra_context={"task_id": task.get("task_id")},
+        cancel_check=cancel_check,
     )
     raise_if_cancel_requested(cancel_params, "after_objective")
 

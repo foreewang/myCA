@@ -11,7 +11,12 @@ from workflow.camera_executor import (
 )
 from workflow.file_io import atomic_write_json
 from workflow.stage_executor import move_to_absolute
-from workflow.task_control import TaskCanceled, raise_if_cancel_requested, report_progress
+from workflow.task_control import (
+    TaskCanceled,
+    cancellation_signal,
+    raise_if_cancel_requested,
+    report_progress,
+)
 
 
 def _format_kwargs(params: Dict[str,Any], point: Dict[str,Any]) -> Dict[str,Any]:
@@ -188,6 +193,7 @@ def _execute_autofocus_before_capture(
         task_cfg=ctx["task"],
         objective_result=params.get("objective_result", {}) or {},
         autofocus_cfg=params.get("autofocus_cfg", {}) or {},
+        cancel_check=params.get("_cancel_check"),
     )
     autofocus_result["run_at"] = "before_first_capture_after_stage_move"
     autofocus_result["scope_reason"] = scope_reason
@@ -246,8 +252,12 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
                 arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
                 stage_limits=ctx["plate"].get("stage_limits"),
+                stop_event=cancellation_signal(params),
             )
 
+            if motion_result.get("stopped_by_request"):
+                raise_if_cancel_requested(params, f"stage_move_stopped:point_{int(point['index'])}")
+                raise TaskCanceled(f"stage move stopped by request: point_{int(point['index'])}")
             _check_motion_guard(ctx["plate"], point, motion_result)
             raise_if_cancel_requested(params, f"after_move:point_{int(point['index'])}")
             report_progress(
@@ -269,13 +279,17 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                     params.get("well_name"),
                     f"autofocus before scan point {point_index}/{total_points}",
                 )
-                # autofocus 会自行打开/关闭第三方配置中的相机。
-                # 因此本函数采用懒加载策略：先 autofocus，再打开正式采集相机，避免 MVS 设备句柄冲突。
-                if local_cam is not None and not owned_cam:
-                    raise RuntimeError(
-                        "当前扫描点需要 autofocus，但外部已传入打开的相机对象。"
-                        "为避免 MVS 相机句柄冲突，请在需要 autofocus 时不要提前打开 shared_cam。"
-                    )
+                # autofocus 会通过 camera_executor 打开/关闭受监督的相机会话。
+                # 因此采用懒加载：先 autofocus，再打开正式采集会话，避免普通会话互相占用。
+                if local_cam is not None:
+                    if not owned_cam:
+                        raise RuntimeError(
+                            "当前扫描点需要 autofocus，但外部已传入打开的相机对象。"
+                            "为避免相机会话冲突，请在需要 autofocus 时不要提前打开 shared_cam。"
+                        )
+                    close_camera(local_cam)
+                    local_cam = None
+                    owned_cam = False
 
                 point_autofocus_result = _execute_autofocus_before_capture(
                     ctx=ctx,

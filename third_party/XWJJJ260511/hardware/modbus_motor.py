@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 # Optional 表示参数可以是某个类型或 None；Tuple 用来标注固定长度的返回元组。
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 # MotorBase 是项目统一的电机抽象接口，本类需要实现它规定的方法。
 from .motor import MotorBase
@@ -54,6 +54,7 @@ class ModbusFocusMotor(MotorBase):
         profile_dec: int = 100000,
         # 单次移动最多等待多久，超过后认为运动失败。
         timeout: float = 120.0,
+        stop_event: Optional[Any] = None,
         # 可选的外部 Modbus 客户端；如果传入，就复用外部连接。
         client: Optional[ModbusRTUClient] = None,
     ):
@@ -81,6 +82,7 @@ class ModbusFocusMotor(MotorBase):
         self._profile_dec = int(profile_dec)
         # 保存运动超时时间，避免电机一直等待不返回。
         self._timeout = float(timeout)
+        self._stop_event = stop_event
 
         # 如果 client 是外部传进来的，关闭连接的责任也留给外部。
         # 如果 client 是这里创建的，close() 时由这里负责断开。
@@ -153,6 +155,7 @@ class ModbusFocusMotor(MotorBase):
             profile_dec=self._profile_dec,
             # 运动超时时间，避免电机卡住时程序无限等待。
             timeout=self._timeout,
+            stop_event=self._stop_event,
         )
         # diff 为 None 表示底层运动失败，例如未使能、通信失败或运动超时。
         if diff is None:

@@ -8,6 +8,21 @@ class TaskCanceled(RuntimeError):
     """Raised when a workflow task is asked to stop at a safe checkpoint."""
 
 
+class CancellationSignal:
+    """Expose a task cancellation callback through the Event ``is_set`` API.
+
+    Stage motion only needs the small ``is_set`` surface.  Keeping the adapter
+    callback-backed means a shutdown request made after motion starts is
+    observed by the stage polling loop and can trigger a hardware quick stop.
+    """
+
+    def __init__(self, checker: Callable[[], bool]) -> None:
+        self._checker = checker
+
+    def is_set(self) -> bool:
+        return bool(self._checker())
+
+
 def is_cancel_requested(params: Mapping[str, Any] | None) -> bool:
     if not params:
         return False
@@ -17,6 +32,14 @@ def is_cancel_requested(params: Mapping[str, Any] | None) -> bool:
     if not callable(checker):
         return bool(checker)
     return bool(checker())
+
+
+def cancellation_signal(params: Mapping[str, Any] | None) -> CancellationSignal | None:
+    """Return a live cancellation signal for long-running hardware calls."""
+
+    if not params or params.get("_cancel_check") is None:
+        return None
+    return CancellationSignal(lambda: is_cancel_requested(params))
 
 
 def raise_if_cancel_requested(params: Mapping[str, Any] | None, stage: str = "") -> None:

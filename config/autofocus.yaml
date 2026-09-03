@@ -84,6 +84,8 @@ motor:
   profile_acc: 50000
   # 调焦轴 PP 位置模式轮廓减速度。
   profile_dec: 50000
+  # 单次调焦轴运动等待上限（秒）；超时后驱动层必须执行 quick-stop 并报错。
+  move_timeout_s: 30
 
 # 自动对焦搜索算法参数。
 focus:

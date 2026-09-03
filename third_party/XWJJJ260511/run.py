@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from collections.abc import Mapping
 # Any 用于配置字典和硬件对象的类型标注。
-from typing import Any
+from typing import Any, Callable
 
 
 # 当前包目录，也就是 XWJJJ260511 目录。
@@ -141,6 +141,7 @@ def run_autofocus_from_config(
     config_path: str | Path | None = None,
     *,
     objective: Any = None,
+    cancel_check: Callable[[], bool] | None = None,
 ):
     """给外部 Python 调用的 YAML 入口；只需额外传当前倍镜即可。"""
 
@@ -153,14 +154,19 @@ def run_autofocus_from_config(
 
     camera = _create_camera(cfg)
     try:
-        result = _run_autofocus(camera, cfg)
+        result = _run_autofocus(camera, cfg, cancel_check=cancel_check)
         _save_focus_log(result.focus_log, _get_output_path(cfg, "log_path"), cfg)
         return result
     finally:
         camera.close()
 
 
-def _run_autofocus(camera: Any, cfg: dict[str, Any]):
+def _run_autofocus(
+    camera: Any,
+    cfg: dict[str, Any],
+    *,
+    cancel_check: Callable[[], bool] | None = None,
+):
     # 延迟导入，避免只读配置或帮助信息时加载全部硬件依赖。
     from .autofocus_api import run_realtime_autofocus
     from .hardware import VirtualMotor
@@ -208,6 +214,7 @@ def _run_autofocus(camera: Any, cfg: dict[str, Any]):
         profile_vel=int(motor_cfg.get("profile_vel", 50000)),
         profile_acc=int(motor_cfg.get("profile_acc", 50000)),
         profile_dec=int(motor_cfg.get("profile_dec", 50000)),
+        motor_move_timeout_s=float(motor_cfg.get("move_timeout_s", 30.0)),
         tol=float(focus_cfg.get("tol", 100)),
         max_iter=int(focus_cfg.get("max_iter", 10)),
         settle_ms=float(focus_cfg.get("settle_ms", 300)),
@@ -216,6 +223,7 @@ def _run_autofocus(camera: Any, cfg: dict[str, Any]):
         output_path=str(image_path),
         use_mvs=_camera_uses_mvs(cfg),
         camera_index=int(_section(cfg, "camera").get("opencv_index", 0)),
+        cancel_check=cancel_check,
     )
 
 
