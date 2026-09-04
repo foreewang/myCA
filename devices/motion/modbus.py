@@ -455,8 +455,12 @@ class ModbusRTUClient:
 
     def move_relative_pp(self, slave: int, offset: int,
                          profile_vel: int, profile_acc: int, profile_dec: int,
-                         timeout: float = 120.0) -> int | None:
+                         timeout: float = 120.0, stop_event=None) -> int | None:
         """轮廓位置模式（PP）下的相对位置运动。"""
+        timeout_s = float(timeout)
+        if not math.isfinite(timeout_s) or timeout_s <= 0:
+            raise ValueError("position move timeout must be finite and positive")
+        self._raise_if_position_move_canceled(slave, stop_event)
         status = self._read_statusword(slave)
         if status is None:
             logger.error("无法读取状态字")
@@ -488,18 +492,24 @@ class ModbusRTUClient:
             logger.error("设置相对偏移量失败")
             return None
         time.sleep(0.02)
+        self._raise_if_position_move_canceled(slave, stop_event)
 
         # 触发相对运动：控制字 = ENABLE_OPERATION + 相对位 (0x40) + 新位置位 (0x10) = 0x5F
         trigger_cmd = self.CMD_ENABLE_OPERATION | 0x40 | 0x10
         if not self._write_controlword(slave, trigger_cmd):
             logger.error("触发相对运动失败")
-            return None
+            self._require_quick_stop(slave, "ambiguous relative motion trigger failure")
+            raise MotionStopFailed(
+                f"relative motion trigger acknowledgement failed for slave={slave}; "
+                "actual motion state is unknown"
+            )
 
         # 等待当前位置等于绝对目标位置
-        start_time = time.time()
+        deadline = time.monotonic() + timeout_s
         current_pos = start_pos
-        
-        while time.time() - start_time < timeout:
+
+        while time.monotonic() < deadline:
+            self._raise_if_position_move_canceled(slave, stop_event)
             current_pos = self._read_32bit(slave, self.REG_CURRENT_POS)
             if current_pos is None:
                 time.sleep(0.05)
@@ -510,18 +520,19 @@ class ModbusRTUClient:
             status = self._read_statusword(slave)
             if status is not None and (status & self.STAT_FAULT):
                 logger.error("运动过程中发生故障")
+                self._require_quick_stop(slave, "relative axis fault")
                 return None
             time.sleep(0.05)
         else:
-            logger.error(f"运动超时（{timeout}秒），当前位置 {current_pos} != 目标 {target_abs_pos}")
-            self._restore_enabled_state(slave)
+            logger.error(f"运动超时（{timeout_s}秒），当前位置 {current_pos} != 目标 {target_abs_pos}")
+            self._require_quick_stop(slave, "relative motion timeout")
             return None
 
         if not self._restore_enabled_state(slave):
             logger.warning("恢复使能状态失败，但运动已完成")
         else:
             logger.info("相对运动完成，电机已恢复使能")
-        self.quick_stop(slave=slave)
+        self._require_quick_stop(slave, "completed relative position move")
         logger.info("运动完成，电机停止")
         final_pos = self._read_32bit(slave, self.REG_CURRENT_POS)
         cmd_pos = self._read_32bit(slave, self.REG_CMD_POS)
@@ -593,8 +604,10 @@ class ModbusRTUClient:
     # ------------------------- 快速停止方法 ----------------------------
     def quick_stop(self, slave: int) -> bool:
         """
-        发送快速停止命令（控制字 0x02）。
-        电机将按当前设定的减速度减速停止，状态变为 Quick stop active。
+        发送当前设备适配层沿用的停机控制字（0x06）。
+
+        True 仅表示 Modbus 写入已应答，不代表已确认机械轴静止；上线前必须
+        按实际驱动器型号补充并验证状态字与零速/位置稳定判据。
         """
         if not self._write_controlword(slave, self.CMD_SHUTDOWN):
             return False

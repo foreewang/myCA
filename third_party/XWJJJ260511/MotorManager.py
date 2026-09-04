@@ -156,7 +156,8 @@ class MotorManager:
         profile_vel: int,
         profile_acc: int,
         profile_dec: int,
-        timeout: float = 120.0
+        timeout: float = 120.0,
+        stop_event=None,
     ) -> Optional[int]:
         """
         轮廓位置模式下的相对运动。
@@ -168,12 +169,42 @@ class MotorManager:
         :param timeout:      运动超时时间（秒）
         :return:             位置误差，失败返回 None
         """
+        if stop_event is not None and stop_event.is_set():
+            raise MotionCanceled(f"position move canceled before enable for slave={self.slave}")
         # 相对位置运动也使用 PP 模式。
         if not self._ensure_mode_and_enable(self.MODE_PROFILE_POSITION,True):
             return None
+        try:
+            canceled_after_enable = stop_event is not None and stop_event.is_set()
+        except BaseException as exc:
+            try:
+                self.client.quick_stop(self.slave)
+            except BaseException as stop_exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after cancellation check failure for slave={self.slave}"
+                ) from stop_exc
+            raise MotionStopFailed(
+                f"cancellation check failed after enable for slave={self.slave}; motor state is unknown"
+            ) from exc
+        if canceled_after_enable:
+            try:
+                stopped = bool(self.client.quick_stop(self.slave))
+            except BaseException as exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after enable for slave={self.slave}"
+                ) from exc
+            if not stopped:
+                raise MotionStopFailed(f"quick_stop failed after enable for slave={self.slave}")
+            raise MotionCanceled(f"position move canceled after enable for slave={self.slave}")
         # 交给底层客户端执行相对位移。
         return self.client.move_relative_pp(
-            self.slave, offset, profile_vel, profile_acc, profile_dec, timeout
+            self.slave,
+            offset,
+            profile_vel,
+            profile_acc,
+            profile_dec,
+            timeout,
+            stop_event=stop_event,
         )
 
     # -------------------- 轮廓速度模式 (PV) 公开方法 --------------------

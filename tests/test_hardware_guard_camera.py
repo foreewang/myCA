@@ -1,6 +1,8 @@
 """Hardware-guard tests for asynchronous camera recording transitions."""
 from __future__ import annotations
 
+import multiprocessing
+import os
 import sys
 import tempfile
 import threading
@@ -15,6 +17,16 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import workflow.hardware_guard as hardware_guard  # noqa: E402
+
+
+def _crash_after_generation_marker(path: str, ready) -> None:
+    """Spawn-safe helper that bypasses every Python cleanup handler."""
+
+    import workflow.hardware_guard as child_guard
+
+    child_guard.restore_persisted_hardware_safety_latch(Path(path))
+    ready.set()
+    os._exit(23)
 
 
 class HardwareGuardCameraTests(unittest.TestCase):
@@ -252,6 +264,46 @@ class HardwareGuardCameraTests(unittest.TestCase):
                 clear_persisted_latch=True,
                 forget_persistence_path=True,
             )
+
+    def test_real_abrupt_process_exit_is_latched_by_next_generation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            latch_path = Path(temp_dir) / "hardware_safety_latch.json"
+            context = multiprocessing.get_context("spawn")
+            ready = context.Event()
+            process = context.Process(
+                target=_crash_after_generation_marker,
+                args=(str(latch_path), ready),
+                name="hardware-generation-crash-test",
+            )
+            process.start()
+            try:
+                self.assertTrue(ready.wait(timeout=5.0))
+                process.join(timeout=5.0)
+                self.assertFalse(process.is_alive())
+                self.assertEqual(process.exitcode, 23)
+                marker = hardware_guard.read_json_with_retry(latch_path)
+                self.assertEqual(marker["record_type"], "generation_active")
+
+                hardware_guard._reset_hardware_guard_for_tests(
+                    forget_persistence_path=True
+                )
+                restored = hardware_guard.restore_persisted_hardware_safety_latch(
+                    latch_path
+                )
+                self.assertFalse(restored["safe"])
+                self.assertEqual(
+                    restored["error_code"],
+                    "HARDWARE_GENERATION_UNCLEAN_EXIT",
+                )
+                self.assertTrue(restored["persistence_confirmed"])
+            finally:
+                if process.is_alive():
+                    process.terminate()
+                    process.join(timeout=2.0)
+                hardware_guard._reset_hardware_guard_for_tests(
+                    clear_persisted_latch=True,
+                    forget_persistence_path=True,
+                )
 
     def test_clean_shutdown_is_the_only_path_that_removes_generation_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

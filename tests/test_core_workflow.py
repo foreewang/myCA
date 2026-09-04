@@ -123,6 +123,21 @@ def test_process_guard_single_instance_lock_blocks_second_holder(tmp_path) -> No
         second.release()
 
 
+def test_process_guard_owner_refresh_does_not_grow_lock_file(tmp_path) -> None:
+    from workflow.process_guard import SingleInstanceLock
+
+    lock_path = tmp_path / "bounded.lock"
+    for index in range(50):
+        lock = SingleInstanceLock(lock_path, owner=f"owner-{index}")
+        lock.acquire()
+        lock.release()
+
+    payload = lock_path.read_bytes()
+    assert len(payload) == 257
+    assert b"owner-49" in payload
+    assert payload.count(b"owner-") == 1
+
+
 def test_atomic_write_json_retries_short_replace_contention(tmp_path, monkeypatch) -> None:
     from workflow import file_io
 
@@ -809,9 +824,10 @@ def test_autofocus_stop_failure_latches_hardware_and_surfaces_failure(
     "module_name",
     ["devices.motion.modbus", "third_party.XWJJJ260511.modbus"],
 )
+@pytest.mark.parametrize("move_method", ["move_absolute_pp", "move_relative_pp"])
 @pytest.mark.parametrize("quick_stop_result", [True, False, "raises"])
 def test_position_move_cancellation_requires_quick_stop_success_result(
-    module_name, quick_stop_result
+    module_name, move_method, quick_stop_result
 ) -> None:
     from importlib import import_module
 
@@ -838,7 +854,7 @@ def test_position_move_cancellation_requires_quick_stop_success_result(
 
     expected_error = module.MotionCanceled if quick_stop_result is True else module.MotionStopFailed
     with pytest.raises(expected_error):
-        client.move_absolute_pp(
+        getattr(client, move_method)(
             3,
             100,
             1000,
@@ -854,8 +870,10 @@ def test_position_move_cancellation_requires_quick_stop_success_result(
     "module_name",
     ["devices.motion.modbus", "third_party.XWJJJ260511.modbus"],
 )
+@pytest.mark.parametrize("move_method", ["move_absolute_pp", "move_relative_pp"])
 def test_position_move_ambiguous_trigger_failure_stops_and_surfaces_unknown_state(
     module_name,
+    move_method,
 ) -> None:
     from importlib import import_module
 
@@ -863,12 +881,13 @@ def test_position_move_ambiguous_trigger_failure_stops_and_surfaces_unknown_stat
     client = object.__new__(module.ModbusRTUClient)
     quick_stop_calls = []
     client._read_statusword = lambda _slave: client.STAT_OPERATION_ENABLED
+    client._read_32bit = lambda _slave, _register: 0
     client._write_32bit = lambda _slave, _register, _value: True
     client._write_controlword = lambda _slave, _value: False
     client.quick_stop = lambda slave: quick_stop_calls.append(slave) or True
 
     with pytest.raises(module.MotionStopFailed, match="actual motion state is unknown"):
-        client.move_absolute_pp(
+        getattr(client, move_method)(
             4,
             100,
             1000,
@@ -887,9 +906,11 @@ def test_position_move_ambiguous_trigger_failure_stops_and_surfaces_unknown_stat
         ("third_party.XWJJJ260511.MotorManager", "third_party.XWJJJ260511.modbus"),
     ],
 )
+@pytest.mark.parametrize("move_method", ["pp_absolute_move", "pp_relative_move"])
 def test_motor_manager_cancellation_check_failure_after_enable_attempts_stop(
     manager_module_name,
     modbus_module_name,
+    move_method,
 ) -> None:
     from importlib import import_module
 
@@ -916,7 +937,7 @@ def test_motor_manager_cancellation_check_failure_after_enable_attempts_stop(
             raise RuntimeError("cancel callback failed")
 
     with pytest.raises(modbus_module.MotionStopFailed, match="motor state is unknown"):
-        manager.pp_absolute_move(
+        getattr(manager, move_method)(
             100,
             1000,
             1000,
@@ -939,8 +960,48 @@ def test_motion_timeouts_reject_non_finite_values_before_io(module_name) -> None
     client._read_statusword = lambda _slave: pytest.fail("invalid timeout reached hardware I/O")
 
     for value in (float("nan"), float("inf"), 0.0, -1.0):
-        with pytest.raises(ValueError, match="finite and positive"):
-            client.move_absolute_pp(1, 0, 1, 1, 1, timeout=value)
+        for move_method in (client.move_absolute_pp, client.move_relative_pp):
+            with pytest.raises(ValueError, match="finite and positive"):
+                move_method(1, 0, 1, 1, 1, timeout=value)
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    ["devices.motion.modbus", "third_party.XWJJJ260511.modbus"],
+)
+@pytest.mark.parametrize("failure", ["fault", "timeout"])
+def test_relative_position_move_fault_or_timeout_requires_stop(
+    module_name, failure, monkeypatch
+) -> None:
+    from importlib import import_module
+    from types import SimpleNamespace
+
+    module = import_module(module_name)
+    client = object.__new__(module.ModbusRTUClient)
+    quick_stop_calls = []
+    status_values = iter(
+        [client.STAT_OPERATION_ENABLED, client.STAT_OPERATION_ENABLED | client.STAT_FAULT]
+        if failure == "fault"
+        else [client.STAT_OPERATION_ENABLED]
+    )
+    monotonic_values = iter([0.0, 0.0] if failure == "fault" else [0.0, 1.0])
+
+    monkeypatch.setattr(
+        module,
+        "time",
+        SimpleNamespace(monotonic=lambda: next(monotonic_values), sleep=lambda _seconds: None),
+    )
+    client._read_statusword = lambda _slave: next(status_values)
+    client._read_32bit = lambda _slave, _register: 0
+    client._write_32bit = lambda _slave, _register, _value: True
+    client._write_controlword = lambda _slave, _value: True
+    client._restore_enabled_state = lambda _slave: pytest.fail(
+        "a failed relative move must not re-enable the drive"
+    )
+    client.quick_stop = lambda slave: quick_stop_calls.append(slave) or True
+
+    assert client.move_relative_pp(2, 100, 1000, 1000, 1000, timeout=0.5) is None
+    assert quick_stop_calls == [2]
 
 
 def test_motor_manager_is_class_only_and_position_timeout_is_120_seconds() -> None:

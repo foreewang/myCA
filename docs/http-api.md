@@ -147,7 +147,7 @@ Host: 127.0.0.1:8000
 
 当 XY、物镜或自动对焦的停止命令写失败/抛异常，或者相机子进程经终止、强杀后仍无法确认退出时，`safe=false`，`safety_latch` 给出首次故障的 `error_code`、`message`、`latched_at` 和 `persistence_confirmed`，同时 `busy=true`。当前进程代随后拒绝所有新的硬件操作并返回 503 `HARDWARE_SAFETY_LATCHED`。固定 marker 会跨进程代保留；异常退出会在下一次启动转为 `HARDWARE_GENERATION_UNCLEAN_EXIT`，损坏或不可验证的 marker 会转为 `HARDWARE_SAFETY_LATCH_FILE_INVALID`，两者都按不安全处理。
 
-该锁存不能通过 HTTP 或重启清除。必须先执行物理安全检查，完整停止 API 和相机进程树，确认驱动器和机构无残留动作，再使用文档规定的 `tools/clear_hardware_safety_latch.py` 离线流程。工具只有同时独占 API 与相机 worker 的 OS lock 才会归档原 marker、写 clearance receipt 并解除固定 marker；详见 [硬件与安全](hardware.md#安全锁存与停止验收)。
+该锁存不能通过 HTTP 或重启清除。必须先执行物理安全检查，完整停止 API 和相机进程树，确认驱动器和机构无残留动作，再使用文档规定的 `tools/clear_hardware_safety_latch.py` 离线流程。工具只有同时独占固定的 `data/api_server.lock` 与 `data/camera_worker.lock` 才会归档原 marker、写 clearance receipt 并解除固定 marker；详见 [硬件与安全](hardware.md#安全锁存与停止验收)。
 
 重要限制：当前底层所谓 `quick_stop()` 实际写 `CMD_SHUTDOWN=0x0006`，成功只代表 Modbus 写入被接受，没有轮询状态字或证明速度为零。因此 `safe=true` 也不是“硬件已经停稳”的在线证明。必须完成驱动器手册映射、代码级有界状态/停稳确认和各轴现场故障注入，否则属于上线硬阻断。
 
@@ -234,7 +234,7 @@ Host: 127.0.0.1:8000
 
 若子进程超时、异常退出、录像线程失败或关闭不完整，监督器会隔离旧 PID，并且只有在明确确认旧进程已经退出后才创建新 PID。恢复成功后 `state=idle`、`worker_restart_count` 增加，`error/error_code` 保留最近故障供诊断；此时可直接重新启动录像，无需重启 API。`state=faulted` 表示自动重建失败；通常下一次相机操作会再次尝试恢复，但 `error_code=CAMERA_WORKER_TERMINATION_UNCONFIRMED` 时例外：监督器禁止替换进程、全局硬件安全锁存生效，必须完整停止旧进程树并完成现场检查后再重启服务。
 
-相机子进程在整个生命周期内还会独占 `data/camera_worker.lock`。新 API 进程启动以及新相机 worker 握手都会检查该 OS 锁；即使旧 API 父进程被单独强杀，只要孤儿相机子进程仍存活，新进程就不能成为第二个 SDK 所有者。首次部署含此机制的版本前仍必须人工确认没有由旧版本遗留的相机进程。
+相机子进程在整个生命周期内还会独占固定的 `data/camera_worker.lock`。API 启动时冻结该规范化路径并将同一路径显式传给每次新 worker，环境变量变化不能把重启后的 worker 引向另一把锁。新 API 进程启动以及新相机 worker 握手都会检查该 OS 锁；即使旧 API 父进程被单独强杀，只要孤儿相机子进程仍存活，新进程仍保持状态接口可观测，但会持久锁存全部硬件准入，绝不成为第二个 SDK 所有者。首次部署含此机制的版本前仍必须人工确认没有由旧版本遗留的相机进程。
 ### 5.2 `POST /api/camera/record/start`
 
 请求体本身必传，但所有字段都有默认值；最小合法请求体是：

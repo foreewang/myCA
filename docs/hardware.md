@@ -48,7 +48,7 @@ python tools/clear_hardware_safety_latch.py `
   --confirm "I CONFIRM ALL HARDWARE IS PHYSICALLY STOPPED"
 ```
 
-工具只操作固定生产 marker，不接受路径参数；它必须按顺序同时独占 `data/api_server.lock` 和相机 worker 的有效 OS lock，否则不清除。成功时原 marker 会逐字节归档到 `data/hardware_safety_clearance_archive/`，同目录写入包含 operator、reason、时间、哈希和锁路径的 clearance receipt。命令成功后才可重新启动服务，并保存 receipt 作为上线/复机证据。普通重启、删除 `.lock` 文件或修改进程内变量都不会形成合格的恢复记录。
+工具只操作固定生产 marker，不接受路径参数；它必须按顺序同时独占固定的 `data/api_server.lock` 和 `data/camera_worker.lock`，否则不清除。成功时原 marker 会逐字节归档到 `data/hardware_safety_clearance_archive/`，同目录写入包含 operator、reason、时间、哈希和锁路径的 clearance receipt。命令成功后才可重新启动服务，并保存 receipt 作为上线/复机证据。普通重启、删除 `.lock` 文件、设置环境变量或修改进程内变量都不会形成合格的恢复记录。
 
 锁存只证明软件检测到了一个明确的不安全条件；相机类条件是旧 worker 的死亡无法确认，运动类条件是停止命令写失败或抛异常。对于运动，即使未触发锁存，也不能据此证明写入成功后机构真的停止。当前驱动层尚缺以下闭环，软件单元测试也不能替代：
 

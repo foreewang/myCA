@@ -510,22 +510,29 @@ class CameraProcessSupervisorTests(unittest.TestCase):
             monitor_interval_s=60.0,
             worker_lock_path=lock_path,
         )
-        with mock.patch.object(
-            supervisor_module,
-            "DEFAULT_CAMERA_WORKER_LOCK_PATH",
-            lock_path,
-        ):
-            incumbent.acquire()
-            try:
+        hardware_guard.restore_persisted_hardware_safety_latch()
+        # Model the unavoidable probe -> child-spawn window: the path is free
+        # at probe time, then an old/other worker acquires it before spawn.
+        supervisor_module.assert_camera_worker_lock_available(lock_path)
+        incumbent.acquire()
+        try:
+            with mock.patch.dict(
+                os.environ,
+                {"COLONY_CAMERA_WORKER_LOCK_PATH": str(lock_path.with_name("bypass.lock"))},
+            ):
                 with self.assertRaisesRegex(CameraStateError, "previous camera child"):
                     supervisor_module.assert_camera_worker_lock_available(lock_path)
                 with self.assertRaisesRegex(CameraProcessError, "SDK-owner lock"):
                     production._request("ping", {}, 2.0)
-            finally:
-                production.shutdown(timeout_s=1.0)
-                incumbent.release()
+            safety = hardware_guard.hardware_safety_status()
+            self.assertFalse(safety["safe"])
+            self.assertEqual(safety["error_code"], "CAMERA_WORKER_LOCK_HELD")
+            self.assertTrue(safety["persistence_confirmed"])
+        finally:
+            production.shutdown(timeout_s=1.0)
+            incumbent.release()
 
-            supervisor_module.assert_camera_worker_lock_available(lock_path)
+        supervisor_module.assert_camera_worker_lock_available(lock_path)
 
     def test_lifespan_supervisor_is_observable_and_fail_closed_with_orphan_lock(self) -> None:
         lock_path = Path(self.temp_dir.name) / "orphan_camera_worker.lock"
@@ -572,6 +579,9 @@ class CameraProcessSupervisorTests(unittest.TestCase):
         class BlockingSupervisor:
             def __init__(self) -> None:
                 self.quiescent = False
+
+            def request_shutdown(self) -> None:
+                return None
 
             def shutdown(self, *, timeout_s: float) -> bool:
                 shutdown_started.set()

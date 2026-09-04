@@ -45,7 +45,11 @@ from workflow.hardware_guard import (
     restore_persisted_hardware_safety_latch,
 )
 from workflow.path_guard import PROJECT_ROOT
-from workflow.process_guard import SingleInstanceLock, assert_single_worker_config
+from workflow.process_guard import (
+    PRODUCTION_API_LOCK_PATH,
+    SingleInstanceLock,
+    assert_single_worker_config,
+)
 from workflow.task_store import (
     TASK_ACTIVE_STATUSES,
     read_task_record,
@@ -193,7 +197,7 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         if configured_workers is not None:
             logger.info("api worker configuration accepted: %s=%s", *configured_workers)
         single_worker_lock = SingleInstanceLock(
-            PROJECT_ROOT / "data" / "api_server.lock",
+            PRODUCTION_API_LOCK_PATH,
             owner=f"pid={os.getpid()}",
         )
         single_worker_lock.acquire()
@@ -275,12 +279,12 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
                         if isinstance(error, asyncio.CancelledError):
                             cleanup_cancellation = cleanup_cancellation or error
                         else:
-                            cleanup_error = error
+                            cleanup_error = cleanup_error or error
                             _log_cleanup_error(
                                 "failed to stop task runtime during API shutdown", error
                             )
                     elif not stopped:
-                        logger.warning("task runtime worker did not stop within timeout")
+                        logger.error("task runtime worker did not stop within timeout")
                 except asyncio.CancelledError as exc:
                     cleanup_cancellation = cleanup_cancellation or exc
                 except BaseException as exc:
@@ -316,17 +320,23 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 try:
                     from workflow.camera_executor import shutdown_recording_camera
 
-                    _, cancellation, error = await _await_thread_cleanup(shutdown_recording_camera)
+                    camera_stopped, cancellation, error = await _await_thread_cleanup(
+                        shutdown_recording_camera
+                    )
                     if cancellation is not None:
                         cleanup_cancellation = cleanup_cancellation or cancellation
                     if error is not None:
                         if isinstance(error, asyncio.CancelledError):
                             cleanup_cancellation = cleanup_cancellation or error
                         else:
+                            cleanup_error = cleanup_error or error
                             _log_cleanup_error("failed to stop camera recording during API shutdown", error)
+                    elif not camera_stopped:
+                        logger.error("camera runtime did not stop within timeout")
                 except asyncio.CancelledError as exc:
                     cleanup_cancellation = cleanup_cancellation or exc
                 except BaseException as exc:
+                    cleanup_error = cleanup_error or exc
                     _log_cleanup_error("failed to schedule camera shutdown", exc)
         finally:
             if generation_owned and single_worker_lock is not None:

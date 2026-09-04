@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import asyncio
 import json
+import multiprocessing
 import os
 import socket
 import tempfile
@@ -124,6 +125,20 @@ def _read_worker_commands(event_path: Path) -> list[str]:
             continue
         commands.append(str(event.get("command") or ""))
     return commands
+
+
+def _hold_camera_worker_lock(lock_path: str, ready, release) -> None:
+    """Spawn-safe synthetic orphan that owns only the SDK process fence."""
+
+    from workflow.process_guard import SingleInstanceLock
+
+    lock = SingleInstanceLock(lock_path, owner=f"synthetic-orphan pid={os.getpid()}")
+    lock.acquire()
+    ready.set()
+    try:
+        release.wait(timeout=30.0)
+    finally:
+        lock.release()
 
 
 @unittest.skipUnless(
@@ -261,6 +276,9 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
             mock.patch.object(api_server, "assert_single_worker_config", return_value=None),
             mock.patch.object(api_server, "SingleInstanceLock", return_value=lock),
             mock.patch.object(api_server, "close_hardware_admission_for_shutdown") as close_gate,
+            mock.patch.object(api_server, "request_task_runtime_shutdown") as request_task,
+            mock.patch.object(api_server, "_request_stage_runtime_shutdown") as request_stage,
+            mock.patch.object(api_server, "_request_camera_runtime_shutdown") as request_camera,
             mock.patch.object(api_server, "stop_task_runtime_manager") as stop_runtime,
             mock.patch(
                 "workflow.camera_executor.shutdown_recording_camera"
@@ -274,6 +292,9 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
             asyncio.run(exercise())
 
         close_gate.assert_not_called()
+        request_task.assert_not_called()
+        request_stage.assert_not_called()
+        request_camera.assert_not_called()
         stop_runtime.assert_not_called()
         stop_camera.assert_not_called()
         lock.release.assert_not_called()
@@ -454,10 +475,16 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
                 "after": {"x": {"current_pos": 0}, "y": {"current_pos": 0}},
             }
 
+        def runtime_stop_after_stage_signal() -> bool:
+            events.append("runtime.stop")
+            if not observed_stop.wait(timeout=1.0):
+                raise RuntimeError("stage did not observe phase-one stop before task join")
+            return True
+
         patches = self._lifespan_patches(
             api_server,
             events,
-            runtime_stop=lambda: (events.append("runtime.stop"), True)[1],
+            runtime_stop=runtime_stop_after_stage_signal,
         )
 
         async def exercise() -> None:
@@ -475,6 +502,14 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
             patches[5],
             patches[6],
             patches[7],
+            mock.patch.object(
+                api_server,
+                "_request_stage_runtime_shutdown",
+                side_effect=lambda: (
+                    events.append("request.stage.actual"),
+                    stage_reciprocation_controller.request_shutdown(),
+                )[-1],
+            ),
             mock.patch.object(stage_reciprocation_controller, "_normalize_cfg", return_value=cfg),
             mock.patch("workflow.stage_reciprocation.move_to_absolute", side_effect=blocking_move),
         ):
@@ -483,6 +518,7 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
         self.assertTrue(observed_stop.is_set())
         self.assertTrue(stage_reciprocation_controller.is_quiescent())
         self.assertIn("lock.release", events)
+        self.assertLess(events.index("request.stage.actual"), events.index("runtime.stop"))
         self.assertLess(events.index("runtime.stop"), events.index("lock.release"))
 
     def test_lifespan_defers_cancellation_until_camera_and_lock_cleanup(self) -> None:
@@ -523,6 +559,154 @@ class ApiRuntimeIntegrationTests(unittest.TestCase):
         self.assertIn("lock.release", events)
         self.assertLess(events.index("runtime.stop.exit"), events.index("camera.shutdown"))
         self.assertLess(events.index("camera.shutdown"), events.index("lock.release"))
+
+    def test_real_uvicorn_stays_observable_with_orphan_camera_worker_lock(self) -> None:
+        import uvicorn
+
+        import workflow.api_server as api_server
+        import workflow.camera_process_supervisor as supervisor_module
+        from workflow.hardware_guard import _reset_hardware_guard_for_tests
+        from workflow.path_guard import PROJECT_ROOT as APP_ROOT
+        from workflow.process_guard import SingleInstanceLock
+
+        supervisor_module.reset_camera_process_supervisor_for_tests()
+        _reset_hardware_guard_for_tests()
+        context = multiprocessing.get_context("spawn")
+        ready = context.Event()
+        release = context.Event()
+        orphan = None
+        server = None
+        server_thread: threading.Thread | None = None
+
+        try:
+            with tempfile.TemporaryDirectory(prefix="orphan-camera-lock-") as temp_dir:
+                lock_path = Path(temp_dir) / "camera_worker.lock"
+                orphan = context.Process(
+                    target=_hold_camera_worker_lock,
+                    args=(str(lock_path), ready, release),
+                    name="synthetic-orphan-camera-worker",
+                )
+                orphan.start()
+                self.assertTrue(ready.wait(timeout=5.0))
+                self.assertTrue(orphan.is_alive())
+
+                port = _free_loopback_port()
+                base_url = f"http://127.0.0.1:{port}"
+                config = uvicorn.Config(
+                    api_server.app,
+                    host="127.0.0.1",
+                    port=port,
+                    workers=1,
+                    lifespan="on",
+                    log_level="warning",
+                    access_log=False,
+                )
+                server = uvicorn.Server(config)
+                server.install_signal_handlers = lambda: None
+                server_thread = threading.Thread(
+                    target=server.run,
+                    name="api-orphan-camera-observability",
+                    daemon=True,
+                )
+
+                with (
+                    mock.patch.object(
+                        supervisor_module,
+                        "DEFAULT_CAMERA_WORKER_LOCK_PATH",
+                        lock_path,
+                    ),
+                    mock.patch.dict(
+                        os.environ,
+                        {
+                            "COLONY_API_WORKERS": "1",
+                            "UVICORN_WORKERS": "1",
+                            "WEB_CONCURRENCY": "1",
+                            # This must not redirect the frozen production path.
+                            "COLONY_CAMERA_WORKER_LOCK_PATH": str(
+                                lock_path.with_name("bypass.lock")
+                            ),
+                        },
+                        clear=False,
+                    ),
+                ):
+                    server_thread.start()
+                    deadline = time.monotonic() + 10.0
+                    while (
+                        not server.started
+                        and server_thread.is_alive()
+                        and time.monotonic() < deadline
+                    ):
+                        time.sleep(0.02)
+                    self.assertTrue(server.started, "degraded Uvicorn startup did not finish")
+
+                    status, payload = _json_request(base_url, "/health")
+                    self.assertEqual((status, payload), (200, {"status": "ok"}))
+
+                    status, payload = _json_request(
+                        base_url,
+                        "/api/camera/record/status",
+                    )
+                    self.assertEqual(status, 200)
+                    self.assertEqual(payload.get("state"), "faulted")
+                    self.assertEqual(payload.get("error_code"), "CAMERA_WORKER_LOCK_HELD")
+                    self.assertIsNone(payload.get("worker_pid"))
+
+                    status, hardware = _json_request(base_url, "/api/hardware/status")
+                    self.assertEqual(status, 200)
+                    self.assertFalse(hardware.get("safe"))
+                    self.assertTrue(hardware.get("busy"))
+                    self.assertEqual(
+                        dict(hardware.get("safety_latch") or {}).get("error_code"),
+                        "CAMERA_WORKER_LOCK_HELD",
+                    )
+
+                    status, rejected = _json_request(
+                        base_url,
+                        "/api/tasks/execute",
+                        method="POST",
+                        body={
+                            "task": {
+                                "task_id": "must-not-run-with-orphan-camera",
+                                "task_type": "capture",
+                            }
+                        },
+                    )
+                    self.assertEqual(status, 503)
+                    self.assertEqual(
+                        dict(rejected.get("detail") or {}).get("error_code"),
+                        "HARDWARE_SAFETY_LATCHED",
+                    )
+
+                    server.should_exit = True
+                    server_thread.join(timeout=10.0)
+
+                self.assertFalse(server_thread.is_alive())
+                self.assertTrue(orphan.is_alive())
+                api_probe = SingleInstanceLock(
+                    APP_ROOT / "data" / "api_server.lock",
+                    owner="post-degraded-api-probe",
+                )
+                api_probe.acquire()
+                api_probe.release()
+                release.set()
+                orphan.join(timeout=5.0)
+                self.assertFalse(orphan.is_alive())
+        finally:
+            if server is not None and server_thread is not None and server_thread.is_alive():
+                server.should_exit = True
+                server.force_exit = True
+                server_thread.join(timeout=3.0)
+            release.set()
+            if orphan is not None:
+                orphan.join(timeout=5.0)
+                if orphan.is_alive():
+                    orphan.terminate()
+                    orphan.join(timeout=2.0)
+            supervisor_module.reset_camera_process_supervisor_for_tests()
+            _reset_hardware_guard_for_tests(
+                clear_persisted_latch=True,
+                forget_persistence_path=True,
+            )
 
     def test_real_http_camera_chain_with_spawn_worker_and_slow_native_calls(self) -> None:
         import uvicorn

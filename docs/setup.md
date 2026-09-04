@@ -27,7 +27,7 @@ python tools/release_gate.py
 
 ## 硬件安全状态文件权限
 
-API 服务账号必须能够在项目固定的 `data/` 目录创建、原子替换、读取和删除 `hardware_safety_latch.json`，并能够写入 `data/hardware_safety_clearance_archive/`。不要用环境变量或启动参数把生产安全 marker 改到临时目录；目录不可用时启动必须失败关闭。`data/api_server.lock` 和相机 worker 的有效 OS lock 也必须位于本机可靠文件系统，不能放到会被自动清理的目录。
+API 服务账号必须能够在项目固定的 `data/` 目录创建、原子替换、读取和删除 `hardware_safety_latch.json`，并能够写入 `data/hardware_safety_clearance_archive/`。生产安全 marker、`data/api_server.lock` 和 `data/camera_worker.lock` 都是固定路径，不接受环境变量或启动参数重定向；该目录必须随版本升级保留、使用本机可靠文件系统、禁止自动清理，并通过 ACL 只允许服务账号和授权维护人员写入。目录不可用时启动必须失败关闭。
 
 锁存不能通过 HTTP、普通重启或手工删文件解除。只有 API 和所有相机子进程均已停止、现场人员确认机构物理停稳并完成故障处置后，才可按 [硬件与安全](hardware.md#安全锁存与停止验收) 的命令运行 `tools/clear_hardware_safety_latch.py`。归档的原 marker 与 clearance receipt 必须随故障记录保存。
 

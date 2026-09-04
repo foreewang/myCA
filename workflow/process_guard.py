@@ -14,6 +14,13 @@ else:
 
 
 WORKER_COUNT_ENV_KEYS = ("COLONY_API_WORKERS", "UVICORN_WORKERS", "WEB_CONCURRENCY")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PRODUCTION_API_LOCK_PATH = (PROJECT_ROOT / "data" / "api_server.lock").resolve(
+    strict=False
+)
+PRODUCTION_CAMERA_WORKER_LOCK_PATH = (
+    PROJECT_ROOT / "data" / "camera_worker.lock"
+).resolve(strict=False)
 
 _LOCKED_PATHS: set[Path] = set()
 _LOCKED_PATHS_LOCK = threading.RLock()
@@ -111,7 +118,15 @@ class SingleInstanceLock:
                     log_detail=f"lock_path={resolved}",
                 )
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            fh = self.path.open("a+b")
+            flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)
+            fd = os.open(str(self.path), flags, 0o600)
+            try:
+                # Do not use a+b here: O_APPEND ignores seek() for writes on
+                # Windows and made every ownership refresh grow the lock file.
+                fh = os.fdopen(fd, "r+b", buffering=0)
+            except BaseException:
+                os.close(fd)
+                raise
             try:
                 self._lock_file(fh)
                 self._write_owner(fh)
@@ -177,5 +192,6 @@ class SingleInstanceLock:
         payload = payload.ljust(256, b" ")
         fh.seek(1)
         fh.write(payload)
+        fh.truncate(1 + len(payload))
         fh.flush()
         os.fsync(fh.fileno())

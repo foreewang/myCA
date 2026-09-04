@@ -6,6 +6,8 @@ import logging
 import os
 import queue
 import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict
@@ -384,18 +386,60 @@ class TaskRuntimeManager:
         self._worker: threading.Thread | None = None
         self._worker_done = threading.Event()
         self._worker_done.set()
+        self._shutdown_cleanup_lock = threading.Lock()
+        self._shutdown_cleanup_thread: threading.Thread | None = None
+        self._shutdown_cleanup_done = threading.Event()
+        self._shutdown_cleanup_done.set()
+        self._submission_gate_lock = threading.Lock()
+        self._submissions_inflight = 0
+        self._submissions_done = threading.Event()
+        self._submissions_done.set()
         self._accepting = False
+
+    def _set_accepting(self, value: bool) -> None:
+        with self._submission_gate_lock:
+            self._accepting = bool(value)
+
+    @contextmanager
+    def _submission_scope(self):
+        """Fence queue admission against phase-one shutdown cleanup."""
+
+        with self._submission_gate_lock:
+            worker = self._worker
+            if not self._accepting or worker is None or not worker.is_alive():
+                raise TaskRuntimeError(
+                    503,
+                    "TASK_RUNTIME_NOT_RUNNING",
+                    "task runtime is not accepting submissions",
+                )
+            self._submissions_inflight += 1
+            self._submissions_done.clear()
+        try:
+            yield
+        finally:
+            with self._submission_gate_lock:
+                self._submissions_inflight -= 1
+                if self._submissions_inflight == 0:
+                    self._submissions_done.set()
 
     def start(self) -> None:
         with self._lock:
+            cleanup_thread = self._shutdown_cleanup_thread
+            if (
+                not self._shutdown_cleanup_done.is_set()
+                or (cleanup_thread is not None and cleanup_thread.is_alive())
+                or not self._submissions_done.is_set()
+                or not self._queue.empty()
+            ):
+                raise RuntimeError("task runtime shutdown cleanup is still draining")
             if self._worker is not None and self._worker.is_alive():
                 if self._stop_event.is_set() or not self._accepting:
                     raise RuntimeError("task runtime worker is still shutting down")
-                self._accepting = True
+                self._set_accepting(True)
                 return
             self._stop_event.clear()
             self._worker_done.clear()
-            self._accepting = True
+            self._set_accepting(True)
             try:
                 self._worker = threading.Thread(
                     target=self._worker_loop,
@@ -405,7 +449,7 @@ class TaskRuntimeManager:
                 self._worker.start()
             except BaseException:
                 self._worker = None
-                self._accepting = False
+                self._set_accepting(False)
                 self._stop_event.set()
                 self._worker_done.set()
                 raise
@@ -417,7 +461,7 @@ class TaskRuntimeManager:
         # holding _lock.  Shutdown must still reach already-running hardware
         # immediately if that filesystem call stalls, so publish all atomic
         # signals before phase two takes the manager lock and joins.
-        self._accepting = False
+        self._set_accepting(False)
         self._stop_event.set()
         request_all_task_cancellations()
         try:
@@ -427,36 +471,55 @@ class TaskRuntimeManager:
 
     def stop(self, timeout_s: float = TASK_WORKER_STOP_TIMEOUT_S) -> bool:
         self.request_stop()
-        with self._lock:
-            worker = self._worker
-            if worker is None:
-                self._worker_done.set()
-
+        deadline = time.monotonic() + max(0.0, float(timeout_s))
+        worker = self._worker
         if worker is None:
-            self._discard_pending_items("task runtime stopped before queued task started")
-            return True
+            self._worker_done.set()
+        cleanup_thread = self._start_shutdown_cleanup(
+            "API shutdown canceled queued task before it started"
+        )
 
-        worker.join(timeout=max(0.0, float(timeout_s)))
-        stopped = not worker.is_alive()
-        self._discard_pending_items("API shutdown canceled queued task before it started")
+        if worker is not None:
+            worker.join(timeout=max(deadline - time.monotonic(), 0.0))
+        stopped = worker is None or not worker.is_alive()
+        if cleanup_thread is not None:
+            cleanup_thread.join(timeout=max(deadline - time.monotonic(), 0.0))
+        cleanup_stopped = self._shutdown_cleanup_done.is_set() and (
+            cleanup_thread is None or not cleanup_thread.is_alive()
+        )
         if stopped:
-            with self._lock:
-                if self._worker is worker:
-                    self._worker = None
-        return stopped
+            # Lifecycle startup/shutdown is serialized by the API generation
+            # lock.  Avoid re-entering _lock here: a request may be stalled in
+            # durable record I/O while holding it.
+            if self._worker is worker:
+                self._worker = None
+        return bool(
+            stopped
+            and cleanup_stopped
+            and self._submissions_done.is_set()
+            and self._queue.empty()
+        )
 
     def is_quiescent(self) -> bool:
-        with self._lock:
-            worker = self._worker
-            return bool(
-                self._worker_done.is_set()
-                and (worker is None or not worker.is_alive())
-                and not self._accepting
-            )
+        worker = self._worker
+        cleanup_thread = self._shutdown_cleanup_thread
+        return bool(
+            self._worker_done.is_set()
+            and (worker is None or not worker.is_alive())
+            and self._shutdown_cleanup_done.is_set()
+            and (cleanup_thread is None or not cleanup_thread.is_alive())
+            and self._submissions_done.is_set()
+            and self._queue.empty()
+            and not self._accepting
+        )
 
     def wait_until_quiescent(self, timeout_s: float | None = None) -> bool:
-        timeout = None if timeout_s is None else max(0.0, float(timeout_s))
-        if not self._worker_done.wait(timeout=timeout):
+        deadline = None if timeout_s is None else time.monotonic() + max(0.0, float(timeout_s))
+        worker_timeout = None if deadline is None else max(deadline - time.monotonic(), 0.0)
+        if not self._worker_done.wait(timeout=worker_timeout):
+            return False
+        cleanup_timeout = None if deadline is None else max(deadline - time.monotonic(), 0.0)
+        if not self._shutdown_cleanup_done.wait(timeout=cleanup_timeout):
             return False
         return self.is_quiescent()
 
@@ -482,7 +545,7 @@ class TaskRuntimeManager:
         # returning HTTP 202 and failing the queued task later.
         require_hardware_safe()
 
-        with self._lock:
+        with self._submission_scope(), self._lock:
             if not self._accepting or self._worker is None or not self._worker.is_alive():
                 raise TaskRuntimeError(
                     503,
@@ -507,6 +570,18 @@ class TaskRuntimeManager:
                 record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
                 if access_logger is not None:
                     access_logger.info("execute_task queued accepted record: task_id=%s", task_id)
+                if self._stop_event.is_set() or not self._accepting:
+                    canceled = mark_record_canceled(
+                        record,
+                        "API shutdown raced task submission before queue admission",
+                    )
+                    write_task_record(canceled)
+                    unregister_task_cancel_event(task_id)
+                    raise TaskRuntimeError(
+                        503,
+                        "TASK_RUNTIME_NOT_RUNNING",
+                        "task runtime is shutting down",
+                    )
                 self._queue.put_nowait(
                     QueuedTask(
                         task=copy.deepcopy(task),
@@ -546,7 +621,10 @@ class TaskRuntimeManager:
             while True:
                 if self._stop_event.is_set():
                     return
-                item = self._queue.get()
+                try:
+                    item = self._queue.get(timeout=0.1)
+                except queue.Empty:
+                    continue
                 try:
                     if item is None:
                         return
@@ -559,8 +637,43 @@ class TaskRuntimeManager:
         finally:
             with self._lock:
                 if self._worker is current:
-                    self._accepting = False
+                    self._set_accepting(False)
             self._worker_done.set()
+
+    def _start_shutdown_cleanup(self, reason: str) -> threading.Thread | None:
+        """Drain queued records on a tracked thread so stop() stays bounded."""
+
+        with self._shutdown_cleanup_lock:
+            current = self._shutdown_cleanup_thread
+            if current is not None and current.is_alive():
+                return current
+            if self._submissions_done.is_set() and self._queue.empty():
+                self._shutdown_cleanup_thread = None
+                self._shutdown_cleanup_done.set()
+                return None
+
+            self._shutdown_cleanup_done.clear()
+
+            def cleanup() -> None:
+                try:
+                    self._submissions_done.wait()
+                    self._discard_pending_items(reason)
+                finally:
+                    self._shutdown_cleanup_done.set()
+
+            thread = threading.Thread(
+                target=cleanup,
+                name="TaskRuntimeShutdownCleanup",
+                daemon=False,
+            )
+            self._shutdown_cleanup_thread = thread
+            try:
+                thread.start()
+            except BaseException:
+                self._shutdown_cleanup_thread = None
+                self._shutdown_cleanup_done.set()
+                raise
+            return thread
 
     def _discard_pending_items(self, reason: str) -> None:
         while True:

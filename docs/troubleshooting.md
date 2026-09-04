@@ -60,7 +60,7 @@
 
 当前实现的状态查询只读 API 内存，MVS 原生调用由独立相机子进程承载。出现原生超时时应看到 `error_code`、`worker_restart_count` 增加且 `worker_pid` 被替换；恢复链路后应能直接重试，无需重启 API。若 `/health` 或状态查询仍长时间无响应，或者 PID 未被替换，均按发布阻断处理并保留两份日志、请求时间线和残留的唯一 `*.part.avi`。不要在 `Waiting for application shutdown` 时连续按两次 `Ctrl+C`，否则无法验证正常 lifespan 清理。
 
-正常停止只按一次 `Ctrl+C`，给 Uvicorn 和现场服务管理器至少 90 秒总停止宽限。若旧任务、往复线程或相机子进程未静默，程序会继续持有 generation lock；不要删除 `data/api_server.lock` 或强启第二实例。
+正常停止只按一次 `Ctrl+C`，给 Uvicorn 和现场服务管理器至少 90 秒总停止宽限。停机第一阶段会先关闭全局准入，并向任务、往复位移台和相机同时发布停止信号；第二阶段才等待任务记录清理、运动线程退出、录像提交和相机子进程退出。若其中任一环节未静默，程序会继续持有 generation lock，并保留/转化持久安全 marker；不要删除固定的 `data/api_server.lock`、`data/camera_worker.lock` 或强启第二实例。
 
 ## `/api/hardware/status` 返回 `safe=false`
 

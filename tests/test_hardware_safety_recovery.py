@@ -174,11 +174,17 @@ def test_failed_atomic_move_keeps_active_marker_and_prepared_receipt(
 
 
 def test_production_wrapper_has_no_caller_selected_paths() -> None:
-    with mock.patch.object(
-        recovery,
-        "_clear_hardware_safety_latch_with_paths",
-        return_value={"status": "cleared"},
-    ) as implementation:
+    with (
+        mock.patch.object(
+            recovery,
+            "_clear_hardware_safety_latch_with_paths",
+            return_value={"status": "cleared"},
+        ) as implementation,
+        mock.patch.dict(
+            recovery.os.environ,
+            {"COLONY_CAMERA_WORKER_LOCK_PATH": "C:/unsafe/bypass.lock"},
+        ),
+    ):
         recovery.clear_production_hardware_safety_latch(
             operator="operator-001",
             reason="verified safe",
@@ -188,6 +194,10 @@ def test_production_wrapper_has_no_caller_selected_paths() -> None:
     called = implementation.call_args.kwargs
     assert called["latch_path"] == hardware_guard.PRODUCTION_HARDWARE_SAFETY_LATCH_PATH
     assert called["api_lock_path"] == recovery.PRODUCTION_API_LOCK_PATH
+    assert (
+        called["camera_worker_lock_path"]
+        == recovery.PRODUCTION_CAMERA_WORKER_LOCK_PATH
+    )
     assert "latch_path" not in (
         recovery.clear_production_hardware_safety_latch.__annotations__
     )

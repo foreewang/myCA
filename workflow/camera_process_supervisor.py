@@ -29,7 +29,12 @@ from types import MappingProxyType
 from typing import Any, Callable, Dict, Mapping
 
 from workflow.camera_video_artifact import CameraVideoArtifactError, validate_and_promote_video
-from workflow.process_guard import SingleInstanceLock, SingleWorkerGuardError
+from workflow.process_guard import (
+    PRODUCTION_API_LOCK_PATH,
+    PRODUCTION_CAMERA_WORKER_LOCK_PATH,
+    SingleInstanceLock,
+    SingleWorkerGuardError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -88,9 +93,9 @@ ACTIVE_STATES = {"opening", "open", "starting", "recording", "stopping", "closin
 CAMERA_WORKER_LOG_PATH = PROJECT_ROOT / "logs" / "camera_worker.log"
 CAMERA_WORKER_LOG_MAX_BYTES = 10 * 1024 * 1024
 CAMERA_WORKER_LOG_BACKUP_COUNT = 5
-DEFAULT_CAMERA_WORKER_LOCK_PATH = PROJECT_ROOT / "data" / "camera_worker.lock"
+DEFAULT_CAMERA_WORKER_LOCK_PATH = PRODUCTION_CAMERA_WORKER_LOCK_PATH
 _RESERVED_STATE_PATHS = {
-    (PROJECT_ROOT / "data" / "api_server.lock").resolve(strict=False),
+    PRODUCTION_API_LOCK_PATH,
     (PROJECT_ROOT / "data" / "hardware_safety_latch.json").resolve(strict=False),
 }
 
@@ -454,6 +459,11 @@ def _locked_camera_worker_entry(
                     "kind": "startup_error",
                     "pid": os.getpid(),
                     "error_type": type(exc).__name__,
+                    "error_code": getattr(
+                        exc,
+                        "error_code",
+                        "CAMERA_WORKER_LOCK_ACQUIRE_FAILED",
+                    ),
                     "message": str(exc),
                 }
             )
@@ -1113,11 +1123,17 @@ class CameraProcessSupervisor:
             # so block every hardware path persistently, not only this request.
             from workflow.hardware_guard import latch_hardware_unsafe
 
-            latch_hardware_unsafe("CAMERA_WORKER_LOCK_HELD", message)
+            lock_error_code = str(ready.get("error_code") or "")
+            safety_error_code = (
+                "CAMERA_WORKER_LOCK_HELD"
+                if lock_error_code == "API_SERVER_ALREADY_RUNNING"
+                else "CAMERA_WORKER_LOCK_UNAVAILABLE"
+            )
+            latch_hardware_unsafe(safety_error_code, message)
             with self._state_lock:
                 self._worker_start_blocked_error = message
                 self._last_error = message
-                self._last_error_code = "CAMERA_WORKER_LOCK_HELD"
+                self._last_error_code = safety_error_code
             raise CameraProcessError(message)
         if not isinstance(ready, dict) or ready.get("kind") != "ready":
             self._terminate_process(process, parent_connection)

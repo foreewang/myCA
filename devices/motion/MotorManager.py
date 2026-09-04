@@ -130,10 +130,35 @@ class MotorManager:
         profile_acc: int,
         profile_dec: int,
         timeout: float = 120.0,
+        stop_event=None,
     ) -> Optional[int]:
         """在轮廓位置模式下执行相对位移，并返回位置误差。"""
+        if stop_event is not None and stop_event.is_set():
+            raise MotionCanceled(f"position move canceled before enable for slave={self.slave}")
         if not self._ensure_mode_and_enable(self.MODE_PROFILE_POSITION, True):
             return None
+        try:
+            canceled_after_enable = stop_event is not None and stop_event.is_set()
+        except BaseException as exc:
+            try:
+                self.client.quick_stop(self.slave)
+            except BaseException as stop_exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after cancellation check failure for slave={self.slave}"
+                ) from stop_exc
+            raise MotionStopFailed(
+                f"cancellation check failed after enable for slave={self.slave}; motor state is unknown"
+            ) from exc
+        if canceled_after_enable:
+            try:
+                stopped = bool(self.client.quick_stop(self.slave))
+            except BaseException as exc:
+                raise MotionStopFailed(
+                    f"quick_stop raised after enable for slave={self.slave}"
+                ) from exc
+            if not stopped:
+                raise MotionStopFailed(f"quick_stop failed after enable for slave={self.slave}")
+            raise MotionCanceled(f"position move canceled after enable for slave={self.slave}")
         return self.client.move_relative_pp(
             self.slave,
             offset,
@@ -141,6 +166,7 @@ class MotorManager:
             profile_acc,
             profile_dec,
             timeout,
+            stop_event=stop_event,
         )
 
     def pv_start(self, target_velocity: int, profile_acc: int, profile_dec: int) -> bool:

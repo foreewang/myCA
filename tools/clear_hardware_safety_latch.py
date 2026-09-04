@@ -30,16 +30,14 @@ from workflow.hardware_guard import (  # noqa: E402
 )
 from workflow.path_guard import DATA_ROOT  # noqa: E402
 from workflow.process_guard import (  # noqa: E402
+    PRODUCTION_API_LOCK_PATH,
+    PRODUCTION_CAMERA_WORKER_LOCK_PATH,
     SingleInstanceLock,
     SingleWorkerGuardError,
 )
 
 
 CONFIRMATION_PHRASE = "I CONFIRM ALL HARDWARE IS PHYSICALLY STOPPED"
-PRODUCTION_API_LOCK_PATH = (DATA_ROOT / "api_server.lock").resolve(strict=False)
-DEFAULT_CAMERA_WORKER_LOCK_PATH = (DATA_ROOT / "camera_worker.lock").resolve(
-    strict=False
-)
 PRODUCTION_CLEARANCE_ARCHIVE_DIR = (
     DATA_ROOT / "hardware_safety_clearance_archive"
 ).resolve(strict=False)
@@ -62,26 +60,6 @@ def _utc_now() -> str:
 
 def _filename_timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-
-
-def _production_camera_worker_lock_path() -> Path:
-    """Use the same configured lock path as the camera worker.
-
-    The production latch itself is never configurable. The worker lock already
-    has a deployment environment override, so this offline command must run in
-    the same service environment and acquire that exact effective lock.
-    """
-
-    raw = str(
-        os.getenv(
-            "COLONY_CAMERA_WORKER_LOCK_PATH",
-            str(DEFAULT_CAMERA_WORKER_LOCK_PATH),
-        )
-    ).strip()
-    path = Path(raw or DEFAULT_CAMERA_WORKER_LOCK_PATH)
-    if not path.is_absolute():
-        path = PROJECT_ROOT / path
-    return path.resolve(strict=False)
 
 
 def _validate_operator_input(
@@ -383,7 +361,7 @@ def clear_production_hardware_safety_latch(
         confirmation=confirmation,
         latch_path=PRODUCTION_HARDWARE_SAFETY_LATCH_PATH,
         api_lock_path=PRODUCTION_API_LOCK_PATH,
-        camera_worker_lock_path=_production_camera_worker_lock_path(),
+        camera_worker_lock_path=PRODUCTION_CAMERA_WORKER_LOCK_PATH,
         archive_dir=PRODUCTION_CLEARANCE_ARCHIVE_DIR,
     )
 
