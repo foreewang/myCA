@@ -1044,7 +1044,9 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
         _require_int(a1_start, "y", f"{base}.a1_start.y", issues)
 
     _require_number(plate, "well_diameter_mm", f"{base}.well_diameter_mm", issues, minimum=0, exclusive_min=True)
-    _require_number(plate, "well_gap_mm", f"{base}.well_gap_mm", issues, minimum=0, exclusive_min=False)
+    if "well_gap_mm" in plate:
+        _require_number(plate, "well_gap_mm", f"{base}.well_gap_mm", issues, minimum=0, exclusive_min=False)
+    _validate_well_step(base, plate, issues)
     _validate_axis_pulses_per_mm(base, plate, issues)
 
     for key in (
@@ -1068,6 +1070,42 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
         _validate_runtime_guard(f"{base}.runtime_guard", runtime_guard, issues)
 
     _validate_plate_reference_points_within_safe_limits(base, plate, issues)
+
+
+def _validate_well_step(
+    base: str,
+    plate: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    step = plate.get("well_step")
+    if not isinstance(step, Mapping):
+        issues.append(ConfigIssue(f"{base}.well_step", "required mapping is missing"))
+        return
+    for axis_name in ("col", "row"):
+        axis = step.get(axis_name)
+        axis_path = f"{base}.well_step.{axis_name}"
+        if not isinstance(axis, Mapping):
+            issues.append(ConfigIssue(axis_path, "required mapping is missing"))
+            continue
+        _require_int(axis, "x", f"{axis_path}.x", issues)
+        _require_int(axis, "y", f"{axis_path}.y", issues)
+        for key in sorted(str(key) for key in axis.keys()):
+            if key not in {"x", "y"}:
+                issues.append(ConfigIssue(f"{axis_path}.{key}", "unexpected field; expected only x and y"))
+    for key in sorted(str(key) for key in step.keys()):
+        if key not in {"col", "row"}:
+            issues.append(ConfigIssue(f"{base}.well_step.{key}", "unexpected field; expected only col and row"))
+
+    rows = plate.get("rows")
+    cols = plate.get("cols")
+    col = step.get("col") if isinstance(step.get("col"), Mapping) else None
+    row = step.get("row") if isinstance(step.get("row"), Mapping) else None
+    if isinstance(cols, int) and cols > 1 and isinstance(col, Mapping):
+        if col.get("x") == 0 and col.get("y") == 0:
+            issues.append(ConfigIssue(f"{base}.well_step.col", "must not be (0, 0) when cols > 1"))
+    if isinstance(rows, int) and rows > 1 and isinstance(row, Mapping):
+        if row.get("x") == 0 and row.get("y") == 0:
+            issues.append(ConfigIssue(f"{base}.well_step.row", "must not be (0, 0) when rows > 1"))
 
 
 def _validate_axis_pulses_per_mm(
@@ -1094,19 +1132,17 @@ def _validate_plate_reference_points_within_safe_limits(
     """校验 A1 及最远行列起始点均落在带余量的可执行范围内。"""
     a1 = plate.get("a1_start")
     limits = plate.get("stage_limits")
-    ppm = plate.get("pulses_per_mm")
     if not isinstance(a1, Mapping) or not isinstance(limits, Mapping) or not bool(limits.get("enabled")):
         return
 
+    step = plate.get("well_step")
+    col_step = step.get("col") if isinstance(step, Mapping) else None
+    row_step = step.get("row") if isinstance(step, Mapping) else None
     values = (
         plate.get("rows"),
         plate.get("cols"),
         a1.get("x"),
         a1.get("y"),
-        plate.get("well_diameter_mm"),
-        plate.get("well_gap_mm"),
-        plate.get("row_stage_sign"),
-        plate.get("col_stage_sign"),
         limits.get("x_min"),
         limits.get("x_max"),
         limits.get("y_min"),
@@ -1115,19 +1151,21 @@ def _validate_plate_reference_points_within_safe_limits(
     )
     if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values):
         return
-    if isinstance(ppm, Mapping):
-        x_ppm, y_ppm = ppm.get("x"), ppm.get("y")
-    else:
-        x_ppm = y_ppm = ppm
-    if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in (x_ppm, y_ppm)):
+    if not isinstance(col_step, Mapping) or not isinstance(row_step, Mapping):
+        return
+    step_values = (col_step.get("x"), col_step.get("y"), row_step.get("x"), row_step.get("y"))
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in step_values):
         return
 
-    pitch_mm = float(plate["well_diameter_mm"]) + float(plate["well_gap_mm"])
-    far_x = int(a1["x"]) + round(
-        (int(plate["cols"]) - 1) * pitch_mm * float(x_ppm) * int(plate["col_stage_sign"])
+    far_x = (
+        int(a1["x"])
+        + (int(plate["cols"]) - 1) * int(col_step["x"])
+        + (int(plate["rows"]) - 1) * int(row_step["x"])
     )
-    far_y = int(a1["y"]) + round(
-        (int(plate["rows"]) - 1) * pitch_mm * float(y_ppm) * int(plate["row_stage_sign"])
+    far_y = (
+        int(a1["y"])
+        + (int(plate["cols"]) - 1) * int(col_step["y"])
+        + (int(plate["rows"]) - 1) * int(row_step["y"])
     )
     margin = int(limits["safety_margin"])
     safe = {

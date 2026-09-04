@@ -1702,6 +1702,7 @@ def test_compute_well_start_maps_columns_to_x_and_rows_to_y() -> None:
         "a1_start": {"x": 8865800, "y": 6185500},
         "well_diameter_mm": 13.7,
         "well_gap_mm": 3.5,
+        "well_step": {"col": {"x": -2537000, "y": 0}, "row": {"x": 0, "y": -2537000}},
         "pulses_per_mm": 147500,
         "row_stage_sign": -1,
         "col_stage_sign": -1,
@@ -1744,6 +1745,7 @@ def test_compute_well_start_uses_independent_axis_pulses_per_mm() -> None:
         "a1_start": {"x": 1000, "y": 2000},
         "well_diameter_mm": 1.0,
         "well_gap_mm": 0.0,
+        "well_step": {"col": {"x": -100, "y": 0}, "row": {"x": 0, "y": -200}},
         "pulses_per_mm": {"x": 100, "y": 200},
         "row_stage_sign": -1,
         "col_stage_sign": -1,
@@ -1767,6 +1769,7 @@ def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
         "a1_start": {"x": 1000, "y": 2000},
         "well_diameter_mm": 2.0,
         "well_gap_mm": 0.0,
+        "well_step": {"col": {"x": 100, "y": 0}, "row": {"x": 0, "y": 200}},
         "pulses_per_mm": {"x": 100, "y": 200},
         "row_stage_sign": 1,
         "col_stage_sign": 1,
@@ -1899,20 +1902,20 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
     assert cfg["targets"][0] == {
         "index": 1,
         "well_name": "B2",
-        "x": 4979233,
-        "y": 6088062,
+        "x": 4840541,
+        "y": 5995754,
     }
     assert cfg["targets"][1] == {
         "index": 2,
         "well_name": "B3",
-        "x": 3852014,
-        "y": 6088062,
+        "x": 3574035,
+        "y": 5995754,
     }
     assert cfg["targets"][-1] == {
         "index": 6,
         "well_name": "C4",
-        "x": 2724794,
-        "y": 3833623,
+        "x": 2304196,
+        "y": 3482936,
     }
     x_safe = (
         expected_limits["x_min"] + expected_limits["safety_margin"],
@@ -2142,16 +2145,28 @@ def test_project_plates_config_passes_machine_validation() -> None:
 def test_project_xy_stage_calibration_values() -> None:
     plates = load_yaml_unique("config/plates.yaml")["plates"]
     expected_a1 = {
-        "6-well": (6213780, 7156357),
-        "12-well": (5781368, 7957288),
-        "24-well": (6106452, 8342500),
-        "48-well": (5854763, 8843257),
+        "6-well": (6198780, 7287429),
+        "12-well": (5774368, 8116360),
+        "24-well": (6110380, 8508572),
+        "48-well": (5848352, 8942329),
     }
     expected_farthest = {
-        "6-well": (1626260, 2568837, "B3"),
-        "12-well": (1239723, 1901762, "C4"),
-        "24-well": (470356, 1579185, "D6"),
-        "48-well": (487365, 1175545, "F8"),
+        "6-well": (1064474, 2220865, "B3"),
+        "12-well": (654283, 1372092, "C4"),
+        "24-well": (-232149, 970118, "D6"),
+        "48-well": (-155568, 468175, "F8"),
+    }
+    expected_step = {
+        "6-well": {"col": {"x": -2567153, "y": -3293}, "row": {"x": 0, "y": -5059978}},
+        "12-well": {"col": {"x": -1706695, "y": 0}, "row": {"x": 0, "y": -3372134}},
+        "24-well": {"col": {"x": -1266506, "y": 0}, "row": {"x": -3333, "y": -2512818}},
+        "48-well": {"col": {"x": -858560, "y": 3}, "row": {"x": 1200, "y": -1694835}},
+    }
+    expected_inner_d = {
+        "6-well": 34.26382324,
+        "12-well": 21.44888184,
+        "24-well": 15.56875488,
+        "48-well": 10.28811523,
     }
     limits = {
         "enabled": True,
@@ -2164,6 +2179,8 @@ def test_project_xy_stage_calibration_values() -> None:
 
     for plate_type, plate in plates.items():
         assert (plate["a1_start"]["x"], plate["a1_start"]["y"]) == expected_a1[plate_type]
+        assert plate["well_step"] == expected_step[plate_type]
+        assert plate["well_diameter_mm"] == expected_inner_d[plate_type]
         assert plate["pulses_per_mm"] == {"x": 65536, "y": 131072}
         assert plate["stage_limits"] == limits
         assert plate["row_stage_sign"] == -1
@@ -2859,6 +2876,7 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
         "a1_start": {"x": 0, "y": 0},
         "well_diameter_mm": 1.0,
         "well_gap_mm": 0.0,
+        "well_step": {"col": {"x": 0, "y": 0}, "row": {"x": 0, "y": 0}},
         "pulses_per_mm": 100,
         "row_stage_sign": -1,
         "col_stage_sign": -1,

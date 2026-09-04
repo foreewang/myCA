@@ -240,29 +240,44 @@ def all_well_names(plate_cfg: Dict[str, Any]) -> List[str]:
     return [well_name_from_index(r, c) for r in range(rows) for c in range(cols)]
 
 
-def get_plate_pitch_mm(plate_cfg: Dict[str, Any]) -> float:
-    """
-    计算培养板孔中心间距（pitch），单位 mm。
+def get_well_step_pulses(plate_cfg: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
+    """读取示教得到的行列换孔步长，单位 pulse。
 
-    参数
-    ----
-    plate_cfg : Dict[str, Any]
-        培养板配置。
+    步长已经包含现场方向，计算孔起点时不再乘 ``row_stage_sign`` / ``col_stage_sign``。
+    """
+    step = plate_cfg.get('well_step')
+    if not isinstance(step, Mapping):
+        raise KeyError('plates 配置缺少 well_step；换孔必须使用示教行列步长，不能再用直径+间隙')
+    col = step.get('col')
+    row = step.get('row')
+    if not isinstance(col, Mapping) or not isinstance(row, Mapping):
+        raise ValueError('well_step.col / well_step.row 必须是含 x、y 的映射')
+    return {
+        'col': {
+            'x': int(require_number(col.get('x'), 'well_step.col.x')),
+            'y': int(require_number(col.get('y'), 'well_step.col.y')),
+        },
+        'row': {
+            'x': int(require_number(row.get('x'), 'well_step.row.x')),
+            'y': int(require_number(row.get('y'), 'well_step.row.y')),
+        },
+    }
+
+
+def get_plate_pitch_mm(plate_cfg: Dict[str, Any]) -> Dict[str, float]:
+    """由示教步长换算 X/Y 孔距，单位 mm。
 
     返回
     ----
-    float
-        孔中心间距 = 孔径 + 孔间隙。
-
-    说明
-    ----
-    这里假设 pitch_mm = well_diameter_mm + well_gap_mm。
-    对你的项目来说，这个 pitch 是从 A1 推算到 B1 / A2 / C3 等孔位起点的关键参数。
+    Dict[str, float]
+        ``{'x': 列孔距, 'y': 行孔距}``。两轴不必相等，也不再使用 ``well_diameter_mm + well_gap_mm``。
     """
-    return (
-        require_number(plate_cfg.get('well_diameter_mm'), 'well_diameter_mm')
-        + require_number(plate_cfg.get('well_gap_mm'), 'well_gap_mm')
-    )
+    step = get_well_step_pulses(plate_cfg)
+    x_ppm, y_ppm = get_axis_pulses_per_mm(plate_cfg)
+    return {
+        'x': abs(step['col']['x']) / x_ppm,
+        'y': abs(step['row']['y']) / y_ppm,
+    }
 
 
 def get_axis_pulses_per_mm(plate_cfg: Dict[str, Any]) -> Tuple[float, float]:
@@ -348,7 +363,7 @@ def get_a1_start(plate_cfg: Dict[str, Any]) -> Dict[str, int]:
     说明
     ----
     A1 起始点是整个板坐标体系的基准点。
-    后续其他孔位的起始点，都是在这个基准点上按 pitch 和方向符号推算出来的。
+    后续其他孔位的起始点，都是在这个基准点上按示教行列步长推算出来的。
     """
     if 'a1_start' in plate_cfg and plate_cfg['a1_start'] is not None:
         a1 = plate_cfg['a1_start']
@@ -440,9 +455,8 @@ def compute_well_start(plate_cfg: Dict[str, Any], well_name: str) -> Dict[str, i
     1. 校验孔名是否合法且在板型范围内；
     2. 读取 A1 基准点；
     3. 将孔名转换为行列索引；
-    4. 读取 pitch_mm、pulses_per_mm 和换孔方向符号；
-    5. 计算从 A1 到目标孔在 X/Y 上应偏移多少脉冲；
-    6. 得到目标孔的观测起始点坐标。
+    4. 读取示教行列步长 ``well_step``；
+    5. 目标孔起点 = A1 + 列序号 × 列步长 + 行序号 × 行步长。
 
     说明
     ----
@@ -450,20 +464,16 @@ def compute_well_start(plate_cfg: Dict[str, Any], well_name: str) -> Dict[str, i
     它负责把“孔位名字”转换成“设备能执行的起始坐标”。
 
     对你的扫描流程来说，后续单孔扫描、整板扫描、换孔动作，
-    最终都要依赖这个函数给出的结果。
+    最终都要依赖这个函数给出的结果。换孔不再使用直径加间隙。
     """
     validate_well_name(plate_cfg, well_name)
 
     a1_start = get_a1_start(plate_cfg)
     row_idx, col_idx = parse_well_name(well_name)
-    pitch_mm = get_plate_pitch_mm(plate_cfg)
-    x_ppm, y_ppm = get_axis_pulses_per_mm(plate_cfg)
-    row_sign, col_sign = get_grid_signs(plate_cfg)
+    step = get_well_step_pulses(plate_cfg)
 
-    # 标准坐标映射：孔板列变化对应 X/电机 1，孔板行变化对应 Y/电机 2。
-    # 从 A1 到目标孔的位移量先在物理空间(mm)计算，再乘以脉冲系数转成设备坐标。
-    dx = round(col_idx * pitch_mm * x_ppm * col_sign)
-    dy = round(row_idx * pitch_mm * y_ppm * row_sign)
+    dx = col_idx * step['col']['x'] + row_idx * step['row']['x']
+    dy = col_idx * step['col']['y'] + row_idx * step['row']['y']
 
     return {
         'x': int(a1_start['x'] + dx),

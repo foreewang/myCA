@@ -10,6 +10,7 @@ from workflow.plate_geometry import (
     get_axis_pulses_per_mm,
     get_plate_pitch_mm,
     get_view_signs,
+    get_well_step_pulses,
     require_number,
 )
 
@@ -123,6 +124,49 @@ def _precheck_stage_limits(points: List[Dict[str, Any]], stage_limits: Dict[str,
     }
 
 
+def _safe_stage_box(stage_limits: Dict[str, Any]) -> Dict[str, int] | None:
+    if not stage_limits["enabled"]:
+        return None
+    required = ["x_min", "x_max", "y_min", "y_max"]
+    for key in required:
+        if stage_limits[key] is None:
+            raise ValueError(f"stage_limits.enabled=true，但缺少 {key}")
+    margin = int(stage_limits["safety_margin"])
+    return {
+        "x_min_safe": int(stage_limits["x_min"]) + margin,
+        "x_max_safe": int(stage_limits["x_max"]) - margin,
+        "y_min_safe": int(stage_limits["y_min"]) + margin,
+        "y_max_safe": int(stage_limits["y_max"]) - margin,
+    }
+
+
+def _in_safe_box(x: int, y: int, box: Dict[str, int]) -> bool:
+    return (
+        box["x_min_safe"] <= x <= box["x_max_safe"]
+        and box["y_min_safe"] <= y <= box["y_max_safe"]
+    )
+
+
+def _clip_points_to_safe_box(
+    points: List[Dict[str, Any]],
+    box: Dict[str, int] | None,
+) -> tuple[List[Dict[str, Any]], int]:
+    if box is None:
+        return points, 0
+    kept: List[Dict[str, Any]] = []
+    clipped = 0
+    for point in points:
+        x = int(point["stage_x_target"])
+        y = int(point["stage_y_target"])
+        if _in_safe_box(x, y, box):
+            kept.append(dict(point))
+        else:
+            clipped += 1
+    for index, point in enumerate(kept, start=1):
+        point["index"] = index
+    return kept, clipped
+
+
 def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
     """为单个培养孔生成完整扫描计划。"""
     plate = ctx["plate"]
@@ -134,8 +178,12 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
     x_sign_for_right, y_sign_for_down = get_view_signs(plate)
 
     well_diameter_mm = require_number(plate.get("well_diameter_mm"), "well_diameter_mm")
-    well_gap_mm = require_number(plate.get("well_gap_mm"), "well_gap_mm")
+    well_gap_mm = plate.get("well_gap_mm")
+    well_gap_value = (
+        require_number(well_gap_mm, "well_gap_mm") if well_gap_mm is not None else None
+    )
     pitch_mm = get_plate_pitch_mm(plate)
+    well_step = get_well_step_pulses(plate)
 
     fov_w = require_number(params["fov_mm"]["width"], "fov_mm.width")
     fov_h = require_number(params["fov_mm"]["height"], "fov_mm.height")
@@ -152,7 +200,15 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
     if step_x <= 0 or step_y <= 0:
         raise ValueError(f"扫描步长必须大于 0，当前 step_mm=({step_x}, {step_y})")
 
-    radius = well_diameter_mm / 2.0
+    # 起点已是「画面右侧刚贴内壁」，相机中心已内收半个视野。
+    # 扫描圆是相机中心轨迹，半径 = 内径/2 − max(FOV宽, FOV高)/2。
+    fov_inset_mm = max(fov_w, fov_h) / 2.0
+    radius = well_diameter_mm / 2.0 - fov_inset_mm
+    if radius <= 0:
+        raise ValueError(
+            "内径在扣除当前视野半宽后无法形成扫描圆："
+            f" well_diameter_mm={well_diameter_mm}, fov_mm=({fov_w}, {fov_h})"
+        )
     row_vals = _row_values(step_y, radius)
 
     points = []
@@ -186,7 +242,50 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
             )
             idx += 1
 
-    stage_limit_precheck = _precheck_stage_limits(points, _get_stage_limits(plate))
+    stage_limits = _get_stage_limits(plate)
+    safe_box = _safe_stage_box(stage_limits)
+    if safe_box is not None and not _in_safe_box(int(well_start["x"]), int(well_start["y"]), safe_box):
+        raise ValueError(
+            f"{well_name} 观测起始点越出位移台安全范围："
+            f" ({well_start['x']}, {well_start['y']})，"
+            f" 安全范围 X[{safe_box['x_min_safe']}, {safe_box['x_max_safe']}]"
+            f" Y[{safe_box['y_min_safe']}, {safe_box['y_max_safe']}]"
+        )
+
+    planned_point_count = len(points)
+    points, clipped_count = _clip_points_to_safe_box(points, safe_box)
+    if not points:
+        raise ValueError(
+            f"{well_name} 扫描点在扣除位移台安全范围后为空。"
+            f" 原规划 {planned_point_count} 个点全部越界。"
+        )
+
+    stage_limit_precheck = _precheck_stage_limits(points, stage_limits)
+    stage_limit_precheck["clipped_point_count"] = clipped_count
+    stage_limit_precheck["planned_point_count"] = planned_point_count
+
+    reference = {
+        "meaning": f"{well_name}孔左侧观测起始点（画面右侧刚贴内径内壁）",
+        "a1_start": {
+            "x": int(a1_start["x"]),
+            "y": int(a1_start["y"]),
+        },
+        "well_start": {
+            "x": int(well_start["x"]),
+            "y": int(well_start["y"]),
+        },
+        "well_diameter_mm": well_diameter_mm,
+        "well_step": well_step,
+        "pitch_mm": pitch_mm,
+        "pulses_per_mm": {
+            "x": x_ppm,
+            "y": y_ppm,
+        },
+        "x_stage_sign_for_view_right": x_sign_for_right,
+        "y_stage_sign_for_view_down": y_sign_for_down,
+    }
+    if well_gap_value is not None:
+        reference["well_gap_mm"] = well_gap_value
 
     return {
         "task_id": params["task_id"],
@@ -194,26 +293,7 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
         "plate_type": params["plate_type"],
         "well_name": well_name,
         "objective_name": params["objective_name"],
-        "reference": {
-            "meaning": f"{well_name}孔左侧观测起始点",
-            "a1_start": {
-                "x": int(a1_start["x"]),
-                "y": int(a1_start["y"]),
-            },
-            "well_start": {
-                "x": int(well_start["x"]),
-                "y": int(well_start["y"]),
-            },
-            "well_diameter_mm": well_diameter_mm,
-            "well_gap_mm": well_gap_mm,
-            "pitch_mm": pitch_mm,
-            "pulses_per_mm": {
-                "x": x_ppm,
-                "y": y_ppm,
-            },
-            "x_stage_sign_for_view_right": x_sign_for_right,
-            "y_stage_sign_for_view_down": y_sign_for_down,
-        },
+        "reference": reference,
         "scan_config": {
             "fov_mm": {
                 "width": fov_w,
@@ -224,6 +304,10 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
                 "width": step_x,
                 "height": step_y,
             },
+            "fov_inset_mm": fov_inset_mm,
+            "scan_radius_mm": radius,
+            "planned_point_count": planned_point_count,
+            "clipped_point_count": clipped_count,
             "point_count": len(points),
         },
         "stage_limit_precheck": stage_limit_precheck,
