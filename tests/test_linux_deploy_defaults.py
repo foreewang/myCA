@@ -14,9 +14,20 @@ LINUX_MVS_PYTHON_DIR = "/opt/MVS/Samples/64/Python/MvImport"
 
 
 def test_modbus_and_mvs_constants_target_linux() -> None:
+    from workflow.platform_defaults import (
+        DEFAULT_PROFILE_ACC,
+        DEFAULT_PROFILE_DEC,
+        DEFAULT_PROFILE_VEL,
+        DEFAULT_SCAN_OVERLAP,
+        DEFAULT_SCAN_SETTLE_S,
+    )
+
     assert DEFAULT_MODBUS_PORT == LINUX_MODBUS_PORT
     assert DEFAULT_MVS_PYTHON_DIR == LINUX_MVS_PYTHON_DIR
     assert StageReciprocationStartRequest().port == LINUX_MODBUS_PORT
+    assert DEFAULT_SCAN_OVERLAP == 0.1
+    assert DEFAULT_SCAN_SETTLE_S == 0.5
+    assert DEFAULT_PROFILE_VEL == DEFAULT_PROFILE_ACC == DEFAULT_PROFILE_DEC == 500000
 
 
 def test_production_configs_use_linux_serial_and_mvs_paths() -> None:

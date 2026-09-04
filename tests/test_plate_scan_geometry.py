@@ -73,6 +73,24 @@ def test_scan_radius_insets_by_half_fov() -> None:
     assert max(abs(p["view_down_mm"]) for p in plan["points"]) <= 4.0 + 1e-6
 
 
+def test_scan_planner_defaults_missing_overlap() -> None:
+    plate = {
+        "rows": 1,
+        "cols": 1,
+        "a1_start": {"x": 0, "y": 0},
+        "well_diameter_mm": 10.0,
+        "well_step": {"col": {"x": 0, "y": 0}, "row": {"x": 0, "y": 0}},
+        "pulses_per_mm": {"x": 100, "y": 100},
+        "x_stage_sign_for_view_right": 1,
+        "y_stage_sign_for_view_down": 1,
+        "stage_limits": {"enabled": False},
+    }
+    params = _scan_params(fov=2.0)
+    del params["overlap"]
+    plan = plan_single_well_scan({"plate": plate}, params)
+    assert plan["scan_config"]["overlap"] == 0.1
+
+
 def test_scan_planner_clips_points_above_safe_y() -> None:
     plate = {
         "rows": 1,

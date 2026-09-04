@@ -13,6 +13,7 @@ from workflow.plate_geometry import (
     get_well_step_pulses,
     require_number,
 )
+from workflow.platform_defaults import DEFAULT_SCAN_OVERLAP
 
 
 def _row_values(step_y: float, radius: float) -> List[float]:
@@ -187,7 +188,10 @@ def plan_single_well_scan(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[s
 
     fov_w = require_number(params["fov_mm"]["width"], "fov_mm.width")
     fov_h = require_number(params["fov_mm"]["height"], "fov_mm.height")
-    overlap = require_number(params.get("overlap"), "overlap")
+    overlap_raw = params.get("overlap")
+    if overlap_raw is None:
+        overlap_raw = DEFAULT_SCAN_OVERLAP
+    overlap = require_number(overlap_raw, "overlap")
 
     if fov_w <= 0 or fov_h <= 0:
         raise ValueError(f"视野尺寸必须大于 0，当前 fov_mm=({fov_w}, {fov_h})")

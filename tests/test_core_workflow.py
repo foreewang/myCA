@@ -278,6 +278,64 @@ def test_run_task_build_pipeline_params_uses_objective_name() -> None:
     assert params["objective_name"] == "10x"
     assert params["exposure_us"] == 12000
     assert params["gain"] == 1.5
+    assert params["overlap"] == 0.1
+    assert params["settle_s"] == 0.5
+    assert params["motion"]["profile_vel"] == 500000
+    assert params["motion"]["profile_acc"] == 500000
+    assert params["motion"]["profile_dec"] == 500000
+
+
+def test_build_pipeline_params_defaults_overlap_and_motion_profiles() -> None:
+    from workflow import run_task
+
+    ctx = {
+        "task": {
+            "task_id": "defaults-task",
+            "task_type": "capture",
+            "plate_type": "24-well",
+            "objective_name": "4x",
+            "capture": {"save_dir": "data/captures/defaults-task"},
+        },
+        "objective": {"fov_mm": {"width": 3.22, "height": 3.22}},
+        "camera": {
+            "resolution": {"width": 5120, "height": 5120},
+            "mvs_python_dir": "/opt/MVS/Samples/64/Python/MvImport",
+        },
+    }
+
+    params = run_task.build_pipeline_params(ctx)
+    assert params["overlap"] == 0.1
+    assert params["settle_s"] == 0.5
+    assert params["motion"]["profile_vel"] == 500000
+    assert params["motion"]["profile_acc"] == 500000
+    assert params["motion"]["profile_dec"] == 500000
+
+
+def test_build_pipeline_params_keeps_explicit_zero_overlap_and_profiles() -> None:
+    from workflow import run_task
+
+    ctx = {
+        "task": {
+            "task_id": "explicit-task",
+            "task_type": "capture",
+            "plate_type": "24-well",
+            "objective_name": "4x",
+            "capture": {"save_dir": "data/captures/explicit-task"},
+            "scan": {"overlap": 0.0},
+            "motion": {"profile_vel": 100000, "profile_acc": 200000, "profile_dec": 300000},
+        },
+        "objective": {"fov_mm": {"width": 3.22, "height": 3.22}},
+        "camera": {
+            "resolution": {"width": 5120, "height": 5120},
+            "mvs_python_dir": "/opt/MVS/Samples/64/Python/MvImport",
+        },
+    }
+
+    params = run_task.build_pipeline_params(ctx)
+    assert params["overlap"] == 0.0
+    assert params["motion"]["profile_vel"] == 100000
+    assert params["motion"]["profile_acc"] == 200000
+    assert params["motion"]["profile_dec"] == 300000
 
 
 def test_objective_executor_accepts_objective_name() -> None:

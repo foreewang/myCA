@@ -10,7 +10,7 @@ from workflow.camera_executor import capture_single_image
 from workflow.detect_api import run_detect_on_image
 from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
-from workflow.platform_defaults import DEFAULT_MODBUS_PORT
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT, DEFAULT_SCAN_SETTLE_S, apply_motion_profile_defaults
 from workflow.stage_executor import move_to_absolute_with_approach
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
@@ -174,7 +174,7 @@ def _move_to_compensate_target(
     target_y: int,
 ) -> Dict[str, Any]:
     raise_if_cancel_requested(params, "before_compensate_move")
-    motion = params["motion"]
+    motion = apply_motion_profile_defaults(params.get("motion"))
     plate = ctx["plate"]
     runtime_guard = plate.get("runtime_guard", {}) or {}
     arrival_tolerance = None
@@ -190,7 +190,13 @@ def _move_to_compensate_target(
         x_slave=int(motion.get("x_slave", 1)),
         y_slave=int(motion.get("y_slave", 2)),
         baudrate=int(motion.get("baudrate", 115200)),
-        settle_s=float(params.get("settle_s", motion.get("settle_s", 0.8))),
+        settle_s=float(
+            params["settle_s"]
+            if params.get("settle_s") is not None
+            else motion["settle_s"]
+            if motion.get("settle_s") is not None
+            else DEFAULT_SCAN_SETTLE_S
+        ),
         timeout_s=float(motion.get("timeout_s", 120.0)),
         poll_s=float(motion.get("poll_s", 0.05)),
         arrival_tolerance_pulse=arrival_tolerance,

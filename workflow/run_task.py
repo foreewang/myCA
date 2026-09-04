@@ -20,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from workflow.config_validator import resolve_mvs_python_dir, validate_autofocus_file
+from workflow.platform_defaults import DEFAULT_SCAN_OVERLAP, DEFAULT_SCAN_SETTLE_S, apply_motion_profile_defaults
 
 
 def load_structured_file(path: str | Path) -> Dict[str, Any]:
@@ -225,6 +226,13 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
             fov_w = fov_override
             fov_h = fov_override
 
+    overlap = scan_cfg.get("overlap")
+    if overlap is None:
+        overlap = DEFAULT_SCAN_OVERLAP
+    settle_s = scan_cfg.get("settle_s")
+    if settle_s is None:
+        settle_s = DEFAULT_SCAN_SETTLE_S
+
     return {
         "task_id": task["task_id"],
         "task_type": str(task.get("task_type") or "pipeline"),
@@ -255,10 +263,10 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "save_dir": capture_cfg.get("save_dir"),
         "filename_pattern": capture_cfg.get("filename_pattern"),
-        "overlap": scan_cfg.get("overlap"),
-        "settle_s": scan_cfg.get("settle_s", 0.8),
+        "overlap": overlap,
+        "settle_s": settle_s,
         "scan_output_json": scan_cfg.get("output_json"),
-        "motion": task.get("motion", {}) or {},
+        "motion": apply_motion_profile_defaults(task.get("motion")),
         "detect_entrypoint": detect_cfg.get("entrypoint"),
         "detect_model_dir": detect_cfg.get("model_dir"),
         "detect_provider": detect_cfg.get("provider", "cuda"),

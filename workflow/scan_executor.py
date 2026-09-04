@@ -10,7 +10,7 @@ from workflow.camera_executor import (
     capture_with_opened_camera,
 )
 from workflow.file_io import atomic_write_json
-from workflow.platform_defaults import DEFAULT_MODBUS_PORT
+from workflow.platform_defaults import DEFAULT_MODBUS_PORT, apply_motion_profile_defaults
 from workflow.stage_executor import move_to_absolute
 from workflow.task_control import TaskCanceled, raise_if_cancel_requested, report_progress
 
@@ -211,7 +211,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     - 本函数在第一个扫描点完成 XY 移动并等待稳定后、第一张拍照前执行 autofocus；
     - 这样 autofocus 看到的是目标孔实际观察视野，而不是上一次任务末尾位置。
     """
-    motion = params["motion"]
+    motion = apply_motion_profile_defaults(params.get("motion"))
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
     before_first_capture_autofocus_result = None

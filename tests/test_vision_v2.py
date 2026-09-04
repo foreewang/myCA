@@ -627,6 +627,27 @@ def test_detection_preflight_rejects_uncalibrated_overlap_before_model_load() ->
         )
 
 
+def test_detection_preflight_rejects_uncalibrated_default_overlap() -> None:
+    from workflow.run_task import build_pipeline_params, preflight_detection_backend
+
+    ctx = {
+        "task": {
+            "task_id": "default-overlap-detect",
+            "task_type": "pipeline",
+            "stages": ["capture", "detect"],
+            "plate_type": "24-well",
+            "objective_name": "4x",
+            "detect": {"model_dir": "C:/not-loaded-because-calibration-fails"},
+        },
+        "objective": {"fov_mm": {"width": 3.22, "height": 3.22}},
+        "camera": {"resolution": {"width": 5120, "height": 5120, "allow_downscale": False}},
+    }
+    params = build_pipeline_params(ctx)
+    assert params["overlap"] == 0.1
+    with pytest.raises(ValueError, match="deduplication.calibrated"):
+        preflight_detection_backend(ctx, params)
+
+
 def test_coco_validator_rejects_group_split_leakage_and_unreviewed_empty(tmp_path: Path) -> None:
     save_image(tmp_path / "a.bmp", np.zeros((16, 16), dtype=np.uint8))
     save_image(tmp_path / "b.bmp", np.zeros((16, 16), dtype=np.uint8))
