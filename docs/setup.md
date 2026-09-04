@@ -77,7 +77,7 @@ X/Y 是软件业务坐标，不按丝杆长短自动判断。
 | --- | --- |
 | `camera.yaml` | 相机、分辨率、曝光/增益、物镜覆盖 |
 | `objectives.yaml` | 视野、切换点、碰撞限位、状态文件 |
-| `plates.yaml` | 板型几何、内径、示教 `well_step`、`pulses_per_mm`、`stage_limits`、`runtime_guard` |
+| `plates.yaml` | 板型几何、内径、示教点 `well_teach`、示教 `well_step`、`pulses_per_mm`、`stage_limits`、`runtime_guard` |
 | `autofocus.yaml` | 触发策略与第三方对焦参数 |
 | `handoff.yaml` | 位移台对接点（供自控放板/取板） |
 
@@ -101,7 +101,7 @@ python -m workflow.config_validator --handoff config/handoff.yaml
 
 - `objectives.yaml`：物镜名/倍率、正且有限的 FOV、切换模式、整数脉冲目标、正整数速度参数、状态引用、Modbus/slave 及两层焦点碰撞限位
 - `camera.yaml`：SDK 路径、序列号/IP/index、分辨率、曝光、增益、全部物镜的 `objective_settings`、`trigger_mode`、`pixel_format`
-- `plates.yaml`：板型几何、内径、示教换孔步长、轴方向、限位、运行保护、旧字段和错误缩进
+- `plates.yaml`：板型几何、内径、示教点、示教换孔步长、孔内扫描方向、限位、运行保护、旧字段和错误缩进
 - `autofocus.yaml`：触发策略、MVS 配置、关闭自动曝光、物镜覆盖、调焦范围、串口与物镜硬件一致
 - `handoff.yaml`：从站、点位、动作引用、`settle_s`、`arrival_tolerance_pulse`
 

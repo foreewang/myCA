@@ -69,12 +69,7 @@ def require_sign(value: Any, name: str) -> int:
 
     说明
     ----
-    在你的培养板扫描系统中，方向符号直接决定：
-    - A1 -> B1 时 X 轴坐标如何变化
-    - A1 -> A2 时 Y 轴坐标如何变化
-    - 图像向下/向右时位移台应该朝哪个方向移动
-
-    因此这里要求必须显式配置，避免再用隐式默认值埋坑。
+    孔内扫描的视野方向符号必须显式配置为 +1 或 -1，避免再用隐式默认值埋坑。
     """
     if value is None:
         raise ValueError(f"配置项 {name} 不能为空，必须显式配置为 +1 或 -1")
@@ -243,7 +238,7 @@ def all_well_names(plate_cfg: Dict[str, Any]) -> List[str]:
 def get_well_step_pulses(plate_cfg: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
     """读取示教得到的行列换孔步长，单位 pulse。
 
-    步长已经包含现场方向，计算孔起点时不再乘 ``row_stage_sign`` / ``col_stage_sign``。
+    步长已经包含现场方向。
     """
     step = plate_cfg.get('well_step')
     if not isinstance(step, Mapping):
@@ -396,34 +391,6 @@ def get_view_signs(plate_cfg: Dict[str, Any]) -> Tuple[int, int]:
     return (
         require_sign(plate_cfg.get('x_stage_sign_for_view_right'), 'x_stage_sign_for_view_right'),
         require_sign(plate_cfg.get('y_stage_sign_for_view_down'), 'y_stage_sign_for_view_down'),
-    )
-
-
-def get_grid_signs(plate_cfg: Dict[str, Any]) -> Tuple[int, int]:
-    """
-    读取培养板换孔方向符号。
-
-    参数
-    ----
-    plate_cfg : Dict[str, Any]
-        培养板配置。
-
-    返回
-    ----
-    Tuple[int, int]
-        (row_stage_sign, col_stage_sign)
-
-    说明
-    ----
-    这两个符号直接决定：
-    - 从 A1 到 B1，位移台坐标如何变化
-    - 从 A1 到 A2，位移台坐标如何变化
-
-    它们是整板坐标推算的基础，因此也必须显式配置。
-    """
-    return (
-        require_sign(plate_cfg.get('row_stage_sign'), 'row_stage_sign'),
-        require_sign(plate_cfg.get('col_stage_sign'), 'col_stage_sign'),
     )
 
 

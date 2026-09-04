@@ -1704,8 +1704,6 @@ def test_compute_well_start_maps_columns_to_x_and_rows_to_y() -> None:
         "well_gap_mm": 3.5,
         "well_step": {"col": {"x": -2537000, "y": 0}, "row": {"x": 0, "y": -2537000}},
         "pulses_per_mm": 147500,
-        "row_stage_sign": -1,
-        "col_stage_sign": -1,
     }
 
     assert compute_well_start(plate_cfg, "A1") == {
@@ -1747,8 +1745,6 @@ def test_compute_well_start_uses_independent_axis_pulses_per_mm() -> None:
         "well_gap_mm": 0.0,
         "well_step": {"col": {"x": -100, "y": 0}, "row": {"x": 0, "y": -200}},
         "pulses_per_mm": {"x": 100, "y": 200},
-        "row_stage_sign": -1,
-        "col_stage_sign": -1,
     }
 
     assert compute_well_start(plate_cfg, "B2") == {
@@ -1771,8 +1767,6 @@ def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
         "well_gap_mm": 0.0,
         "well_step": {"col": {"x": 100, "y": 0}, "row": {"x": 0, "y": 200}},
         "pulses_per_mm": {"x": 100, "y": 200},
-        "row_stage_sign": 1,
-        "col_stage_sign": 1,
         "x_stage_sign_for_view_right": 1,
         "y_stage_sign_for_view_down": 1,
         "stage_limits": {"enabled": False},
@@ -1878,7 +1872,7 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
         "x_min": -1295041,
         "x_max": 6525977,
         "y_min": -1095614,
-        "y_max": 9241733,
+        "y_max": 9284715,
         "safety_margin": 131072,
     }
 
@@ -2162,6 +2156,28 @@ def test_project_xy_stage_calibration_values() -> None:
         "24-well": {"col": {"x": -1266506, "y": 0}, "row": {"x": -3333, "y": -2512818}},
         "48-well": {"col": {"x": -858560, "y": 3}, "row": {"x": 1200, "y": -1694835}},
     }
+    expected_teach = {
+        "6-well": {
+            "row_end": {"well": "A3", "x": 1064474, "y": 7280843},
+            "col_end": {"well": "B1", "x": 6198780, "y": 2227451},
+            "diagonal": {"well": "B3", "x": 1064507, "y": 2227451},
+        },
+        "12-well": {
+            "row_end": {"well": "A4", "x": 654283, "y": 8116360},
+            "col_end": {"well": "C1", "x": 5774368, "y": 1372091},
+            "diagonal": {"well": "C4", "x": 654283, "y": 1372091},
+        },
+        "24-well": {
+            "row_end": {"well": "A6", "x": -222148, "y": 8508572},
+            "col_end": {"well": "D1", "x": 6100380, "y": 970117},
+            "diagonal": {"well": "D6", "x": -226076, "y": 970117},
+        },
+        "48-well": {
+            "row_end": {"well": "A8", "x": -161565, "y": 8942352},
+            "col_end": {"well": "F1", "x": 5854353, "y": 468155},
+            "diagonal": {"well": "F8", "x": -166565, "y": 499227},
+        },
+    }
     expected_inner_d = {
         "6-well": 34.26382324,
         "12-well": 21.44888184,
@@ -2173,7 +2189,7 @@ def test_project_xy_stage_calibration_values() -> None:
         "x_min": -1295041,
         "x_max": 6525977,
         "y_min": -1095614,
-        "y_max": 9241733,
+        "y_max": 9284715,
         "safety_margin": 131072,
     }
 
@@ -2183,10 +2199,11 @@ def test_project_xy_stage_calibration_values() -> None:
         assert plate["well_diameter_mm"] == expected_inner_d[plate_type]
         assert plate["pulses_per_mm"] == {"x": 65536, "y": 131072}
         assert plate["stage_limits"] == limits
-        assert plate["row_stage_sign"] == -1
-        assert plate["col_stage_sign"] == -1
+        assert "row_stage_sign" not in plate
+        assert "col_stage_sign" not in plate
         assert plate["x_stage_sign_for_view_right"] == -1
         assert plate["y_stage_sign_for_view_down"] == -1
+        assert plate["well_teach"] == expected_teach[plate_type]
 
         far_x, far_y, far_well = expected_farthest[plate_type]
         far_start = compute_well_start(plate, far_well)
@@ -2878,8 +2895,6 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
         "well_gap_mm": 0.0,
         "well_step": {"col": {"x": 0, "y": 0}, "row": {"x": 0, "y": 0}},
         "pulses_per_mm": 100,
-        "row_stage_sign": -1,
-        "col_stage_sign": -1,
         "x_stage_sign_for_view_right": -1,
         "y_stage_sign_for_view_down": -1,
         "stage_limits": {
@@ -2901,7 +2916,7 @@ def test_plates_validator_rejects_misplaced_runtime_guard_and_legacy_fields() ->
     cfg = {
         "plates": {
             "runtime_guard": {"enabled": True},
-            "6-well": {**base_plate, "row_stage_sign": 0},
+            "6-well": {**base_plate, "row_stage_sign": -1},
             "12-well": {
                 **base_plate,
                 "point_12": [0, 0],

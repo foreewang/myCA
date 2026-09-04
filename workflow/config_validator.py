@@ -35,6 +35,8 @@ LEGACY_PLATE_FIELDS = {
     "axis_mapping",
     "x_stage_sign_for_view_down",
     "y_stage_sign_for_view_right",
+    "row_stage_sign",
+    "col_stage_sign",
 }
 LEGACY_AUTOFOCUS_MOTOR_FIELDS = {"min_pos", "max_pos"}
 
@@ -1047,11 +1049,10 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
     if "well_gap_mm" in plate:
         _require_number(plate, "well_gap_mm", f"{base}.well_gap_mm", issues, minimum=0, exclusive_min=False)
     _validate_well_step(base, plate, issues)
+    _validate_well_teach(base, plate, issues)
     _validate_axis_pulses_per_mm(base, plate, issues)
 
     for key in (
-        "row_stage_sign",
-        "col_stage_sign",
         "x_stage_sign_for_view_right",
         "y_stage_sign_for_view_down",
     ):
@@ -1106,6 +1107,35 @@ def _validate_well_step(
     if isinstance(rows, int) and rows > 1 and isinstance(row, Mapping):
         if row.get("x") == 0 and row.get("y") == 0:
             issues.append(ConfigIssue(f"{base}.well_step.row", "must not be (0, 0) when rows > 1"))
+
+
+def _validate_well_teach(
+    base: str,
+    plate: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    teach = plate.get("well_teach")
+    if teach is None:
+        return
+    if not isinstance(teach, Mapping):
+        issues.append(ConfigIssue(f"{base}.well_teach", "must be a mapping of row_end, col_end, diagonal"))
+        return
+    for point_name in ("row_end", "col_end", "diagonal"):
+        point = teach.get(point_name)
+        point_path = f"{base}.well_teach.{point_name}"
+        if not isinstance(point, Mapping):
+            issues.append(ConfigIssue(point_path, "required mapping is missing"))
+            continue
+        _require_int(point, "x", f"{point_path}.x", issues)
+        _require_int(point, "y", f"{point_path}.y", issues)
+        if "well" in point and not isinstance(point.get("well"), str):
+            issues.append(ConfigIssue(f"{point_path}.well", "must be a well name string when present"))
+        for key in sorted(str(key) for key in point.keys()):
+            if key not in {"x", "y", "well"}:
+                issues.append(ConfigIssue(f"{point_path}.{key}", "unexpected field; expected x, y, well"))
+    for key in sorted(str(key) for key in teach.keys()):
+        if key not in {"row_end", "col_end", "diagonal"}:
+            issues.append(ConfigIssue(f"{base}.well_teach.{key}", "unexpected field; expected row_end, col_end, diagonal"))
 
 
 def _validate_axis_pulses_per_mm(
