@@ -17,8 +17,8 @@ camera:
   # mvs: 使用海康 MVS 打开网口工业相机
   backend: mvs
   serial_number: DA8583237
-  ip: 192.168.0.66
-  net_export_ip: 192.168.0.10
+  ip: 192.168.1.253
+  net_export_ip: 192.168.1.6
   mvs_sdk_path: /opt/MVS/Samples/64/Python/MvImport
   opencv_index: 0
   # 曝光控制：

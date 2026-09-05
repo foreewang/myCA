@@ -30,9 +30,9 @@ camera:
   # 相机序列号；自动调焦打开相机后会校验设备身份，避免连接到同网段的其他相机。
   serial_number: "DA8583237"
   # 相机 IP。
-  ip: "192.168.0.66"
+  ip: "192.168.1.253"
   # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
-  net_export_ip: "192.168.0.10"
+  net_export_ip: "192.168.1.6"
   # 海康 MVS Python SDK 的导入目录。
   mvs_python_dir: /opt/MVS/Samples/64/Python/MvImport
 

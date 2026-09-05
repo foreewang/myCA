@@ -9,8 +9,8 @@ camera:
   # opencv 使用系统摄像头索引；mvs 使用海康网口相机。
   backend: mvs
   serial_number: DA8583237
-  ip: 192.168.0.66
-  net_export_ip: 192.168.0.10
+  ip: 192.168.1.253
+  net_export_ip: 192.168.1.6
   mvs_sdk_path: /opt/MVS/Samples/64/Python/MvImport
   # OpenCV 摄像头编号，0 通常是默认摄像头。
   opencv_index: 0

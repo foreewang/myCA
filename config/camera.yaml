@@ -19,7 +19,7 @@ camera:
   serial_number: DA8583237
 
   # GigE camera IPv4 address. Used only when serial_number is null or empty.
-  ip: "192.168.0.66"
+  ip: "192.168.1.253"
 
   # 图像分辨率配置，主要用于扫描参数计算和相机采集尺寸管理。
   resolution:

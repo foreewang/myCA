@@ -2863,7 +2863,7 @@ def test_project_camera_identity_is_synced_for_autofocus() -> None:
     project_camera = load_yaml_unique("config/camera.yaml")["camera"]
     autofocus_camera = load_yaml_unique("config/autofocus.yaml")["camera"]
 
-    assert project_camera["ip"] == autofocus_camera["ip"] == "192.168.0.66"
+    assert project_camera["ip"] == autofocus_camera["ip"] == "192.168.1.253"
     assert project_camera["serial_number"] == autofocus_camera["serial_number"] == "DA8583237"
 
 
