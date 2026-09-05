@@ -11,6 +11,11 @@ from devices.motion.modbus import ModbusRTUClient
 
 logger = logging.getLogger(__name__)
 
+# After commanding one RS-485 slave, wait before addressing the other. USB
+# adapters and the Y drive commonly drop the next frame during X current spikes.
+_RS485_SLAVE_GAP_S = 0.05
+_PP_NEW_SETPOINT_BIT = 0x10
+
 
 class StageMotionError(RuntimeError):
     """Raised when an XY stage move cannot be completed safely."""
@@ -130,9 +135,13 @@ def _quick_stop_xy(x_motor: MotorManager | None, y_motor: MotorManager | None) -
 
 
 def _ensure_xy_ready(x_motor: MotorManager, y_motor: MotorManager) -> None:
-    for axis_name, motor in (("x", x_motor), ("y", y_motor)):
+    axes = (("x", x_motor), ("y", y_motor))
+    last_index = len(axes) - 1
+    for index, (axis_name, motor) in enumerate(axes):
         if not motor._ensure_mode_and_enable(MotorManager.MODE_PROFILE_POSITION, True):
             raise StageMotionError(f"{axis_name} axis cannot switch to PP mode and enable")
+        if index != last_index:
+            time.sleep(_RS485_SLAVE_GAP_S)
 
 
 def _write_axis_pp_target(
@@ -156,14 +165,32 @@ def _write_axis_pp_target(
         raise StageMotionError(f"{axis_name} axis failed to set target position")
 
 
-def _trigger_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+def _write_axis_controlword(motor: MotorManager, value: int, *, axis_name: str, action: str) -> None:
     client = motor.client
     slave = motor.slave
-    if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION):
-        raise StageMotionError(f"{axis_name} axis failed to clear PP trigger bit")
+    if not client._write_controlword(slave, value):
+        raise StageMotionError(
+            f"{axis_name} axis failed to {action} "
+            f"(controlword=0x{int(value):02X}, slave={slave})"
+        )
+
+
+def _trigger_xy_pp(x_motor: MotorManager, y_motor: MotorManager) -> None:
+    """Pulse PP new-setpoint on X and Y without starting X before Y is addressed.
+
+    CiA 402 needs a 0→1 edge on bit 4. Clearing both axes first, then setting
+    both, keeps the move closer to simultaneous and avoids commanding X into
+    motion (current spike) before the next Y controlword write.
+    """
+    enable = x_motor.client.CMD_ENABLE_OPERATION
+    trigger = enable | _PP_NEW_SETPOINT_BIT
+    _write_axis_controlword(x_motor, enable, axis_name="x", action="clear PP trigger bit")
+    time.sleep(_RS485_SLAVE_GAP_S)
+    _write_axis_controlword(y_motor, enable, axis_name="y", action="clear PP trigger bit")
     time.sleep(0.02)
-    if not client._write_controlword(slave, client.CMD_ENABLE_OPERATION | 0x10):
-        raise StageMotionError(f"{axis_name} axis failed to trigger PP move")
+    _write_axis_controlword(x_motor, trigger, axis_name="x", action="trigger PP move")
+    time.sleep(_RS485_SLAVE_GAP_S)
+    _write_axis_controlword(y_motor, trigger, axis_name="y", action="trigger PP move")
 
 
 def _finish_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
@@ -345,6 +372,7 @@ def move_to_absolute(
                 profile_dec=profile_dec,
                 axis_name="x",
             )
+            time.sleep(_RS485_SLAVE_GAP_S)
             _write_axis_pp_target(
                 y_motor,
                 target_pos=y_target,
@@ -354,8 +382,7 @@ def move_to_absolute(
                 axis_name="y",
             )
             time.sleep(0.02)
-            _trigger_axis_pp(x_motor, axis_name="x")
-            _trigger_axis_pp(y_motor, axis_name="y")
+            _trigger_xy_pp(x_motor, y_motor)
 
             wait_result = _wait_xy_arrival(
                 x_motor=x_motor,

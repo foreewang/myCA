@@ -1599,6 +1599,8 @@ def test_stage_executor_move_uses_timeout_and_arrival_tolerance(monkeypatch) -> 
 
     monkeypatch.setattr(stage_executor, "ModbusRTUClient", FakeClient)
     monkeypatch.setattr(stage_executor, "MotorManager", FakeMotor)
+    monkeypatch.setattr(stage_executor.time, "sleep", lambda _seconds: None)
+    FakeClient.events = []
 
     result = stage_executor.move_to_absolute(
         port="COM3",
@@ -1623,6 +1625,13 @@ def test_stage_executor_move_uses_timeout_and_arrival_tolerance(monkeypatch) -> 
     assert result["err_to_target"] == {"x": 0, "y": 0}
     assert result["motion_params"]["timeout_s"] == 7.5
     assert result["motion_params"]["move_mode"] == "simultaneous_pp"
+    controlwords = [event for event in FakeClient.events if event[0] == "controlword"]
+    assert controlwords[:4] == [
+        ("controlword", 1, 0x0F),
+        ("controlword", 2, 0x0F),
+        ("controlword", 1, 0x1F),
+        ("controlword", 2, 0x1F),
+    ]
     first_trigger_index = next(
         index
         for index, event in enumerate(FakeClient.events)
@@ -1727,8 +1736,94 @@ def test_stage_executor_quick_stops_xy_when_axis_move_fails(monkeypatch) -> None
 
     monkeypatch.setattr(stage_executor, "ModbusRTUClient", FakeClient)
     monkeypatch.setattr(stage_executor, "MotorManager", FakeMotor)
+    monkeypatch.setattr(stage_executor.time, "sleep", lambda _seconds: None)
 
     with pytest.raises(stage_executor.StageMotionError, match="y axis failed to set target position"):
+        stage_executor.move_to_absolute(
+            port="COM3",
+            x_target=100,
+            y_target=200,
+            profile_vel=10,
+            profile_acc=10,
+            profile_dec=10,
+            settle_s=0,
+        )
+
+    assert FakeClient.last_instance is not None
+    assert FakeClient.last_instance.quick_stops == [1, 2]
+
+
+def test_stage_executor_quick_stops_xy_when_y_pp_clear_write_fails(monkeypatch) -> None:
+    from workflow import stage_executor
+
+    class FakeClient:
+        last_instance = None
+        REG_CURRENT_POS = 968
+        REG_CMD_POS = 966
+        REG_TARGET_POS = 999
+        REG_PROFILE_VEL_HIGH = 1016
+        REG_PROFILE_ACC_HIGH = 1020
+        REG_PROFILE_DEC_HIGH = 1022
+        CMD_ENABLE_OPERATION = 0x0F
+        STAT_FAULT = 0x0008
+
+        def __init__(self, *args, **kwargs):
+            self.positions = {1: 0, 2: 0}
+            self.targets = {1: 0, 2: 0}
+            self.quick_stops = []
+            FakeClient.last_instance = self
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+        def _read_32bit(self, slave, reg):
+            if reg == self.REG_CMD_POS:
+                return self.targets[slave]
+            return self.positions[slave]
+
+        def _read_statusword(self, _slave):
+            return 4
+
+        def _write_32bit(self, slave, reg, value):
+            if reg == self.REG_TARGET_POS:
+                self.targets[slave] = int(value)
+            return True
+
+        def _write_controlword(self, slave, value):
+            if slave == 2 and int(value) == self.CMD_ENABLE_OPERATION:
+                return False
+            if int(value) == (self.CMD_ENABLE_OPERATION | 0x10):
+                self.positions[slave] = self.targets[slave]
+            return True
+
+        def _restore_enabled_state(self, _slave):
+            return True
+
+        def quick_stop(self, slave):
+            self.quick_stops.append(slave)
+            return True
+
+    class FakeMotor:
+        MODE_PROFILE_POSITION = 0x01
+
+        def __init__(self, client, slave):
+            self.client = client
+            self.slave = slave
+
+        def _ensure_mode_and_enable(self, target_mode, auto_enable=True):
+            return target_mode == self.MODE_PROFILE_POSITION and auto_enable is True
+
+    monkeypatch.setattr(stage_executor, "ModbusRTUClient", FakeClient)
+    monkeypatch.setattr(stage_executor, "MotorManager", FakeMotor)
+    monkeypatch.setattr(stage_executor.time, "sleep", lambda _seconds: None)
+
+    with pytest.raises(
+        stage_executor.StageMotionError,
+        match=r"y axis failed to clear PP trigger bit \(controlword=0x0F, slave=2\)",
+    ):
         stage_executor.move_to_absolute(
             port="COM3",
             x_target=100,

@@ -13,8 +13,29 @@ import time
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# USB-RS485 adapters often miss a single RTU frame after the other axis is
+# commanded. Retry empty/timeout replies locally; pymodbus retries stay at 0
+# so we can flush the serial buffers between attempts.
+_RTU_TIMEOUT_S = 0.3
+_RTU_COMM_ATTEMPTS = 3
+_RTU_RETRY_DELAY_S = 0.05
+_TRANSIENT_MODBUS_MARKERS = (
+    "no response",
+    "0 received",
+    "timed out",
+    "timeout",
+    "empty",
+    "connection",
+    "broken pipe",
+    "clear comms",
+)
+
+
+def _is_transient_modbus_failure(error: object) -> bool:
+    text = str(error).lower()
+    return any(marker in text for marker in _TRANSIENT_MODBUS_MARKERS)
 
 
 class ModbusRTUClient:
@@ -70,7 +91,15 @@ class ModbusRTUClient:
     REG_DEC_38C_HIGH = 0x38C            # 减速度高16位
     REG_DEC_TIME_38E = 0x38E            # 减速度时间（16位）
 
-    def __init__(self, port="/dev/ttyUSB0", baudrate=115200, bytesize=8, parity="N", stopbits=1, timeout=1):
+    def __init__(
+        self,
+        port="/dev/ttyUSB0",
+        baudrate=115200,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=_RTU_TIMEOUT_S,
+    ):
         """
         初始化 Modbus RTU 客户端。
 
@@ -96,14 +125,21 @@ class ModbusRTUClient:
             logger.info("已经连接，无需重复连接")
             return True
         self._client = ModbusSerialClient(
-            port=self.port, baudrate=self.baudrate,
-            bytesize=self.bytesize, parity=self.parity, stopbits=self.stopbits,
+            port=self.port,
+            baudrate=self.baudrate,
+            bytesize=self.bytesize,
+            parity=self.parity,
+            stopbits=self.stopbits,
             timeout=self.timeout,
+            retries=0,
+            retry_on_empty=True,
+            strict=False,
         )
         try:
             self._connected = self._client.connect()
             if self._connected:
                 logger.info(f"成功连接到 {self.port} @ {self.baudrate}bps")
+                time.sleep(_RTU_RETRY_DELAY_S)
             else:
                 logger.error(f"连接失败，请检查串口 {self.port}")
             return self._connected
@@ -111,6 +147,64 @@ class ModbusRTUClient:
             logger.error(f"连接时发生异常: {e}")
             self._connected = False
             return False
+
+    def _flush_serial(self) -> None:
+        """Drop leftover RTU bytes after a timeout so the next frame stays aligned."""
+        socket = getattr(self._client, "socket", None)
+        if socket is None:
+            return
+        for name in ("reset_input_buffer", "reset_output_buffer"):
+            method = getattr(socket, name, None)
+            if not callable(method):
+                continue
+            try:
+                method()
+            except Exception:
+                logger.debug("serial flush %s failed", name, exc_info=True)
+
+    def _transact(self, description: str, operation):
+        """Run one Modbus call and retry transient empty/timeout replies."""
+        last_error: object | None = None
+        for attempt in range(1, _RTU_COMM_ATTEMPTS + 1):
+            try:
+                result = operation()
+            except ModbusException as exc:
+                last_error = exc
+                if attempt < _RTU_COMM_ATTEMPTS and _is_transient_modbus_failure(exc):
+                    logger.warning(
+                        "%s attempt %s/%s failed: %s",
+                        description,
+                        attempt,
+                        _RTU_COMM_ATTEMPTS,
+                        exc,
+                    )
+                    self._flush_serial()
+                    time.sleep(_RTU_RETRY_DELAY_S)
+                    continue
+                logger.error("Modbus 异常: %s", exc)
+                return None
+
+            if result is None:
+                logger.error("%s失败: empty result", description)
+                return None
+            if hasattr(result, "isError") and result.isError():
+                last_error = result
+                if attempt < _RTU_COMM_ATTEMPTS and _is_transient_modbus_failure(result):
+                    logger.warning(
+                        "%s attempt %s/%s failed: %s",
+                        description,
+                        attempt,
+                        _RTU_COMM_ATTEMPTS,
+                        result,
+                    )
+                    self._flush_serial()
+                    time.sleep(_RTU_RETRY_DELAY_S)
+                    continue
+                logger.error("%s失败: %s", description, result)
+                return None
+            return result
+        logger.error("%s失败: %s", description, last_error)
+        return None
 
     def disconnect(self):
         """关闭串口连接。"""
@@ -128,16 +222,20 @@ class ModbusRTUClient:
         if not self.is_connected():
             logger.error("未连接，请先调用 connect()")
             return None
-        try:
-            result = self._client.read_holding_registers(address=address, count=count, slave=slave)
-            if result.isError():
-                logger.error(f"读保持寄存器失败: {result}")
-                return None
-            logger.info(f"读取保持寄存器成功: slave={slave}, address={address}, count={count}, values={result.registers}")
-            return result.registers
-        except ModbusException as e:
-            logger.error(f"Modbus 异常: {e}")
+        result = self._transact(
+            f"读保持寄存器 slave={slave} address={address} count={count}",
+            lambda: self._client.read_holding_registers(address=address, count=count, slave=slave),
+        )
+        if result is None:
             return None
+        logger.debug(
+            "读取保持寄存器成功: slave=%s, address=%s, count=%s, values=%s",
+            slave,
+            address,
+            count,
+            result.registers,
+        )
+        return result.registers
 
     def _read_statusword(self, slave: int) -> int | None:
         """读取状态字（内部辅助方法）。"""
@@ -149,16 +247,14 @@ class ModbusRTUClient:
         if not self.is_connected():
             logger.error("未连接，请先调用 connect()")
             return False
-        try:
-            result = self._client.write_register(address=address, value=value, slave=slave)
-            if result.isError():
-                logger.error(f"写寄存器失败: {result}")
-                return False
-            logger.info(f"写寄存器成功: slave={slave}, address={address}, value={value}")
-            return True
-        except ModbusException as e:
-            logger.error(f"Modbus 异常: {e}")
+        result = self._transact(
+            f"写寄存器 slave={slave} address={address} value={value}",
+            lambda: self._client.write_register(address=address, value=value, slave=slave),
+        )
+        if result is None:
             return False
+        logger.debug("写寄存器成功: slave=%s, address=%s, value=%s", slave, address, value)
+        return True
 
     def _write_controlword(self, slave: int, value: int) -> bool:
         """写控制字（内部辅助方法）。"""
@@ -203,18 +299,29 @@ class ModbusRTUClient:
         start = time.time()
         while time.time() - start < timeout:
             status = self._read_statusword(slave)
-            logger.info(status & mask)
-            logger.info(expected)
-            logger.info((status & mask) == expected)
             if status is None:
                 time.sleep(0.02)
                 continue
-            if (status & mask) == expected:
+            matched = (status & mask) == expected
+            logger.debug(
+                "status mask check: slave=%s status=0x%04X mask=0x%04X expected=0x%04X match=%s",
+                slave,
+                status,
+                mask,
+                expected,
+                matched,
+            )
+            if matched:
                 return True
             time.sleep(0.02)
         final_status = self._read_statusword(slave)
-        logger.error(f"等待状态掩码超时 (timeout={timeout}s): "+
-                     f"mask=0x{mask:04X}, expected=0x{expected:04X} ")
+        logger.error(
+            "等待状态掩码超时 (timeout=%ss): mask=0x%04X, expected=0x%04X, final_status=%s",
+            timeout,
+            mask,
+            expected,
+            None if final_status is None else f"0x{final_status:04X}",
+        )
         return False
 
     def fault_reset(self, slave: int) -> bool:
@@ -235,9 +342,6 @@ class ModbusRTUClient:
         使能电机，按照 CiA 402 标准状态机执行 Shutdown → Switch on → Enable operation 序列。
         """
         status = self._read_statusword(slave)
-        # if status is not None and (status & self.STAT_OPERATION_ENABLED):
-        #     logger.info("电机已处于使能状态")
-        #     return True
 
         # 如果存在故障，先复位
         if status is not None and (status & self.STAT_FAULT):
@@ -246,6 +350,14 @@ class ModbusRTUClient:
                 logger.error("故障复位失败")
                 return False
             status = self._read_statusword(slave)
+
+        if (
+            status is not None
+            and (status & self.STAT_OPERATION_ENABLED)
+            and not (status & self.STAT_FAULT)
+        ):
+            logger.info("电机已处于使能状态，跳过重新使能")
+            return True
 
         # 确保进入 Switch on disabled 状态
         if status is not None and not (status & self.STAT_SWITCH_ON_DISABLED):

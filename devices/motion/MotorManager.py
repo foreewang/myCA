@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 
 try:
@@ -55,6 +56,9 @@ class MotorManager:
     def _ensure_mode_and_enable(self, target_mode: int, auto_enable: bool = True) -> bool:
         """确保电机处于目标模式，并按需完成故障复位和使能。"""
         current_mode = self._get_current_mode()
+        if current_mode is None:
+            time.sleep(0.05)
+            current_mode = self._get_current_mode()
         if current_mode is None:
             logger.error("从站 %s 无法读取当前模式", self.slave)
             return False
