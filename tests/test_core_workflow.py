@@ -2024,7 +2024,7 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
         "enabled": True,
         "x_min": -1295041,
         "x_max": 6525977,
-        "y_min": -1095614,
+        "y_min": -1100000,
         "y_max": 9284715,
         "safety_margin": 131072,
     }
@@ -2341,7 +2341,7 @@ def test_project_xy_stage_calibration_values() -> None:
         "enabled": True,
         "x_min": -1295041,
         "x_max": 6525977,
-        "y_min": -1095614,
+        "y_min": -1100000,
         "y_max": 9284715,
         "safety_margin": 131072,
     }
