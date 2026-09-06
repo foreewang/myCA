@@ -17,17 +17,21 @@ from workflow.platform_defaults import DEFAULT_SCAN_OVERLAP
 
 
 def _row_values(step_y: float, radius: float) -> List[float]:
-    """生成扫描时各行对应的“视野向下偏移量”列表。"""
-    vals = [0.0]
+    """生成扫描行的视野向下偏移，顺序为中心行、下侧各行，再上侧各行。
+
+    点集与按半径铺满圆的网格相同；访问顺序从示教起点（中心行左端）出发，
+    先连续扫完下半孔再扫上半孔，避免在上下两侧来回跳跃。
+    """
+    downs = [0.0]
     k = 1
     while True:
         y = round(k * step_y, 6)
         if y > radius:
             break
-        vals.append(-y)
-        vals.append(+y)
+        downs.append(y)
         k += 1
-    return vals
+    ups = [-y for y in downs[1:]]
+    return downs + ups
 
 
 def _x_positions_for_row(abs_vdown_mm: float, step_x: float, radius: float) -> List[float]:

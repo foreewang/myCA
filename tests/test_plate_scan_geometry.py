@@ -54,6 +54,38 @@ def test_compute_well_start_uses_signed_pulse_steps_not_signs() -> None:
     assert pitch == {"x": 5.0, "y": 4.0}
 
 
+def test_scan_visits_center_then_down_then_up_from_well_start() -> None:
+    plate = {
+        "rows": 1,
+        "cols": 1,
+        "a1_start": {"x": 0, "y": 0},
+        "well_diameter_mm": 10.0,
+        "well_step": {"col": {"x": 0, "y": 0}, "row": {"x": 0, "y": 0}},
+        "pulses_per_mm": {"x": 100, "y": 100},
+        "x_stage_sign_for_view_right": 1,
+        "y_stage_sign_for_view_down": 1,
+        "stage_limits": {"enabled": False},
+    }
+    plan = plan_single_well_scan({"plate": plate}, _scan_params(fov=2.0, overlap=0.0))
+    first = plan["points"][0]
+    assert first["view_right_mm"] == 0.0
+    assert first["view_down_mm"] == 0.0
+    assert first["stage_x_target"] == 0
+    assert first["stage_y_target"] == 0
+
+    row_order = []
+    last_row = None
+    for point in plan["points"]:
+        if point["row_index"] != last_row:
+            row_order.append(point["view_down_mm"])
+            last_row = point["row_index"]
+    assert row_order == [0.0, 2.0, 4.0, -2.0, -4.0]
+
+    coords = {(round(p["view_right_mm"], 6), round(p["view_down_mm"], 6)) for p in plan["points"]}
+    assert (0.0, 0.0) in coords
+    assert all(abs(vdown) <= 4.0 + 1e-6 for _, vdown in coords)
+
+
 def test_scan_radius_insets_by_half_fov() -> None:
     plate = {
         "rows": 1,
