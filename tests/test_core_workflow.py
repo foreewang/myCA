@@ -2024,8 +2024,8 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
         "enabled": True,
         "x_min": -1295041,
         "x_max": 6525977,
-        "y_min": -1100000,
-        "y_max": 9284715,
+        "y_min": -1000000,
+        "y_max": 9500000,
         "safety_margin": 131072,
     }
 
@@ -2049,20 +2049,20 @@ def test_stage_reciprocation_normalize_cfg_builds_fixed_24_well_targets(tmp_path
     assert cfg["targets"][0] == {
         "index": 1,
         "well_name": "B2",
-        "x": 4840541,
-        "y": 5995754,
+        "x": 4852105,
+        "y": 5293820,
     }
     assert cfg["targets"][1] == {
         "index": 2,
         "well_name": "B3",
-        "x": 3574035,
-        "y": 5995754,
+        "x": 3586542,
+        "y": 5293820,
     }
     assert cfg["targets"][-1] == {
         "index": 6,
         "well_name": "C4",
-        "x": 2304196,
-        "y": 3482936,
+        "x": 2320979,
+        "y": 2757644,
     }
     x_safe = (
         expected_limits["x_min"] + expected_limits["safety_margin"],
@@ -2292,43 +2292,43 @@ def test_project_plates_config_passes_machine_validation() -> None:
 def test_project_xy_stage_calibration_values() -> None:
     plates = load_yaml_unique("config/plates.yaml")["plates"]
     expected_a1 = {
-        "6-well": (6198780, 7287429),
-        "12-well": (5774368, 8116360),
-        "24-well": (6110380, 8508572),
-        "48-well": (5848352, 8942329),
+        "6-well": (6198780, 6594411),
+        "12-well": (5787008, 7461000),
+        "24-well": (6117668, 7829996),
+        "48-well": (5855136, 8318064),
     }
     expected_farthest = {
-        "6-well": (1064474, 2220865, "B3"),
-        "12-well": (654283, 1372092, "C4"),
-        "24-well": (-232149, 970118, "D6"),
-        "48-well": (-155568, 468175, "F8"),
+        "6-well": (1064474, 1472091, "B3"),
+        "12-well": (673067, 612514, "C4"),
+        "24-well": (-210147, 221468, "D6"),
+        "48-well": (-131853, -344641, "F8"),
     }
     expected_step = {
-        "6-well": {"col": {"x": -2567153, "y": -3293}, "row": {"x": 0, "y": -5059978}},
-        "12-well": {"col": {"x": -1706695, "y": 0}, "row": {"x": 0, "y": -3372134}},
-        "24-well": {"col": {"x": -1266506, "y": 0}, "row": {"x": -3333, "y": -2512818}},
-        "48-well": {"col": {"x": -858560, "y": 3}, "row": {"x": 1200, "y": -1694835}},
+        "6-well": {"col": {"x": -2567153, "y": 0}, "row": {"x": 0, "y": -5122320}},
+        "12-well": {"col": {"x": -1704647, "y": 0}, "row": {"x": 0, "y": -3424243}},
+        "24-well": {"col": {"x": -1265563, "y": 0}, "row": {"x": 0, "y": -2536176}},
+        "48-well": {"col": {"x": -858162, "y": 0}, "row": {"x": 4029, "y": -1732541}},
     }
     expected_teach = {
         "6-well": {
-            "row_end": {"well": "A3", "x": 1064474, "y": 7280843},
-            "col_end": {"well": "B1", "x": 6198780, "y": 2227451},
-            "diagonal": {"well": "B3", "x": 1064507, "y": 2227451},
+            "row_end": {"well": "A3", "x": 1064474, "y": 6594411},
+            "col_end": {"well": "B1", "x": 6198780, "y": 1472091},
+            "diagonal": {"well": "B3", "x": 1064474, "y": 1472091},
         },
         "12-well": {
-            "row_end": {"well": "A4", "x": 654283, "y": 8116360},
-            "col_end": {"well": "C1", "x": 5774368, "y": 1372091},
-            "diagonal": {"well": "C4", "x": 654283, "y": 1372091},
+            "row_end": {"well": "A4", "x": 673067, "y": 7461000},
+            "col_end": {"well": "C1", "x": 5787008, "y": 612514},
+            "diagonal": {"well": "C4", "x": 673067, "y": 647803},
         },
         "24-well": {
-            "row_end": {"well": "A6", "x": -222148, "y": 8508572},
-            "col_end": {"well": "D1", "x": 6100380, "y": 970117},
-            "diagonal": {"well": "D6", "x": -226076, "y": 970117},
+            "row_end": {"well": "A6", "x": -210148, "y": 7829996},
+            "col_end": {"well": "D1", "x": 6117668, "y": 221469},
+            "diagonal": {"well": "D6", "x": -210148, "y": 231541},
         },
         "48-well": {
-            "row_end": {"well": "A8", "x": -161565, "y": 8942352},
-            "col_end": {"well": "F1", "x": 5854353, "y": 468155},
-            "diagonal": {"well": "F8", "x": -166565, "y": 499227},
+            "row_end": {"well": "A8", "x": -151997, "y": 8318064},
+            "col_end": {"well": "F1", "x": 5875280, "y": -344640},
+            "diagonal": {"well": "F8", "x": -151997, "y": -344640},
         },
     }
     expected_inner_d = {
@@ -2341,8 +2341,8 @@ def test_project_xy_stage_calibration_values() -> None:
         "enabled": True,
         "x_min": -1295041,
         "x_max": 6525977,
-        "y_min": -1100000,
-        "y_max": 9284715,
+        "y_min": -1000000,
+        "y_max": 9500000,
         "safety_margin": 131072,
     }
 

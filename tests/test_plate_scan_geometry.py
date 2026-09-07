@@ -152,19 +152,19 @@ def test_scan_planner_clips_points_above_safe_y() -> None:
 
 def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
     plates = load_yaml_unique(PROJECT_ROOT / "config" / "plates.yaml")["plates"]
-    assert compute_well_start(plates["24-well"], "A6")["x"] == 6110380 + 5 * -1266506
+    assert compute_well_start(plates["24-well"], "A6")["x"] == 6117668 + 5 * -1265563
     assert compute_well_start(plates["24-well"], "D1") == {
-        "x": 6100381,
-        "y": 970118,
+        "x": 6117668,
+        "y": 221468,
         "row_index": 3,
         "col_index": 0,
         "well_name": "D1",
     }
-    # D1 taught X was 6100380; interpolated grid uses rounded row_step.x=-3333.
-    assert plates["48-well"]["well_teach"]["diagonal"] == {"well": "F8", "x": -166565, "y": 499227}
+    # A6/D1 taught points round into well_step by 1 pulse; diagonal is archive-only.
+    assert plates["48-well"]["well_teach"]["diagonal"] == {"well": "F8", "x": -151997, "y": -344640}
     assert compute_well_start(plates["48-well"], "F8") == {
-        "x": -155568,
-        "y": 468175,
+        "x": -131853,
+        "y": -344641,
         "row_index": 5,
         "col_index": 7,
         "well_name": "F8",
@@ -179,6 +179,19 @@ def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
     )
     assert plan["scan_config"]["scan_radius_mm"] == pytest.approx((10.28811523 - 3.22) / 2.0)
     assert plan["scan_config"]["point_count"] > 0
-    y_hi = 9284715 - 131072
+    y_hi = 9500000 - 131072
+    y_lo = -1000000 + 131072
     assert all(p["stage_y_target"] <= y_hi for p in plan["points"])
     assert plan["stage_limit_precheck"]["violations"] == []
+
+    last_row_10x = plan_single_well_scan(
+        {"plate": plates["48-well"]},
+        {
+            **_scan_params(well_name="F1", fov=1.31, overlap=0.1),
+            "plate_type": "48-well",
+            "objective_name": "10x",
+        },
+    )
+    assert last_row_10x["scan_config"]["clipped_point_count"] == 0
+    assert all(y_lo <= p["stage_y_target"] <= y_hi for p in last_row_10x["points"])
+    assert last_row_10x["stage_limit_precheck"]["violations"] == []
