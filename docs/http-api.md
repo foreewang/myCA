@@ -626,6 +626,30 @@ Host: 127.0.0.1:8000
 
 检测字段中，`save_overlay` 默认 true，`overlay_source` 默认 `vision`；可选 `workflow`。工作流绘图时还会读取 `draw_bbox`、`draw_center`、`draw_image_center`。`detect.output_json` 适用于单孔；多孔任务会固定派生为 `<capture.save_dir>/<well>/detect_result.json`。
 
+规则入口新增可选布尔字段 `task.detect.save_debug`，默认 `false`；`null`、数字和字符串均不是合法布尔值，在检测执行阶段报错，仍遵循任务 202 入队后异步报告业务错误的契约。此选项不改变 HTTP 路由、请求外层和结果结构，默认入口仍为 4x 模型。使用规则算法需显式设置以下任务片段：
+
+```json
+{
+  "detect": {
+    "entrypoint": "vision.vision.detect_pipeline:process_image",
+    "save_debug": false,
+    "save_overlay": true,
+    "overlay_source": "vision",
+    "deduplication": {
+      "calibrated": true,
+      "registration_tolerance_mm": 0.10,
+      "intersection_over_min_threshold": 0.50
+    }
+  }
+}
+```
+
+规则入口同样走跨视野唯一计数。`scan.overlap > 0`（缺省为 `0`）时必须带上 `deduplication.calibrated=true` 和显式 `registration_tolerance_mm`，否则会在预检阶段失败，避免拍完整孔后再去重报错。省略 `scan.overlap` 时不会触发这条预检；任务里若显式写成 `0.1` 且未标定，仍会在切镜前失败。
+
+workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_image` 别名转发 `save_debug`，不会注入模型或第三方入口，也不会新增其他规则算法参数的转发。有规则输出目录时，默认保留 `05_contour_mask.bmp`、`06_overlay.bmp`、`07_result.json`，识别结果与 05/06 像素保持原行为；设 `save_debug=true` 恢复全部 01–07 文件。5120×5120 的 BMP 总量约由 200 MiB 降至 100 MiB。
+
+`save_overlay=false` 仍不向视觉入口传输出目录；`overlay_source=workflow` 仍由 workflow 绘制 overlay，规则入口不写自己的产物。`save_debug=true` 不会覆盖这两项语义，也不会让 Python 的 `out_dir=None` 开始落盘。规则 Python 入口的原默认值保持不变：`process_image` 未传 `out_dir` 时不落盘，`detect_from_gray` 默认 `out_dir=None`，`detect_from_path` 默认 `out_dir="outputs_5120_contour_refined_opt"`。同目录旧有的 01–04 不自动删除，目录中的历史调试图不代表本次生成。单图 CLI 的等价选项为 `--backend legacy --save-debug`，详见 [视觉检测](vision.md)。
+
 ### 7.6 观察范围的请求变体
 
 以下是替换完整 capture/pipeline 示例中相应字段的 `task` 片段，不是 `/api/tasks/execute` 的独立完整请求体。

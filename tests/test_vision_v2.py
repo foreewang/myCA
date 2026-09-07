@@ -613,6 +613,40 @@ def test_detection_preflight_allows_explicit_legacy_without_model_dir() -> None:
     )
 
 
+def test_detection_preflight_rejects_uncalibrated_overlap_for_rule_entrypoint() -> None:
+    from workflow.run_task import preflight_detection_backend
+
+    with pytest.raises(ValueError, match="deduplication.calibrated"):
+        preflight_detection_backend(
+            {"task": {"detect": {"entrypoint": "vision.vision.detect_pipeline:process_image"}}},
+            {
+                "stages": ["capture", "detect"],
+                "objective_name": "4x",
+                "overlap": 0.1,
+            },
+        )
+
+
+def test_detection_preflight_allows_calibrated_rule_entrypoint_without_model() -> None:
+    from workflow.run_task import preflight_detection_backend
+
+    preflight_detection_backend(
+        {
+            "task": {
+                "detect": {
+                    "entrypoint": "vision.vision.detect_pipeline:process_image",
+                    "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.10},
+                }
+            }
+        },
+        {
+            "stages": ["capture", "detect"],
+            "objective_name": "4x",
+            "overlap": 0.1,
+        },
+    )
+
+
 def test_detection_preflight_rejects_uncalibrated_overlap_before_model_load() -> None:
     from workflow.run_task import preflight_detection_backend
 

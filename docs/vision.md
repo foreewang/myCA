@@ -21,7 +21,30 @@ vision.vision.instance_pipeline:process_image
 vision.vision.detect_pipeline:process_image
 ```
 
-默认入口只允许 `objective_name=4x`。10x 检测必须显式写 legacy 入口。含 `detect` 的任务会在切镜和拍照前预检模型目录与 provider。
+默认入口只允许 `objective_name=4x`。10x 检测必须显式写 legacy 入口。使用内置模型入口的 `detect` 任务会在切镜和拍照前预检模型目录与 provider；显式规则入口不执行该模型预检，但仍会检查重叠去重是否已标定。
+
+## 规则算法的输出控制
+
+规则算法、模型后端及默认入口的结构保持不变。使用规则算法时，任务仍须显式指定 `vision.vision.detect_pipeline:process_image`（兼容 `vision.detect_pipeline:process_image`）。`detect.save_debug` 只控制规则调试图，不选择后端，也不透传新的算法参数。
+
+```json
+{
+  "detect": {
+    "entrypoint": "vision.vision.detect_pipeline:process_image",
+    "save_debug": false,
+    "save_overlay": true,
+    "overlay_source": "vision"
+  }
+}
+```
+
+上例是任务配置片段。`save_debug` 必须是布尔值，默认 `false`。规则入口有输出目录时，默认只写 `05_contour_mask.bmp`、`06_overlay.bmp` 和 `07_result.json`；设为 `true` 恢复 `01_gray.bmp`、`02_coarse_flat.bmp`、`03_coarse_binary.bmp`、`04_refine_density.bmp`，共 01–07 全部文件。检测结果及保留的 05/06 像素不变；5120×5120 图的 BMP 总量由约 200 MiB 降为约 100 MiB。
+
+输出控制沿用原语义：`save_overlay=false` 时 workflow 不向规则入口传输出目录；`overlay_source=workflow` 时只由 workflow 生成自己的 overlay；直接调用规则 Python 入口并传 `out_dir=None` 时只返回内存结果。这些情况下 `save_debug=true` 也不会强制生成规则产物。`process_image` 未传 `out_dir` 时仍默认不落盘；`detect_from_gray` 仍默认 `out_dir=None`；`detect_from_path` 仍默认 `out_dir="outputs_5120_contour_refined_opt"`。模型和第三方入口不会收到 workflow 新增的 `save_debug` 参数。
+
+同一输出目录里已有的 01–04 文件不会自动删除，切换为默认模式后这些历史文件仍可能存在。验收本次产物或体积时使用新的输出目录。
+
+基准数据、验收工具及工控机同步/回退步骤见 [规则检测性能验收](rule_vision_performance.md)。本次不改变分割、预处理、特征、评分和孔边界算法。
 
 ## 模型做什么、不做什么
 
@@ -58,7 +81,7 @@ vision.vision.detect_pipeline:process_image
 }
 ```
 
-`registration_tolerance_mm` 要用带跨视野身份标注的 4x 扫描标定，不能凭单张图猜。未标定会在预检阶段失败，避免先跑完推理再报错。
+`registration_tolerance_mm` 要用带跨视野身份标注的 4x 扫描标定，不能凭单张图猜。模型入口和规则入口都会在预检阶段拒绝未标定的重叠扫描，避免拍完整孔、跑完推理后再报错。
 
 `total_clone_count` 是去重后的唯一数，不是逐图观察数之和。逐图数在 `total_image_clone_count`。
 
@@ -77,5 +100,13 @@ python vision/run_detect.py path/to/image.bmp --backend model \
 ```bash
 python vision/run_detect.py path/to/image.bmp --backend legacy --out-dir data/vision_debug
 ```
+
+上面的规则命令默认生成 05–07；需要全部调试产物时增加 `--save-debug`：
+
+```bash
+python vision/run_detect.py path/to/image.bmp --backend legacy --save-debug --out-dir data/vision_debug_full
+```
+
+`--save-debug` 仅支持 `--backend legacy`；CLI 默认仍为模型后端，未切换后端时使用该选项会报参数错误。规则 Python 入口可传同名布尔参数 `save_debug=True`，默认 `False`。
 
 任务 JSON 里的检测字段见 [任务与命令行](tasks.md)。

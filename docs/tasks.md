@@ -128,6 +128,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 | `detect.deduplication.registration_tolerance_mm` | 跨视野配准容差，由标定集确定 |
 | `detect.output_json` | 单孔检测 JSON；多孔会改写到孔目录 |
 | `detect.save_overlay` | 默认开 |
+| `detect.save_debug` | 规则入口专用布尔值，默认 `false`；有输出目录时只保存 05–07，`true` 恢复 01–07 |
 | `detect.overlay_source` | `vision` 或 `workflow`，默认 `vision` |
 | `detect.detect_well_border` | 默认开 |
 | `detect.well_border_margin_mm` / `_px` | 靠近孔边缘的判定边距 |
@@ -230,7 +231,15 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 轮廓细化诊断（`refine_method` 等）不在 workflow 归一化结果里，在 vision 目录的 `07_result.json`。默认 overlay 是 vision 的 `06_overlay.bmp`。
 
-模型流水线产物还包括实例标签图等，见 [视觉检测](vision.md)。旧规则算法调试目录常见：
+模型流水线产物还包括实例标签图等，见 [视觉检测](vision.md)。规则算法有输出目录时默认只生成：
+
+```text
+05_contour_mask.bmp
+06_overlay.bmp
+07_result.json
+```
+
+`task.detect.save_debug=true` 可恢复以下全部调试产物。该字段必须是布尔值，省略时为 `false`；规则识别结果及 05/06 像素不变，5120×5120 的 BMP 总量约减半（200 MiB → 100 MiB）。
 
 ```text
 01_gray.bmp
@@ -241,6 +250,10 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 06_overlay.bmp
 07_result.json
 ```
+
+规则任务仍须显式设置 `detect.entrypoint="vision.vision.detect_pipeline:process_image"`（或 `vision.detect_pipeline:process_image`），省略入口仍使用原模型后端。`save_debug` 仅转发到这两个规则入口，不改变模型结构、结果接口或其他算法参数的转发。
+
+`save_overlay=false`、`overlay_source=workflow` 不会因打开 `save_debug` 而生成规则产物；后者仍只生成 workflow overlay。规则 Python 入口的 `out_dir=None` 继续只返回内存结果；`process_image` 未传 `out_dir` 时仍不落盘，`detect_from_gray` 仍默认 `out_dir=None`，`detect_from_path` 仍默认 `out_dir="outputs_5120_contour_refined_opt"`。单图完整调试命令为 `python vision/run_detect.py image.bmp --backend legacy --save-debug --out-dir data/vision_debug_full`；`--save-debug` 仅限 legacy，CLI 默认后端保持不变。同目录里旧有的 01–04 不自动删除，比较产物和体积应使用新的输出目录。
 
 ### 多孔目录
 

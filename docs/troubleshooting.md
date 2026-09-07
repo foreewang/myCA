@@ -65,13 +65,15 @@
 
 ## 检测在切镜前就失败
 
-默认 4x 模型会在运动前预检：
+含 `detect` 的任务会在运动前做重叠去重预检；默认 4x 模型还会额外检查相机和权重：
 
-- `objective_name` 必须是 `4x`
-- 分辨率 5120×5120，且 `allow_downscale=false`
-- `detect.model_dir` 必填
-- `scan.overlap > 0` 时 `deduplication.calibrated=true`，并显式给出 `registration_tolerance_mm`
-- 默认 `provider=cuda` 且不允许静默落到 CPU
+- 所有检测入口：`scan.overlap > 0`（缺省 `0`）时必须 `deduplication.calibrated=true`，并显式给出 `registration_tolerance_mm`
+- 默认 4x 模型：`objective_name` 必须是 `4x`
+- 默认 4x 模型：分辨率 5120×5120，且 `allow_downscale=false`
+- 默认 4x 模型：`detect.model_dir` 必填
+- 默认 4x 模型：`provider=cuda` 且不允许静默落到 CPU
+
+若任务已拍完图、推理也跑完，最后才报 `overlapping-view deduplication requires a calibrated registration threshold`，说明当时用的规则/第三方入口跳过了模型预检。在 `detect` 中补上标定字段后重发；部署含该预检修复的版本后，同类请求会在切镜前失败。
 
 契约见 [视觉检测](vision.md)。
 
