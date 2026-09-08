@@ -283,9 +283,6 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 ),
                 "objective_name": params.get("objective_name"),
                 "mm_per_pixel": mm_per_pixel,
-                "well_border_margin_mm": float(detect_cfg.get("well_border_margin_mm", 0.0) or 0.0),
-                "well_border_margin_px": float(detect_cfg.get("well_border_margin_px", 30.0) or 30.0),
-                "detect_well_border": bool(detect_cfg.get("detect_well_border", True)),
             },
         )
 
@@ -333,10 +330,6 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                         "image_border_sides": list(clone.get("image_border_sides") or []),
                         "image_edge_clipped": clone.get("image_edge_clipped"),
                         "truncated": clone.get("truncated"),
-                        "well_border_detected": clone.get("well_border_detected"),
-                        "near_well_border": clone.get("near_well_border"),
-                        "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
-                        "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
                         "is_pickable": bool(is_pickable),
                     }
                 )

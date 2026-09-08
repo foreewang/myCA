@@ -5,10 +5,12 @@ import sys
 from pathlib import Path
 
 import pytest
+import numpy as np
 from PIL import Image
 
 from vision import run_detect
 from vision.vision import detect_pipeline, instance_pipeline
+from vision.vision.model_runtime import VisionModelError
 from workflow import detect_api, detect_executor
 
 
@@ -16,6 +18,30 @@ RULE_ENTRYPOINTS = (
     "vision.vision.detect_pipeline:process_image",
     "vision.detect_pipeline:process_image",
 )
+
+
+@pytest.mark.parametrize("option,value", [
+    ("detect_well_border", True),
+    ("well_border_margin_mm", 1.0),
+    ("well_border_margin_px", 30.0),
+])
+def test_retired_well_parameters_are_not_accepted_by_vision_entrypoints(
+    tmp_path: Path, option: str, value,
+) -> None:
+    source = np.full((40, 40), 128, np.uint8)
+    image_path = tmp_path / "capture.bmp"
+    Image.fromarray(source).save(image_path)
+    kwargs = {option: value}
+    for fn, arg in (
+        (detect_pipeline.detect_and_refine, source),
+        (detect_pipeline.detect_from_gray, source),
+        (detect_pipeline.detect_from_path, image_path),
+        (detect_pipeline.process_image, image_path),
+    ):
+        with pytest.raises(TypeError, match=option):
+            fn(arg, **kwargs)
+    with pytest.raises(VisionModelError, match=f"unsupported model pipeline arguments.*{option}"):
+        instance_pipeline.detect_from_array(source, model_dir="unused", **kwargs)
 
 
 @pytest.fixture
@@ -157,7 +183,7 @@ def test_model_and_other_entrypoints_receive_unchanged_kwargs(
     detect_executor.execute_detect_on_scan_result(ctx, params, scan_result)
     assert set(captured) == {
         "model_dir", "provider", "allow_cpu_fallback", "objective_name",
-        "mm_per_pixel", "well_border_margin_mm", "well_border_margin_px", "detect_well_border",
+        "mm_per_pixel",
     }
 
 

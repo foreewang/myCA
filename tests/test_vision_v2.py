@@ -661,16 +661,17 @@ def test_detection_preflight_rejects_uncalibrated_overlap_before_model_load() ->
         )
 
 
-def test_detection_preflight_rejects_uncalibrated_default_overlap() -> None:
+def test_detection_preflight_rejects_uncalibrated_explicit_overlap_from_task() -> None:
     from workflow.run_task import build_pipeline_params, preflight_detection_backend
 
     ctx = {
         "task": {
-            "task_id": "default-overlap-detect",
+            "task_id": "explicit-overlap-detect",
             "task_type": "pipeline",
             "stages": ["capture", "detect"],
             "plate_type": "24-well",
             "objective_name": "4x",
+            "scan": {"overlap": 0.1},
             "detect": {"model_dir": "C:/not-loaded-because-calibration-fails"},
         },
         "objective": {"fov_mm": {"width": 3.22, "height": 3.22}},

@@ -25,7 +25,7 @@ def test_modbus_and_mvs_constants_target_linux() -> None:
     assert DEFAULT_MODBUS_PORT == LINUX_MODBUS_PORT
     assert DEFAULT_MVS_PYTHON_DIR == LINUX_MVS_PYTHON_DIR
     assert StageReciprocationStartRequest().port == LINUX_MODBUS_PORT
-    assert DEFAULT_SCAN_OVERLAP == 0.1
+    assert DEFAULT_SCAN_OVERLAP == 0.0
     assert DEFAULT_SCAN_SETTLE_S == 0.5
     assert DEFAULT_PROFILE_VEL == DEFAULT_PROFILE_ACC == DEFAULT_PROFILE_DEC == 500000
 

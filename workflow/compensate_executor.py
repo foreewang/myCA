@@ -232,9 +232,6 @@ def _build_image_item_from_capture(
             "allow_cpu_fallback": bool(params.get("detect_allow_cpu_fallback", False)),
             "objective_name": params.get("objective_name"),
             "mm_per_pixel": mm_per_pixel,
-            "well_border_margin_mm": float((params.get("compensate_selector") or {}).get("well_border_margin_mm", 0.0) or 0.0),
-            "well_border_margin_px": float((params.get("compensate_selector") or {}).get("well_border_margin_px", 30.0) or 30.0),
-            "detect_well_border": bool((params.get("compensate_selector") or {}).get("detect_well_border", True)),
         },
     )
     clones: List[Dict[str, Any]] = []
@@ -259,10 +256,6 @@ def _build_image_item_from_capture(
                 "touch_image_border": clone.get("touch_image_border"),
                 "image_border_sides": list(clone.get("image_border_sides") or []),
                 "image_edge_clipped": clone.get("image_edge_clipped"),
-                "well_border_detected": clone.get("well_border_detected"),
-                "near_well_border": clone.get("near_well_border"),
-                "distance_to_well_edge_px": clone.get("distance_to_well_edge_px"),
-                "distance_to_well_edge_mm": clone.get("distance_to_well_edge_mm"),
                 "is_pickable": (
                     clone.get("is_pickable") is True
                     if schema_version >= 2

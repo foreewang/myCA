@@ -612,9 +612,6 @@ def detect_from_array(
         raise ValueError("src must be a gray or color image array")
     allowed_compatibility = {
         "mm_per_pixel",
-        "well_border_margin_mm",
-        "well_border_margin_px",
-        "detect_well_border",
     }
     unknown = sorted(set(compatibility_kwargs) - allowed_compatibility)
     if unknown:

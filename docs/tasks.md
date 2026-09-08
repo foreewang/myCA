@@ -4,18 +4,22 @@
 
 ## 任务类型与范围
 
-| `task_type` | 行为 |
-| --- | --- |
-| `capture` | 只采集，默认阶段 `capture` |
-| `pipeline` | 可包含 `capture`、`detect`、`compensate` |
-| `compensate` | 读已有检测结果，移动到目标中心 |
-| `handoff` | 把 XY 位移台移动到对接点，供自控放置或取走培养板；`load_in` / `unload_out` |
 
-| `observe_scope` | 孔位 |
-| --- | --- |
-| `single_well` | `target.well_name` |
-| `well_list` | `target.well_list` |
-| `full_plate` | 按板型展开全部孔 |
+| `task_type`  | 行为                                                  |
+| ------------ | --------------------------------------------------- |
+| `capture`    | 只采集，默认阶段 `capture`                                  |
+| `pipeline`   | 可包含 `capture`、`detect`、`compensate`                 |
+| `compensate` | 读已有检测结果，移动到目标中心                                     |
+| `handoff`    | 把 XY 位移台移动到对接点，供自控放置或取走培养板；`load_in` / `unload_out` |
+
+
+
+| `observe_scope` | 孔位                 |
+| --------------- | ------------------ |
+| `single_well`   | `target.well_name` |
+| `well_list`     | `target.well_list` |
+| `full_plate`    | 按板型展开全部孔           |
+
 
 多孔任务时，每个孔的 `scan_result.json` / `detect_result.json` / `compensate_result.json` 会写到 `<capture.save_dir>/<well_name>/`。不要把单个 `detect.output_json` 当成多孔最终路径。总结果仍走 `output.result_json`。
 
@@ -101,43 +105,43 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 ## 常用字段
 
-| 字段 | 说明 |
-| --- | --- |
-| `task_id` | 唯一 ID；HTTP 索引用它当文件名 |
-| `task_type` | `capture` / `pipeline` / `compensate` / `handoff` |
-| `plate_type` | 如 `24-well` |
-| `objective_name` | 如 `4x`、`10x` |
-| `objective` | 已废弃别名，新任务不要用 |
-| `observe_scope` | `single_well` / `well_list` / `full_plate` |
-| `target.well_name` / `target.well_list` | 目标孔 |
-| `stages` | 如 `["capture", "detect"]` |
-| `capture.save_dir` | 单孔图片目录；多孔为基础目录 |
-| `capture.filename_pattern` | 图片名模板 |
-| `motion.port` / `baudrate` | XY Modbus |
-| `motion.x_slave` / `y_slave` | 默认 1 / 2 |
-| `motion.profile_vel` / `profile_acc` / `profile_dec` | 采集和补偿必填 |
-| `motion.timeout_s` | 单次 XY 超时，默认 120 秒 |
-| `scan.overlap` | `0 <= overlap < 1` |
-| `scan.use_objective_fov` | 是否用当前物镜视野算步长 |
-| `scan.output_json` | 单孔 `scan_result.json` |
-| `detect.entrypoint` | `模块路径:函数名`；省略则用 4x 模型入口 |
-| `detect.model_dir` | 含 `model_manifest.json` 和校验过的 ONNX |
-| `detect.provider` | `cuda` / `cpu` / `auto`；生产用 `cuda` |
-| `detect.allow_cpu_fallback` | CUDA 失败是否重建 CPU session，默认关 |
-| `detect.deduplication.calibrated` | 有重叠时必须为 `true` |
-| `detect.deduplication.registration_tolerance_mm` | 跨视野配准容差，由标定集确定 |
-| `detect.output_json` | 单孔检测 JSON；多孔会改写到孔目录 |
-| `detect.save_overlay` | 默认开 |
-| `detect.save_debug` | 规则入口专用布尔值，默认 `false`；有输出目录时只保存 05–07，`true` 恢复 01–07 |
-| `detect.overlay_source` | `vision` 或 `workflow`，默认 `vision` |
-| `detect.detect_well_border` | 默认开 |
-| `detect.well_border_margin_mm` / `_px` | 靠近孔边缘的判定边距 |
-| `compensate.selector` | 选哪个克隆 |
-| `compensate.scale` | 如 `{ "x": 0.79, "y": 1.0 }` |
-| `compensate.closed_loop` | 闭环复检 |
-| `compensate.input_detect_json` | 独立补偿读取的检测结果 |
-| `output.result_json` | 总结果 |
-| `handoff.action` | `load_in`：位移台开到对接点，供自控放板；`unload_out`：开到对接点，供自控取板 |
+
+| 字段                                                   | 说明                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| `task_id`                                            | 唯一 ID；HTTP 索引用它当文件名                                  |
+| `task_type`                                          | `capture` / `pipeline` / `compensate` / `handoff`    |
+| `plate_type`                                         | 如 `24-well`                                          |
+| `objective_name`                                     | 如 `4x`、`10x`                                         |
+| `objective`                                          | 已废弃别名，新任务不要用                                         |
+| `observe_scope`                                      | `single_well` / `well_list` / `full_plate`           |
+| `target.well_name` / `target.well_list`              | 目标孔                                                  |
+| `stages`                                             | 如 `["capture", "detect"]`                            |
+| `capture.save_dir`                                   | 单孔图片目录；多孔为基础目录                                       |
+| `capture.filename_pattern`                           | 图片名模板                                                |
+| `motion.port` / `baudrate`                           | XY Modbus                                            |
+| `motion.x_slave` / `y_slave`                         | 默认 1 / 2                                             |
+| `motion.profile_vel` / `profile_acc` / `profile_dec` | 采集和补偿必填                                              |
+| `motion.timeout_s`                                   | 单次 XY 超时，默认 120 秒                                    |
+| `scan.overlap`                                       | `0 <= overlap < 1`                                   |
+| `scan.use_objective_fov`                             | 是否用当前物镜视野算步长                                         |
+| `scan.output_json`                                   | 单孔 `scan_result.json`                                |
+| `detect.entrypoint`                                  | `模块路径:函数名`；省略则用 4x 模型入口                              |
+| `detect.model_dir`                                   | 含 `model_manifest.json` 和校验过的 ONNX                   |
+| `detect.provider`                                    | `cuda` / `cpu` / `auto`；生产用 `cuda`                   |
+| `detect.allow_cpu_fallback`                          | CUDA 失败是否重建 CPU session，默认关                          |
+| `detect.deduplication.calibrated`                    | 有重叠时必须为 `true`                                       |
+| `detect.deduplication.registration_tolerance_mm`     | 跨视野配准容差，由标定集确定                                       |
+| `detect.output_json`                                 | 单孔检测 JSON；多孔会改写到孔目录                                  |
+| `detect.save_overlay`                                | 默认开                                                  |
+| `detect.save_debug`                                  | 规则入口专用布尔值，默认 `false`；有输出目录时只保存 05–07，`true` 恢复 01–07 |
+| `detect.overlay_source`                              | `vision` 或 `workflow`，默认 `vision`                    |
+| `compensate.selector`                                | 选哪个克隆                                                |
+| `compensate.scale`                                   | 如 `{ "x": 0.79, "y": 1.0 }`                          |
+| `compensate.closed_loop`                             | 闭环复检                                                 |
+| `compensate.input_detect_json`                       | 独立补偿读取的检测结果                                          |
+| `output.result_json`                                 | 总结果                                                  |
+| `handoff.action`                                     | `load_in`：位移台开到对接点，供自控放板；`unload_out`：开到对接点，供自控取板    |
+
 
 曝光和增益来自 `camera.yaml` 的 `objective_settings.<objective_name>`。底层强制 Mono8，录像逐帧校验格式和长度。
 
@@ -145,17 +149,21 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 ## 补偿
 
+
+
 ### 选择器
 
 `compensate.selector.mode`：
 
-| mode | 说明 |
-| --- | --- |
-| `first` | 第一个有效克隆 |
-| `largest_area` | 面积最大 |
-| `nearest_image_center` | 离图像中心最近 |
-| `clone_id` | 按 ID，可选 `image_index` |
-| `image_and_clone` | 同时指定图号和 ID |
+
+| mode                   | 说明                    |
+| ---------------------- | --------------------- |
+| `first`                | 第一个有效克隆               |
+| `largest_area`         | 面积最大                  |
+| `nearest_image_center` | 离图像中心最近               |
+| `clone_id`             | 按 ID，可选 `image_index` |
+| `image_and_clone`      | 同时指定图号和 ID            |
+
 
 默认 `purpose` 是 `pick`，只选 `is_pickable=true`。4x 模型结果这项为 `false`。若只是把定位结果移到 10x 视野，设 `purpose: "10x_centering"`，只选 `eligible_for_10x_centering=true`。两种语义不混用。
 
@@ -212,6 +220,8 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 ## 输出
 
+
+
 ### 采集 `scan_result.json`
 
 - 参考点、视野、重叠率、点位数
@@ -220,12 +230,14 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 - 自动对焦决策，以及首次拍照前的对焦结果
 - 运动安全检查
 
+
+
 ### 检测 `detect_result.json`
 
 - 每张图的观察数、`review_candidates`
 - 中心、面积、边框、相对图像中心偏移
 - `confidence`、`is_valid_for_compensation`、`is_pickable`
-- 孔边缘距离、`mm_per_pixel`
+- `mm_per_pixel`
 - `unique_clones` / `total_clone_count`（去重后唯一数）
 - `overlay_image_path`
 
@@ -268,3 +280,4 @@ data/some_task/
 │  └─ ...
 └─ result.json
 ```
+

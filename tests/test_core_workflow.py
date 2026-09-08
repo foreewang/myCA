@@ -278,7 +278,7 @@ def test_run_task_build_pipeline_params_uses_objective_name() -> None:
     assert params["objective_name"] == "10x"
     assert params["exposure_us"] == 12000
     assert params["gain"] == 1.5
-    assert params["overlap"] == 0.1
+    assert params["overlap"] == 0.0
     assert params["settle_s"] == 0.5
     assert params["motion"]["profile_vel"] == 500000
     assert params["motion"]["profile_acc"] == 500000
@@ -304,7 +304,7 @@ def test_build_pipeline_params_defaults_overlap_and_motion_profiles() -> None:
     }
 
     params = run_task.build_pipeline_params(ctx)
-    assert params["overlap"] == 0.1
+    assert params["overlap"] == 0.0
     assert params["settle_s"] == 0.5
     assert params["motion"]["profile_vel"] == 500000
     assert params["motion"]["profile_acc"] == 500000
@@ -1981,10 +1981,6 @@ def test_normalize_detect_result_preserves_pickability_fields() -> None:
                 "is_valid_for_compensation": "true",
                 "touch_image_border": 0,
                 "image_border_sides": ["left"],
-                "well_border_detected": True,
-                "near_well_border": False,
-                "distance_to_well_edge_px": 42.5,
-                "distance_to_well_edge_mm": 0.85,
                 "is_pickable": "yes",
             },
             {"id": "missing-center"},
@@ -2002,10 +1998,6 @@ def test_normalize_detect_result_preserves_pickability_fields() -> None:
     assert clone["is_valid_for_compensation"] is True
     assert clone["touch_image_border"] is False
     assert clone["image_border_sides"] == ["left"]
-    assert clone["well_border_detected"] is True
-    assert clone["near_well_border"] is False
-    assert clone["distance_to_well_edge_px"] == 42.5
-    assert clone["distance_to_well_edge_mm"] == 0.85
     assert clone["is_pickable"] is True
 
 
@@ -2371,7 +2363,7 @@ def test_project_xy_stage_calibration_values() -> None:
 
 def test_project_handoff_point_matches_xy_calibration() -> None:
     point = load_yaml_unique("config/handoff.yaml")["handoff"]["points"]["robot_exchange"]
-    assert (point["x"], point["y"]) == (5000000, 0)
+    assert (point["x"], point["y"]) == (1970000, 1630000)
 
 
 def test_plates_validator_rejects_incomplete_axis_pulses_per_mm() -> None:

@@ -90,6 +90,30 @@ def test_explicit_hybrid_edge_refine_still_runs_grabcut(tmp_path: Path) -> None:
     assert all(item["edge_refine_success"] for item in result["components"])
 
 
+def test_pickability_and_output_contract_without_well_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    def forbidden_hough(*args, **kwargs):
+        pytest.fail("removed well detection must not execute")
+
+    monkeypatch.setattr(cv2, "HoughCircles", forbidden_hough)
+    image = _sample()
+    baseline = _run(image, None)
+    result = _run(image, tmp_path)
+    assert result == baseline
+    assert json.loads((tmp_path / "07_result.json").read_text(encoding="utf-8")) == result
+    assert result["component_count"] == 2
+    removed_fields = {
+        "well_border_detection", "well_border_detected", "near_well_border",
+        "distance_to_well_edge_px", "distance_to_well_edge_mm",
+    }
+    assert removed_fields.isdisjoint(result)
+    for item in result["components"]:
+        assert removed_fields.isdisjoint(item)
+        assert item["is_valid_for_compensation"] is True
+        assert item["is_pickable"] is True
+
+
 @pytest.mark.parametrize("input_kind", ["gray8", "gray16", "bgr", "bgra"])
 def test_array_and_path_entrypoints_preserve_inputs_and_agree(
     tmp_path: Path, input_kind: str
@@ -205,11 +229,12 @@ def test_overlap_union_and_failed_target_preserve_real_rendering(
     expected_mask = _stub_segmentation(monkeypatch)
     image = np.full(expected_mask.shape, 160, np.uint8)
     result, _ = _assert_output_modes(
-        image, tmp_path, refine_pad_ratio=0, detect_well_border=False, scale_bar=SCALE_BAR
+        image, tmp_path, refine_pad_ratio=0, scale_bar=SCALE_BAR
     )
     assert result["component_ids"] == ["C01", "C02", "C03"]
     assert result["components"][2]["contour_points"] == []
     assert result["components"][2]["is_valid_for_compensation"] is False
+    assert [item["is_pickable"] for item in result["components"]] == [True, True, False]
     np.testing.assert_array_equal(
         image_loader.load_image(tmp_path / "生产结果" / "05_contour_mask.bmp"), expected_mask
     )
@@ -223,7 +248,7 @@ def test_low_level_defaults_keep_full_debug_and_do_not_mutate_overlay(
 ) -> None:
     expected_mask = _stub_segmentation(monkeypatch)
     image = np.full(expected_mask.shape, 160, np.uint8)
-    components, debug = pipeline.detect_and_refine(image, refine_pad_ratio=0, detect_well_border=False)
+    components, debug = pipeline.detect_and_refine(image, refine_pad_ratio=0)
     assert debug["full_refine_density"].shape == image.shape
     np.testing.assert_array_equal(debug["contour_mask"], expected_mask)
     before = debug["overlay"].copy()
@@ -268,7 +293,7 @@ def test_disabled_collection_skips_full_frame_allocation_and_rendering(
     monkeypatch.setattr(pipeline.cv2, "cvtColor", observe_color)
     monkeypatch.setattr(pipeline.cv2, "resize", observe_resize)
     _, debug = pipeline.detect_and_refine(
-        image, refine_pad_ratio=0, detect_well_border=False,
+        image, refine_pad_ratio=0,
         collect_outputs=collect_outputs, collect_debug=collect_debug,
     )
     assert len(allocations) == expected_allocations

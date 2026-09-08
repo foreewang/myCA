@@ -198,7 +198,7 @@ def detect_coarse_rois(
             continue
         if reject_border_touch and touch_image_border:
             continue
-        # 触边候选容易是不完整目标或孔边缘结构，默认拒识。
+        # 单边触边是否过滤由 reject_border_touch 控制，默认保留。
         comp_mask = labels[y:y + h, x:x + w] == i
         core_roi = dark_seed[y:y + h, x:x + w] > 0
         # 只统计连通域内部真正属于 dark_seed 的像素，避免宽松区域膨胀过头。

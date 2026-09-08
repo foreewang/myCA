@@ -4,7 +4,7 @@
 1. 统一输入图片格式。
 2. 在整图上做暗核心/纹理粗检测，找到候选 ROI。
 3. 在每个 ROI 内做径向轮廓搜索，并可选用 GrabCut 细化边缘。
-4. 根据可见孔边界标注 near_well_border/is_pickable。
+4. 根据目标自身有效性标注 is_pickable。
 5. 生成 overlay、mask、JSON 等输出。
 
 workflow 层如果配置 entrypoint 为 ``vision.detect_pipeline:process_image``，
@@ -19,7 +19,6 @@ from .image_loader import load_gray_image, to_gray_u8
 from .postprocess import save_outputs
 from .scorer import score_components_by_area
 from .segment import detect_coarse_rois, refine_contour_in_roi
-from .well_boundary import annotate_pickability_from_visual_well_border
 
 
 def detect_and_refine(
@@ -45,18 +44,15 @@ def detect_and_refine(
     refine_clip_pad_ratio=0.05,
     reject_border_touch=False,
     mm_per_pixel=None,
-    detect_well_border=True,
-    well_border_margin_mm=0.0,
-    well_border_margin_px=30.0,
     *,
     collect_outputs=True,
     collect_debug=True,
 ):
-    """执行“粗检测 + 局部轮廓细化 + 孔边界可挑取标注”的核心流程。
+    """执行“粗检测 + 局部轮廓细化 + 可挑取标注”的核心流程。
 
     返回 refined 和 debug:
     - refined 是最终目标列表，会写入 07_result.json 的 components。
-    - debug 保存中间图和孔边界检测信息，供 save_outputs 生成调试图片和 overlay。
+    - debug 保存中间图和检测元数据，供 save_outputs 生成调试图片和 overlay。
     - 直接调用默认保留全部中间图；流水线可关闭无需输出的全图缓冲区。
     """
     coarse, coarse_debug = detect_coarse_rois(
@@ -188,14 +184,9 @@ def detect_and_refine(
         del refined_item, refine_debug
 
     refined = score_components_by_area(refined)
-    well_border_detection = annotate_pickability_from_visual_well_border(
-        gray,
-        refined,
-        mm_per_pixel=mm_per_pixel,
-        well_border_margin_mm=float(well_border_margin_mm or 0.0),
-        well_border_margin_px=float(well_border_margin_px or 30.0),
-        enabled=bool(detect_well_border),
-    )
+    # is_pickable 表示目标自身有效，细化失败或质量不合格的目标不可挑取。
+    for item in refined:
+        item["is_pickable"] = item.get("is_valid_for_compensation") is not False
 
     debug = {
         "coarse_flat": coarse_debug["flat"],
@@ -207,7 +198,6 @@ def detect_and_refine(
         "full_refine_density": full_refine_density,
         "overlay": overlay,
         "contour_mask": full_contour_mask,
-        "well_border_detection": well_border_detection,
     }
     return refined, debug
 
@@ -238,9 +228,6 @@ def detect_from_gray(
     reject_border_touch=False,
     scale_bar=None,
     mm_per_pixel=None,
-    detect_well_border=True,
-    well_border_margin_mm=0.0,
-    well_border_margin_px=30.0,
     save_debug=False,
 ):
     """从内存图片执行检测。
@@ -276,9 +263,6 @@ def detect_from_gray(
         refine_clip_pad_ratio=refine_clip_pad_ratio,
         reject_border_touch=reject_border_touch,
         mm_per_pixel=mm_per_pixel,
-        detect_well_border=detect_well_border,
-        well_border_margin_mm=well_border_margin_mm,
-        well_border_margin_px=well_border_margin_px,
     )
 
 
@@ -308,7 +292,6 @@ def _detect_from_normalized_gray(
             "coarse_seed_thresh": int(debug.get("coarse_seed_thresh", -1)),
             "coarse_density_thresh": debug.get("coarse_density_thresh"),
             "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
-            "well_border_detection": debug.get("well_border_detection"),
             "scale_bar": None,
             "component_ids": [d["id"] for d in refined],
             "components": refined,

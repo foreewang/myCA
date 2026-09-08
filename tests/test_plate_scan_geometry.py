@@ -120,7 +120,7 @@ def test_scan_planner_defaults_missing_overlap() -> None:
     params = _scan_params(fov=2.0)
     del params["overlap"]
     plan = plan_single_well_scan({"plate": plate}, params)
-    assert plan["scan_config"]["overlap"] == 0.1
+    assert plan["scan_config"]["overlap"] == 0.0
 
 
 def test_scan_planner_clips_points_above_safe_y() -> None:

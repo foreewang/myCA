@@ -601,10 +601,7 @@ Host: 127.0.0.1:8000
         "intersection_over_min_threshold": 0.5
       },
       "save_overlay": true,
-      "overlay_source": "vision",
-      "detect_well_border": true,
-      "well_border_margin_mm": 0.0,
-      "well_border_margin_px": 30.0
+      "overlay_source": "vision"
     },
     "output": {
       "result_json": "data/interface_tasks/pipeline_C3_C5_20260827_001/result.json"
@@ -613,6 +610,8 @@ Host: 127.0.0.1:8000
   "persist_result": true
 }
 ```
+
+孔壁功能已下线，接口不再提供孔壁开关、边距参数和孔边界返回字段。`is_pickable` 保留，表示目标自身有效，不包含孔壁距离判断。模型管线的 4x 定位和 10x 复核契约不变。
 
 内置模型检测契约：
 
