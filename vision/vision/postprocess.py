@@ -206,10 +206,15 @@ def upscale_to_original(im_small, target_shape):
     return cv2.resize(im_small, (W, H), interpolation=cv2.INTER_NEAREST)
 
 
-def save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=None):
+def save_outputs(
+    src_path, out_dir, gray, refined, debug, scale_bar=None,
+    *, save_debug=True, copy_overlay=True,
+):
     """保存调试图、overlay 和最终 JSON。
 
-    固定输出文件:
+    直接调用默认保留完整调试输出；流水线通过 save_debug=False 仅保存 05–07。
+    copy_overlay=False 仅供持有独占 overlay 缓冲区的内部调用使用。
+    输出文件:
     - 01_gray.bmp: 标准化后的灰度输入。
     - 02_coarse_flat.bmp: 粗检测背景校正图。
     - 03_coarse_binary.bmp: 粗检测二值候选图。
@@ -221,13 +226,14 @@ def save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=None):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    save_image(out_dir / "01_gray.bmp", gray)
-    save_image(out_dir / "02_coarse_flat.bmp", upscale_to_original(debug["coarse_flat"], gray.shape))
-    save_image(out_dir / "03_coarse_binary.bmp", upscale_to_original(debug["coarse_binary"], gray.shape))
-    save_image(out_dir / "04_refine_density.bmp", debug["full_refine_density"])
+    if save_debug:
+        save_image(out_dir / "01_gray.bmp", gray)
+        save_image(out_dir / "02_coarse_flat.bmp", upscale_to_original(debug["coarse_flat"], gray.shape))
+        save_image(out_dir / "03_coarse_binary.bmp", upscale_to_original(debug["coarse_binary"], gray.shape))
+        save_image(out_dir / "04_refine_density.bmp", debug["full_refine_density"])
     save_image(out_dir / "05_contour_mask.bmp", debug["contour_mask"])
 
-    overlay = debug["overlay"].copy()
+    overlay = debug["overlay"].copy() if copy_overlay else debug["overlay"]
     scale_bar_info = draw_scale_bar(overlay, scale_bar)
     save_image(out_dir / "06_overlay.bmp", overlay)
 

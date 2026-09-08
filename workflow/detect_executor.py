@@ -12,6 +12,12 @@ from workflow.file_io import atomic_write_json
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
 
+_RULE_PATH_ENTRYPOINTS = {
+    f"{module}:process_image"
+    for module in ("vision.vision.detect_pipeline", "vision.detect_pipeline")
+}
+
+
 def _image_size(image_path: str) -> tuple[int, int]:
     with Image.open(image_path) as im:
         return int(im.width), int(im.height)
@@ -206,6 +212,9 @@ def _render_overlay_image(
 def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
     detect_cfg = ctx["task"].get("detect", {}) or {}
     entrypoint = detect_cfg.get("entrypoint")
+    save_debug = detect_cfg.get("save_debug", False)
+    if not isinstance(save_debug, bool):
+        raise ValueError("detect.save_debug must be a boolean")
 
     save_overlay = bool(detect_cfg.get("save_overlay", True))
     overlay_source = str(detect_cfg.get("overlay_source", "vision")).strip().lower()
@@ -250,6 +259,9 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         overlay_dir = None
         vision_output_dir = None
         detect_kwargs: Dict[str, Any] = {}
+        # Keep this rule-only output option out of model and third-party calls.
+        if isinstance(entrypoint, str) and entrypoint in _RULE_PATH_ENTRYPOINTS:
+            detect_kwargs["save_debug"] = save_debug
         if save_overlay:
             overlay_dir = _choose_overlay_dir(params, image_path)
             if overlay_source == "vision":

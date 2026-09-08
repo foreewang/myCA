@@ -48,12 +48,16 @@ def detect_and_refine(
     detect_well_border=True,
     well_border_margin_mm=0.0,
     well_border_margin_px=30.0,
+    *,
+    collect_outputs=True,
+    collect_debug=True,
 ):
     """执行“粗检测 + 局部轮廓细化 + 孔边界可挑取标注”的核心流程。
 
     返回 refined 和 debug:
     - refined 是最终目标列表，会写入 07_result.json 的 components。
     - debug 保存中间图和孔边界检测信息，供 save_outputs 生成调试图片和 overlay。
+    - 直接调用默认保留全部中间图；流水线可关闭无需输出的全图缓冲区。
     """
     coarse, coarse_debug = detect_coarse_rois(
         gray,
@@ -75,10 +79,10 @@ def detect_and_refine(
     H, W = gray.shape
     refined = []
 
-    # 这些全图大小的图用于调试和可视化。每个 ROI 的结果会回填到这里。
-    full_refine_density = np.zeros_like(gray, dtype=np.uint8)
-    full_contour_mask = np.zeros_like(gray, dtype=np.uint8)
-    overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    # 这些全图缓冲区仅用于输出，不参与候选、轮廓或安全点计算。
+    full_refine_density = np.zeros_like(gray, dtype=np.uint8) if collect_outputs and collect_debug else None
+    full_contour_mask = np.zeros_like(gray, dtype=np.uint8) if collect_outputs else None
+    overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) if collect_outputs else None
 
     for idx, item in enumerate(coarse, start=1):
         # coarse_bbox 和 safe_point 都是原图坐标。
@@ -113,71 +117,75 @@ def detect_and_refine(
 
         if refined_item is None:
             # 细化失败时仍输出粗检测结果，便于上层知道哪里失败了。
-            cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 255), 8)
-            cv2.circle(overlay, (int(cx), int(cy)), 26, (0, 0, 255), -1, cv2.LINE_AA)
+            if overlay is not None:
+                cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 255), 8)
+                cv2.circle(overlay, (int(cx), int(cy)), 26, (0, 0, 255), -1, cv2.LINE_AA)
             refined.append(
                 build_failed_component(
                     idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
                 )
             )
+            del refined_item, refine_debug
             continue
 
         # 把 ROI 局部轮廓映射回原图坐标后绘制 overlay。
         _, cnt_global = to_global_contour(refined_item["contour_local"], x0, y0)
-        cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
+        if overlay is not None:
+            cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
 
-        cxl = refined_item["center_local"][0]
-        cyl = refined_item["center_local"][1]
-        cxg = int(cxl + x0)
-        cyg = int(cyl + y0)
+            cxl = refined_item["center_local"][0]
+            cyl = refined_item["center_local"][1]
+            cxg = int(cxl + x0)
+            cyg = int(cyl + y0)
 
-        cv2.circle(overlay, (cxg, cyg), 26, (0, 0, 255), -1, cv2.LINE_AA)
-        cv2.circle(overlay, (cxg, cyg), 30, (255, 255, 255), 2, cv2.LINE_AA)
-        text_org = (cxg + 36, cyg - 36)
-        cv2.putText(
-            overlay,
-            f"C{idx:02d}",
-            text_org,
-            cv2.FONT_HERSHEY_SIMPLEX,
-            2.0,
-            (255, 255, 255),
-            9,
-            cv2.LINE_AA,
-        )
-        cv2.putText(
-            overlay,
-            f"C{idx:02d}",
-            text_org,
-            cv2.FONT_HERSHEY_SIMPLEX,
-            2.0,
-            (0, 0, 255),
-            6,
-            cv2.LINE_AA,
-        )
+            cv2.circle(overlay, (cxg, cyg), 26, (0, 0, 255), -1, cv2.LINE_AA)
+            cv2.circle(overlay, (cxg, cyg), 30, (255, 255, 255), 2, cv2.LINE_AA)
+            text_org = (cxg + 36, cyg - 36)
+            cv2.putText(
+                overlay,
+                f"C{idx:02d}",
+                text_org,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                (255, 255, 255),
+                9,
+                cv2.LINE_AA,
+            )
+            cv2.putText(
+                overlay,
+                f"C{idx:02d}",
+                text_org,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                (0, 0, 255),
+                6,
+                cv2.LINE_AA,
+            )
 
         # 合成全图 mask。多个 ROI 重叠时取最大值，相当于保留任一前景。
-        roi_mask = refined_item["mask_full"]
-        full_contour_mask[y0:y1, x0:x1] = np.maximum(
-            full_contour_mask[y0:y1, x0:x1],
-            roi_mask,
-        )
+        if full_contour_mask is not None:
+            mask_view = full_contour_mask[y0:y1, x0:x1]
+            np.maximum(mask_view, refined_item["mask_full"], out=mask_view)
+            del mask_view
 
         # 把 ROI 内的密度图恢复到 ROI 原始尺寸，再贴回全图。
-        density_full = cv2.resize(
-            refine_debug["density"],
-            (roi.shape[1], roi.shape[0]),
-            interpolation=cv2.INTER_LINEAR,
-        )
-        full_refine_density[y0:y1, x0:x1] = np.maximum(
-            full_refine_density[y0:y1, x0:x1],
-            density_full,
-        )
+        if full_refine_density is not None:
+            density_full = cv2.resize(
+                refine_debug["density"],
+                (roi.shape[1], roi.shape[0]),
+                interpolation=cv2.INTER_LINEAR,
+            )
+            density_view = full_refine_density[y0:y1, x0:x1]
+            np.maximum(density_view, density_full, out=density_view)
+            del density_view, density_full
 
         refined.append(
             build_refined_component(
                 idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global, item
             )
         )
+        # 不把上一 ROI 的图像缓冲区保留到下一次 GrabCut 执行期间。
+        del refined_item, refine_debug
 
     refined = score_components_by_area(refined)
     well_border_detection = annotate_pickability_from_visual_well_border(
@@ -233,16 +241,20 @@ def detect_from_gray(
     detect_well_border=True,
     well_border_margin_mm=0.0,
     well_border_margin_px=30.0,
+    save_debug=False,
 ):
     """从内存图片执行检测。
 
-    out_dir 为 None 时只返回字典，不写任何图片文件；传入目录时会写出
-    01_gray.bmp 到 07_result.json 等调试/结果文件。
+    out_dir 为 None 时只返回字典，也不构建全图可视化缓冲区；传入目录时
+    默认写出 05_contour_mask.bmp、06_overlay.bmp、07_result.json。
+    save_debug=True 时额外生成 01–04 调试图，不改变识别结果。
     """
-    gray = to_gray_u8(gray)
-
-    refined, debug = detect_and_refine(
-        gray,
+    return _detect_from_normalized_gray(
+        to_gray_u8(gray),
+        src_path=src_path,
+        out_dir=out_dir,
+        scale_bar=scale_bar,
+        save_debug=save_debug,
         coarse_work_max=coarse_work_max,
         refine_pad_ratio=refine_pad_ratio,
         max_keep=max_keep,
@@ -263,10 +275,26 @@ def detect_from_gray(
         refine_clip_to_coarse_bbox=refine_clip_to_coarse_bbox,
         refine_clip_pad_ratio=refine_clip_pad_ratio,
         reject_border_touch=reject_border_touch,
-        mm_per_pixel=mm_per_pixel if mm_per_pixel is not None else (scale_bar or {}).get("mm_per_pixel") if isinstance(scale_bar, dict) else None,
+        mm_per_pixel=mm_per_pixel,
         detect_well_border=detect_well_border,
         well_border_margin_mm=well_border_margin_mm,
         well_border_margin_px=well_border_margin_px,
+    )
+
+
+def _detect_from_normalized_gray(
+    gray, src_path="in_memory", out_dir=None, *,
+    scale_bar=None, mm_per_pixel=None, save_debug=False, **detect_kwargs,
+):
+    """Execute using an owned uint8 grayscale buffer without copying it again."""
+    if not isinstance(save_debug, bool):
+        raise ValueError("save_debug must be a boolean")
+    refined, debug = detect_and_refine(
+        gray,
+        mm_per_pixel=mm_per_pixel if mm_per_pixel is not None else (scale_bar or {}).get("mm_per_pixel") if isinstance(scale_bar, dict) else None,
+        collect_outputs=out_dir is not None,
+        collect_debug=save_debug,
+        **detect_kwargs,
     )
 
     if out_dir is None:
@@ -286,13 +314,18 @@ def detect_from_gray(
             "components": refined,
         }
 
-    return save_outputs(src_path, out_dir, gray, refined, debug, scale_bar=scale_bar)
+    return save_outputs(
+        src_path, out_dir, gray, refined, debug, scale_bar=scale_bar,
+        save_debug=save_debug, copy_overlay=False,
+    )
 
 
 def detect_from_path(image_path, out_dir="outputs_5120_contour_refined_opt", **kwargs):
     """读取图片路径并执行检测。其他参数透传给 detect_from_gray。"""
+    # load_gray_image 返回自持有的灰度图，并在返回前释放解码的彩色原图。
+    # 内存入口继续复制/转换以保护调用方；文件入口不需要再复制这份灰度图。
     gray = load_gray_image(image_path)
-    return detect_from_gray(gray=gray, src_path=image_path, out_dir=out_dir, **kwargs)
+    return _detect_from_normalized_gray(gray, src_path=image_path, out_dir=out_dir, **kwargs)
 
 
 def process_image(image_path, **kwargs):

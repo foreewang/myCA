@@ -39,7 +39,14 @@ def main() -> None:
         help="explicitly allow rebuilding sessions on CPU when CUDA initialization fails",
     )
     parser.add_argument("--mm-per-pixel", type=float, default=None)
+    parser.add_argument(
+        "--save-debug",
+        action="store_true",
+        help="legacy only: also save intermediate debug images 01-04",
+    )
     args = parser.parse_args()
+    if args.save_debug and args.backend != "legacy":
+        parser.error("--save-debug is only supported when --backend=legacy")
 
     scale_bar = None
     if args.mm_per_pixel is not None:
@@ -67,6 +74,7 @@ def main() -> None:
             out_dir=args.out_dir,
             scale_bar=scale_bar,
             mm_per_pixel=args.mm_per_pixel,
+            save_debug=args.save_debug,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
