@@ -516,18 +516,37 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
+def _preflight_overlap_deduplication(detect_cfg: Dict[str, Any], params: Dict[str, Any]) -> None:
+    """Reject uncalibrated overlapping scans before capture or inference."""
+    if float(params.get("overlap") or 0.0) > 0.0 and not bool(
+        (detect_cfg.get("deduplication") or {}).get("calibrated", False)
+    ):
+        raise ValueError(
+            "重叠视野唯一计数要求 detect.deduplication.calibrated=true；"
+            "请先用带跨视野实例身份标注的数据标定 registration_tolerance_mm"
+        )
+    dedupe_cfg = detect_cfg.get("deduplication") or {}
+    if bool(dedupe_cfg.get("calibrated", False)) and "registration_tolerance_mm" not in dedupe_cfg:
+        raise ValueError(
+            "detect.deduplication.calibrated=true 时必须显式配置 registration_tolerance_mm"
+        )
+
+
 def preflight_detection_backend(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
     """Validate/load the model before capture moves or camera acquisition begin."""
     if "detect" not in (params.get("stages") or []):
         return
     detect_cfg = (ctx.get("task") or {}).get("detect") or {}
+    # Overlap unique-count is backend-agnostic: rule and third-party detectors
+    # still merge physical observations after inference.
+    _preflight_overlap_deduplication(detect_cfg, params)
     entrypoint = str(detect_cfg.get("entrypoint") or "").strip()
     builtin_model_entrypoints = {
         "vision.vision.instance_pipeline:process_image",
         "vision.instance_pipeline:process_image",
     }
     if entrypoint and entrypoint not in builtin_model_entrypoints:
-        # Explicit legacy or third-party entrypoints own their own preflight
+        # Explicit legacy or third-party entrypoints own their own model
         # contract; do not force the built-in ONNX package onto them.
         return
     if str(params.get("objective_name") or "").strip().lower() != "4x":
@@ -543,18 +562,6 @@ def preflight_detection_backend(ctx: Dict[str, Any], params: Dict[str, Any]) -> 
     model_dir = detect_cfg.get("model_dir") or params.get("detect_model_dir")
     if not model_dir:
         raise ValueError("detect.model_dir 是 4x 模型检测的必填项")
-    if float(params.get("overlap") or 0.0) > 0.0 and not bool(
-        (detect_cfg.get("deduplication") or {}).get("calibrated", False)
-    ):
-        raise ValueError(
-            "重叠视野唯一计数要求 detect.deduplication.calibrated=true；"
-            "请先用带跨视野实例身份标注的数据标定 registration_tolerance_mm"
-        )
-    dedupe_cfg = detect_cfg.get("deduplication") or {}
-    if bool(dedupe_cfg.get("calibrated", False)) and "registration_tolerance_mm" not in dedupe_cfg:
-        raise ValueError(
-            "detect.deduplication.calibrated=true 时必须显式配置 registration_tolerance_mm"
-        )
     from vision.vision.instance_pipeline import _cached_bundle
 
     _cached_bundle(
