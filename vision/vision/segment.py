@@ -683,15 +683,16 @@ def refine_contour_in_roi(
     recenter_min_shift_px=6.0,
     clip_bbox_local=None,
     clip_pad_ratio=0.05,
-    edge_refine_method="hybrid",
+    edge_refine_method="none",
     edge_refine_iterations=2,
 ):
     """在单个 ROI 内细化轮廓，并返回 ROI 局部坐标结果。
 
     center_hint_local 通常来自粗检测的 dark core center / safe point。
     细化过程先构建暗区密度图，再进行径向轮廓搜索；如果开启 recenter_iterations，
-    会用当前 mask 质心更新中心并重复搜索。edge_refine_method 为 grabcut/hybrid 时，
-    会在径向 mask 基础上做 GrabCut 贴边，并用面积比例、中心点位置做回退保护。
+    会用当前 mask 质心更新中心并重复搜索。默认不跑 GrabCut。edge_refine_method
+    为 grabcut/hybrid 时，会在径向 mask 基础上做 GrabCut 贴边，并用面积比例、
+    中心点位置做回退保护。
     """
     small, flat, dark_seed_u8, density_u8, scale = roi_density_signal(
         roi_gray,

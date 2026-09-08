@@ -77,8 +77,17 @@ def test_real_algorithm_keeps_results_and_final_pixels_across_output_modes(
     if positive:
         assert all(item["area_px"] > 5000 for item in result["components"])
         assert all(len(item["contour_points"]) > 10 for item in result["components"])
-        assert all(item["edge_refine_success"] for item in result["components"])
+        assert all(item["refine_method"] == "none" for item in result["components"])
+        assert all(item["edge_refine_success"] is False for item in result["components"])
+        assert all(item["edge_refine_reason"] == "disabled" for item in result["components"])
         assert all(item["is_valid_for_compensation"] for item in result["components"])
+
+
+def test_explicit_hybrid_edge_refine_still_runs_grabcut(tmp_path: Path) -> None:
+    result, _ = _assert_output_modes(_sample(True), tmp_path, edge_refine_method="hybrid")
+    assert result["component_count"] == 2
+    assert all(item["refine_method"] == "grabcut" for item in result["components"])
+    assert all(item["edge_refine_success"] for item in result["components"])
 
 
 @pytest.mark.parametrize("input_kind", ["gray8", "gray16", "bgr", "bgra"])
