@@ -8,6 +8,24 @@ segment.py 更关注“怎么找到目标”，本文件更关注“怎么把找
 import numpy as np
 
 
+def texture_processing_metadata(debug):
+    """Stable diagnostics, including empty detections; excludes per-run timing."""
+    return {
+        "algorithm": "connected_texture_v1",
+        "coarse_backend": debug.get("texture_backend"),
+        "fallback_reason": debug.get("texture_fallback_reason"),
+    }
+
+
+def _texture_quality(coarse_item, refined_item=None):
+    coarse_item = coarse_item or {}
+    refined_item = refined_item or {}
+    keys = ('detection_source', 'texture_score', 'texture_coverage', 'solidity', 'texture_center_pixel',
+            'texture_backend', 'texture_fallback_reason', 'safe_point_method',
+            'safe_clearance_px', 'safe_margin_px', 'segmentation_status')
+    return {key: refined_item.get(key, coarse_item.get(key)) for key in keys}
+
+
 def _coarse_quality(coarse_item):
     """提取粗检测阶段的质量字段，并做最小限度的兜底。"""
     coarse_item = coarse_item or {}
@@ -16,15 +34,11 @@ def _coarse_quality(coarse_item):
     return {
         "confidence": confidence,
         "is_valid_for_compensation": bool(coarse_item.get("is_valid_for_compensation", False)) and confidence >= 0.25,
-        "foreground_ratio": coarse_item.get("foreground_ratio"),
         "bbox_area_ratio": coarse_item.get("bbox_area_ratio"),
-        "dark_core_area_ratio": coarse_item.get("dark_core_area_ratio"),
-        "dark_core_area_small": coarse_item.get("dark_core_area_small"),
         "touch_image_border": bool(coarse_item.get("touch_image_border", False)),
         "image_border_sides": list(coarse_item.get("image_border_sides") or []),
         "image_edge_clipped": bool(coarse_item.get("image_edge_clipped", coarse_item.get("touch_image_border", False))),
-        "dark_core_center_pixel": coarse_item.get("dark_core_center_pixel"),
-        "safe_point": coarse_item.get("safe_point") or coarse_item.get("dark_core_center_pixel"),
+        "safe_point": coarse_item.get("safe_point"),
     }
 
 
@@ -39,11 +53,12 @@ def build_failed_component(idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug
     safe_point = quality.get("safe_point") or [int(cx), int(cy)]
     return {
         "id": f"C{idx:02d}",
+        **_texture_quality(coarse_item),
+        "segmentation_status": refine_debug.get("failure_reason", "refinement_failed"),
         "coarse_bbox": [int(x), int(y), int(w), int(h)],
         "refine_roi_bbox": [int(x0), int(y0), int(x1 - x0), int(y1 - y0)],
         "center_pixel": [int(safe_point[0]), int(safe_point[1])],
         "contour_center_pixel": [int(cx), int(cy)],
-        "dark_core_center_pixel": quality.get("dark_core_center_pixel"),
         "safe_point": [int(safe_point[0]), int(safe_point[1])],
         "bbox": [int(x), int(y), int(w), int(h)],
         "area_px": int(w * h),
@@ -51,10 +66,7 @@ def build_failed_component(idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug
         "center_history_small": refine_debug.get("center_history_small", []),
         "is_valid_for_compensation": False,
         "confidence": 0.0,
-        "foreground_ratio": quality.get("foreground_ratio"),
         "bbox_area_ratio": quality.get("bbox_area_ratio"),
-        "dark_core_area_ratio": quality.get("dark_core_area_ratio"),
-        "dark_core_area_small": quality.get("dark_core_area_small"),
         "touch_image_border": quality.get("touch_image_border"),
         "image_border_sides": quality.get("image_border_sides"),
         "image_edge_clipped": quality.get("image_edge_clipped"),
@@ -66,7 +78,7 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
 
     refined_item 中的坐标是 ROI 局部坐标，本函数会加上 ROI 左上角
     偏移量 (x0, y0)，把它们转换回整张原图坐标。
-    refine_method/edge_refine_* 字段用于记录径向轮廓和 GrabCut 贴边的实际结果，
+    refine_method/edge_refine_* 字段用于记录纹理轮廓和 GrabCut 贴边的实际结果，
     方便现场复核某个克隆为什么贴边成功、失败或回退。
     """
     bx, by, bw, bh = refined_item["bbox_local"]
@@ -80,16 +92,18 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
     area_px = int(refined_item["area_px"])
 
     quality = _coarse_quality(coarse_item)
-    is_valid = bool(quality["is_valid_for_compensation"]) and area_px > 0
-    confidence = float(quality["confidence"] if is_valid else 0.0)
+    is_valid = (bool(quality["is_valid_for_compensation"]) and area_px > 0
+                and refined_item.get("is_valid_for_compensation", True) is True)
+    confidence = float(min(quality["confidence"], refined_item.get("texture_score", 1.0)) if is_valid else 0.0)
 
     return {
         "id": f"C{idx:02d}",
+        **_texture_quality(coarse_item, refined_item),
+        "texture_center_pixel": [int(cxg), int(cyg)],
         "coarse_bbox": [int(x), int(y), int(w), int(h)],
         "refine_roi_bbox": [int(x0), int(y0), int(x1 - x0), int(y1 - y0)],
         "center_pixel": [int(cxg), int(cyg)],
         "contour_center_pixel": contour_center_pixel,
-        "dark_core_center_pixel": quality.get("dark_core_center_pixel"),
         "safe_point": [int(cxg), int(cyg)],
         "bbox": [int(bx + x0), int(by + y0), int(bw), int(bh)],
         "area_px": area_px,
@@ -101,10 +115,7 @@ def build_refined_component(idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_g
         "edge_refine_area_ratio": refined_item.get("edge_refine_area_ratio"),
         "is_valid_for_compensation": bool(is_valid),
         "confidence": confidence,
-        "foreground_ratio": quality.get("foreground_ratio"),
         "bbox_area_ratio": quality.get("bbox_area_ratio"),
-        "dark_core_area_ratio": quality.get("dark_core_area_ratio"),
-        "dark_core_area_small": quality.get("dark_core_area_small"),
         "touch_image_border": quality.get("touch_image_border"),
         "image_border_sides": quality.get("image_border_sides"),
         "image_edge_clipped": quality.get("image_edge_clipped"),

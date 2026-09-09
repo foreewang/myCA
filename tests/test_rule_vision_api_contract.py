@@ -101,7 +101,7 @@ def test_rule_workflow_routes_debug_option_through_real_alias(
     ctx, params, scan_result = scan_inputs
     cfg = ctx["task"]["detect"]
     cfg["entrypoint"] = entrypoint
-    cfg["seed_thresh"] = 99  # Unrelated algorithm options must not gain passthrough.
+    cfg["seed_thresh"] = 99  # Removed legacy task settings must not reach the rule entrypoint.
     if debug_option is not None:
         cfg["save_debug"] = debug_option
     captured = _capture_rule_calls(monkeypatch, entrypoint)
@@ -234,4 +234,30 @@ def test_model_cli_keeps_original_call_contract(monkeypatch: pytest.MonkeyPatch,
     assert "save_debug" not in captured
     assert captured["model_dir"] == "model-release"
     assert captured["provider"] == "cuda"
+    capsys.readouterr()
+
+
+def test_scan_texture_settings_reach_rule_pipeline(scan_inputs, monkeypatch):
+    ctx, params, scan_result = scan_inputs
+    ctx['task']['detect'].update(texture_backend='cpu', safe_margin_px=18, refine_work_max=1600)
+    captured = _capture_rule_calls(monkeypatch, RULE_ENTRYPOINTS[0])
+    detect_executor.execute_detect_on_scan_result(ctx, params, scan_result)
+    for key in ('texture_backend', 'safe_margin_px', 'refine_work_max'):
+        assert captured['rule_kwargs'][key] == ctx['task']['detect'][key]
+
+
+def test_cli_texture_options_are_explicit_and_rule_only(monkeypatch, capsys):
+    captured = {}
+    def detect(path, **kwargs):
+        captured.update(kwargs)
+        return {'component_count': 0}
+    monkeypatch.setattr(detect_pipeline, 'detect_from_path', detect)
+    monkeypatch.setattr(sys, 'argv', ['run_detect.py', 'sample.bmp', '--backend', 'legacy',
+                                    '--texture-backend', 'cuda', '--safe-margin-px', '15'])
+    run_detect.main()
+    assert captured['texture_backend'] == 'cuda' and captured['safe_margin_px'] == 15
+    monkeypatch.setattr(sys, 'argv', ['run_detect.py', 'sample.bmp', '--texture-backend', 'cuda'])
+    with pytest.raises(SystemExit) as exc:
+        run_detect.main()
+    assert exc.value.code == 2
     capsys.readouterr()

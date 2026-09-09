@@ -19,6 +19,16 @@ _CANDIDATE_CALLABLES = (
 )
 
 
+def rule_texture_kwargs(entrypoint, config):
+    """Whitelist rule tuning for both scan detection and closed-loop recapture."""
+    if entrypoint not in {"vision.vision.detect_pipeline:process_image", "vision.detect_pipeline:process_image"}:
+        return {}
+    return {key: config[key] for key in (
+        "texture_backend", "texture_noise_floor", "texture_window", "coarse_work_max",
+        "refine_work_max", "safe_margin_px",
+    ) if key in config}
+
+
 class DetectAPIError(RuntimeError):
     pass
 
@@ -102,7 +112,7 @@ def _coerce_bbox(value: Any) -> List[int] | None:
 
 
 def _extract_center(item: Dict[str, Any]) -> tuple[int, int] | None:
-    for key in ("center_pixel", "safe_point", "dark_core_center_pixel", "center_px", "center", "centroid", "clone_center_px"):
+    for key in ("center_pixel", "safe_point", "center_px", "center", "centroid", "clone_center_px"):
         if key in item:
             pair = _to_int_pair(item[key])
             if pair is not None:
@@ -307,6 +317,12 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
 
 
 def _call_detect_entrypoint(fn: Callable[..., Any], image_path: str, detect_kwargs: Dict[str, Any]) -> Any:
+    # Physical scale remains workflow/model metadata. Rule rendering receives
+    # scale_bar separately; do not forward unused scale into rule segmentation.
+    if getattr(fn, "__module__", "") in {
+        "vision.vision.detect_pipeline", "vision.detect_pipeline",
+    }:
+        detect_kwargs = {key: value for key, value in detect_kwargs.items() if key != "mm_per_pixel"}
     if not detect_kwargs:
         return fn(image_path)
 

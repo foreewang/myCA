@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 from PIL import Image
 
 from workflow.camera_executor import capture_single_image
-from workflow.detect_api import run_detect_on_image
+from workflow.detect_api import run_detect_on_image, rule_texture_kwargs
 from workflow.file_io import atomic_write_json
 from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
 from workflow.platform_defaults import DEFAULT_MODBUS_PORT, DEFAULT_SCAN_SETTLE_S, apply_motion_profile_defaults
@@ -227,6 +227,7 @@ def _build_image_item_from_capture(
         image_path,
         entrypoint=detect_entrypoint,
         detect_kwargs={
+            **rule_texture_kwargs(detect_entrypoint, params.get("detect_rule_options") or {}),
             "model_dir": params.get("detect_model_dir"),
             "provider": params.get("detect_provider", "cuda"),
             "allow_cpu_fallback": bool(params.get("detect_allow_cpu_fallback", False)),

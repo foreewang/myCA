@@ -2,8 +2,8 @@
 
 本模块把底层算法串成完整流程:
 1. 统一输入图片格式。
-2. 在整图上做暗核心/纹理粗检测，找到候选 ROI。
-3. 在每个 ROI 内做径向轮廓搜索，并可选用 GrabCut 细化边缘。
+2. 在整图上按内部纹理寻找多候选 ROI。
+3. 在每个 ROI 内提取连通纹理轮廓，并可选用 GrabCut 细化边缘。
 4. 根据目标自身有效性标注 is_pickable。
 5. 生成 overlay、mask、JSON 等输出。
 
@@ -14,7 +14,10 @@ workflow 层如果配置 entrypoint 为 ``vision.detect_pipeline:process_image``
 import cv2
 import numpy as np
 
-from .feature_extract import build_failed_component, build_refined_component, to_global_contour
+from .gpu_ops import DEFAULT_TEXTURE_BACKEND
+
+from .feature_extract import (build_failed_component, build_refined_component,
+                              to_global_contour, texture_processing_metadata)
 from .image_loader import load_gray_image, to_gray_u8
 from .postprocess import save_outputs
 from .scorer import score_components_by_area
@@ -26,25 +29,18 @@ def detect_and_refine(
     coarse_work_max=1024,
     refine_pad_ratio=0.20,
     max_keep=None,
-    radial_mode="hybrid",
-    recenter_iterations=1,
     edge_refine_method="none",
     edge_refine_iterations=2,
-    seed_thresh=None,
-    seed_quantile=0.12,
-    seed_hard_floor=35,
-    seed_hard_ceil=105,
-    core_density_min=80,
-    min_foreground_ratio=0.025,
-    max_foreground_ratio=0.80,
-    min_dark_core_area_ratio=0.00001,
-    max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
     refine_clip_to_coarse_bbox=True,
     refine_clip_pad_ratio=0.05,
     reject_border_touch=False,
-    mm_per_pixel=None,
     *,
+    texture_backend=DEFAULT_TEXTURE_BACKEND,
+    texture_noise_floor=1.5,
+    texture_window=7,
+    refine_work_max=1200,
+    safe_margin_px=1.0,
     collect_outputs=True,
     collect_debug=True,
 ):
@@ -55,19 +51,18 @@ def detect_and_refine(
     - debug 保存中间图和检测元数据，供 save_outputs 生成调试图片和 overlay。
     - 直接调用默认保留全部中间图；流水线可关闭无需输出的全图缓冲区。
     """
+    for name, value in (("safe_margin_px", safe_margin_px), ("refine_pad_ratio", refine_pad_ratio),
+                        ("refine_clip_pad_ratio", refine_clip_pad_ratio)):
+        if not np.isfinite(value) or value < 0:
+            raise ValueError(f"{name} must be finite and nonnegative")
+    if not np.isfinite(refine_work_max) or refine_work_max < 1:
+        raise ValueError("refine_work_max must be positive")
     coarse, coarse_debug = detect_coarse_rois(
         gray,
         work_max=coarse_work_max,
+        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+        texture_window=texture_window,
         max_keep=max_keep,
-        seed_thresh=seed_thresh,
-        seed_quantile=seed_quantile,
-        seed_hard_floor=seed_hard_floor,
-        seed_hard_ceil=seed_hard_ceil,
-        core_density_min=core_density_min,
-        min_foreground_ratio=min_foreground_ratio,
-        max_foreground_ratio=max_foreground_ratio,
-        min_dark_core_area_ratio=min_dark_core_area_ratio,
-        max_dark_core_area_ratio=max_dark_core_area_ratio,
         max_bbox_area_ratio=max_bbox_area_ratio,
         reject_border_touch=reject_border_touch,
     )
@@ -83,9 +78,9 @@ def detect_and_refine(
     for idx, item in enumerate(coarse, start=1):
         # coarse_bbox 和 safe_point 都是原图坐标。
         x, y, w, h = item["coarse_bbox"]
-        cx, cy = item.get("safe_point") or item.get("dark_core_center_pixel") or item["coarse_center_pixel"]
+        cx, cy = item.get("safe_point") or item["coarse_center_pixel"]
 
-        # 对粗框再扩边，避免粗检测框过紧导致后续径向/GrabCut 轮廓被截断。
+        # 对未扩边的粗框扩边一次，保留细化所需的背景参照。
         pad_x = int(round(w * refine_pad_ratio))
         pad_y = int(round(h * refine_pad_ratio))
         x0 = max(0, x - pad_x)
@@ -99,8 +94,10 @@ def detect_and_refine(
         refined_item, refine_debug = refine_contour_in_roi(
             roi,
             center_local,
-            radial_mode=radial_mode,
-            recenter_iterations=recenter_iterations,
+            max_work=refine_work_max,
+            instance_support=item.get("_support_small"),
+            texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+            texture_window=texture_window, safe_margin_px=safe_margin_px,
             edge_refine_method=edge_refine_method,
             edge_refine_iterations=edge_refine_iterations,
             clip_bbox_local=(
@@ -112,10 +109,7 @@ def detect_and_refine(
         )
 
         if refined_item is None:
-            # 细化失败时仍输出粗检测结果，便于上层知道哪里失败了。
-            if overlay is not None:
-                cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 255), 8)
-                cv2.circle(overlay, (int(cx), int(cy)), 26, (0, 0, 255), -1, cv2.LINE_AA)
+            # 失败候选仅保留在结果记录中，不绘制粗框和未经细化的定位点。
             refined.append(
                 build_failed_component(
                     idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
@@ -192,9 +186,10 @@ def detect_and_refine(
         "coarse_flat": coarse_debug["flat"],
         "coarse_binary": coarse_debug["binary_small"],
         "coarse_scale": coarse_debug["scale"],
-        "coarse_seed_thresh": coarse_debug["seed_thresh"],
         "coarse_density_thresh": coarse_debug.get("density_thresh"),
         "coarse_candidate_count": coarse_debug.get("coarse_candidate_count", len(coarse)),
+        "texture_backend": coarse_debug.get("texture_backend"),
+        "texture_fallback_reason": coarse_debug.get("texture_fallback_reason"),
         "full_refine_density": full_refine_density,
         "overlay": overlay,
         "contour_mask": full_contour_mask,
@@ -209,26 +204,16 @@ def detect_from_gray(
     coarse_work_max=1024,
     refine_pad_ratio=0.20,
     max_keep=None,
-    radial_mode="hybrid",
-    recenter_iterations=1,
     edge_refine_method="none",
     edge_refine_iterations=2,
-    seed_thresh=None,
-    seed_quantile=0.12,
-    seed_hard_floor=35,
-    seed_hard_ceil=105,
-    core_density_min=80,
-    min_foreground_ratio=0.025,
-    max_foreground_ratio=0.80,
-    min_dark_core_area_ratio=0.00001,
-    max_dark_core_area_ratio=0.12,
     max_bbox_area_ratio=0.30,
     refine_clip_to_coarse_bbox=True,
     refine_clip_pad_ratio=0.05,
     reject_border_touch=False,
     scale_bar=None,
-    mm_per_pixel=None,
     save_debug=False,
+    *, texture_backend=DEFAULT_TEXTURE_BACKEND, texture_noise_floor=1.5, texture_window=7,
+    refine_work_max=1200, safe_margin_px=1.0,
 ):
     """从内存图片执行检测。
 
@@ -242,40 +227,29 @@ def detect_from_gray(
         out_dir=out_dir,
         scale_bar=scale_bar,
         save_debug=save_debug,
+        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+        texture_window=texture_window, refine_work_max=refine_work_max, safe_margin_px=safe_margin_px,
         coarse_work_max=coarse_work_max,
         refine_pad_ratio=refine_pad_ratio,
         max_keep=max_keep,
-        radial_mode=radial_mode,
-        recenter_iterations=recenter_iterations,
         edge_refine_method=edge_refine_method,
         edge_refine_iterations=edge_refine_iterations,
-        seed_thresh=seed_thresh,
-        seed_quantile=seed_quantile,
-        seed_hard_floor=seed_hard_floor,
-        seed_hard_ceil=seed_hard_ceil,
-        core_density_min=core_density_min,
-        min_foreground_ratio=min_foreground_ratio,
-        max_foreground_ratio=max_foreground_ratio,
-        min_dark_core_area_ratio=min_dark_core_area_ratio,
-        max_dark_core_area_ratio=max_dark_core_area_ratio,
         max_bbox_area_ratio=max_bbox_area_ratio,
         refine_clip_to_coarse_bbox=refine_clip_to_coarse_bbox,
         refine_clip_pad_ratio=refine_clip_pad_ratio,
         reject_border_touch=reject_border_touch,
-        mm_per_pixel=mm_per_pixel,
     )
 
 
 def _detect_from_normalized_gray(
     gray, src_path="in_memory", out_dir=None, *,
-    scale_bar=None, mm_per_pixel=None, save_debug=False, **detect_kwargs,
+    scale_bar=None, save_debug=False, **detect_kwargs,
 ):
     """Execute using an owned uint8 grayscale buffer without copying it again."""
     if not isinstance(save_debug, bool):
         raise ValueError("save_debug must be a boolean")
     refined, debug = detect_and_refine(
         gray,
-        mm_per_pixel=mm_per_pixel if mm_per_pixel is not None else (scale_bar or {}).get("mm_per_pixel") if isinstance(scale_bar, dict) else None,
         collect_outputs=out_dir is not None,
         collect_debug=save_debug,
         **detect_kwargs,
@@ -289,12 +263,12 @@ def _detect_from_normalized_gray(
                 "height": int(gray.shape[0]),
             },
             "component_count": len(refined),
-            "coarse_seed_thresh": int(debug.get("coarse_seed_thresh", -1)),
             "coarse_density_thresh": debug.get("coarse_density_thresh"),
             "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
             "scale_bar": None,
             "component_ids": [d["id"] for d in refined],
             "components": refined,
+            "texture_processing": texture_processing_metadata(debug),
         }
 
     return save_outputs(

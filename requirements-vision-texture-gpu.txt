@@ -1,0 +1,4 @@
+# Optional rule-texture backend; install only into a CUDA 12 environment.
+# Validated locally: ca / Python 3.10.20, CUDA runtime 12.9.79, NVRTC 12.9.86.
+# Does not replace/upgrade the separate ONNX runtime CUDA dependency lock.
+cupy-cuda12x==14.2.0

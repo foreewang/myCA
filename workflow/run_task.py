@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from workflow.file_io import atomic_write_json, read_json_with_retry, read_text_with_retry
 from workflow.task_control import raise_if_cancel_requested, report_progress
 from workflow.task_store import normalize_task_objective_alias, task_objective_name
+from workflow.detect_api import rule_texture_kwargs
 
 import yaml
 
@@ -268,6 +269,7 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "scan_output_json": scan_cfg.get("output_json"),
         "motion": apply_motion_profile_defaults(task.get("motion")),
         "detect_entrypoint": detect_cfg.get("entrypoint"),
+        "detect_rule_options": rule_texture_kwargs(detect_cfg.get("entrypoint"), detect_cfg),
         "detect_model_dir": detect_cfg.get("model_dir"),
         "detect_provider": detect_cfg.get("provider", "cuda"),
         "detect_allow_cpu_fallback": bool(detect_cfg.get("allow_cpu_fallback", False)),

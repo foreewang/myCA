@@ -31,10 +31,16 @@ def _sample(positive: bool = True) -> np.ndarray:
     if positive:
         cv2.circle(image, (170, 256), 85, 55, -1)
         cv2.circle(image, (341, 341), 55, 65, -1)
+        # Output-contract positives need interior cell texture. Smooth black
+        # disks are now intentional negative cases in test_texture_vision.py.
+        interior = image < 100
+        noise = np.random.default_rng(1729).normal(0, 15, image.shape)
+        image[interior] = np.clip(image[interior] + noise[interior], 0, 255).astype(np.uint8)
     return image
 
 
 def _run(image: np.ndarray, output: Path | None, **kwargs) -> dict:
+    kwargs.setdefault("texture_backend", "cpu")
     cv2.setRNGSeed(1729)
     return pipeline.detect_from_gray(image, src_path="same-input.png", out_dir=output, **kwargs)
 
@@ -131,9 +137,9 @@ def test_array_and_path_entrypoints_preserve_inputs_and_agree(
     image_path = tmp_path / "细胞图像.png"
     image_loader.save_image(image_path, source)
     cv2.setRNGSeed(1729)
-    array_result = pipeline.detect_from_gray(source, src_path=image_path)
+    array_result = pipeline.detect_from_gray(source, src_path=image_path, texture_backend="cpu")
     cv2.setRNGSeed(1729)
-    path_result = pipeline.detect_from_path(image_path, out_dir=None)
+    path_result = pipeline.detect_from_path(image_path, out_dir=None, texture_backend="cpu")
     assert array_result == path_result
     assert path_result["component_count"] > 0
     assert any(c["contour_points"] for c in path_result["components"])
@@ -196,7 +202,7 @@ def _stub_segmentation(monkeypatch: pytest.MonkeyPatch) -> np.ndarray:
         return items, {
             "flat": np.full((96, 112), 64, np.uint8),
             "binary_small": np.full((96, 112), 255, np.uint8),
-            "scale": 4.0, "seed_thresh": 85,
+            "scale": 4.0,
             "density_thresh": 101.0, "coarse_candidate_count": 3,
         }
 
@@ -239,8 +245,8 @@ def test_overlap_union_and_failed_target_preserve_real_rendering(
         image_loader.load_image(tmp_path / "生产结果" / "05_contour_mask.bmp"), expected_mask
     )
     overlay = image_loader.load_image(tmp_path / "生产结果" / "06_overlay.bmp")
-    # A failed refinement remains visibly marked in red at its coarse center.
-    np.testing.assert_array_equal(overlay[290, 322], [0, 0, 255])
+    # Failed candidates remain in JSON but their coarse points are not drawn.
+    np.testing.assert_array_equal(overlay[290, 322], [160, 160, 160])
 
 
 def test_low_level_defaults_keep_full_debug_and_do_not_mutate_overlay(

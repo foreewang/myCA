@@ -39,6 +39,10 @@ def main() -> None:
         help="explicitly allow rebuilding sessions on CPU when CUDA initialization fails",
     )
     parser.add_argument("--mm-per-pixel", type=float, default=None)
+    parser.add_argument("--texture-backend", choices=("cpu", "cuda", "auto"), default=None,
+                        help="legacy rule texture backend (default: cuda; errors if unavailable)")
+    parser.add_argument("--safe-margin-px", type=float, default=None,
+                        help="legacy minimum distance from texture boundary in original pixels")
     parser.add_argument(
         "--save-debug",
         action="store_true",
@@ -47,6 +51,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.save_debug and args.backend != "legacy":
         parser.error("--save-debug is only supported when --backend=legacy")
+    if args.backend != "legacy" and (args.texture_backend is not None or args.safe_margin_px is not None):
+        parser.error("--texture-backend and --safe-margin-px require --backend=legacy")
 
     scale_bar = None
     if args.mm_per_pixel is not None:
@@ -69,12 +75,17 @@ def main() -> None:
     else:
         from vision.vision.detect_pipeline import detect_from_path
 
+        texture_options = {}
+        if args.texture_backend is not None:
+            texture_options["texture_backend"] = args.texture_backend
+        if args.safe_margin_px is not None:
+            texture_options["safe_margin_px"] = args.safe_margin_px
         result = detect_from_path(
             args.image_path,
             out_dir=args.out_dir,
             scale_bar=scale_bar,
-            mm_per_pixel=args.mm_per_pixel,
             save_debug=args.save_debug,
+            **texture_options,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

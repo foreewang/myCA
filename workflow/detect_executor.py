@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from workflow.clone_dedupe import dedupe_well_clones
-from workflow.detect_api import run_detect_on_image
+from workflow.detect_api import run_detect_on_image, rule_texture_kwargs
 from workflow.file_io import atomic_write_json
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
@@ -259,6 +259,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         overlay_dir = None
         vision_output_dir = None
         detect_kwargs: Dict[str, Any] = {}
+        detect_kwargs.update(rule_texture_kwargs(entrypoint, detect_cfg))
         # Keep this rule-only output option out of model and third-party calls.
         if isinstance(entrypoint, str) and entrypoint in _RULE_PATH_ENTRYPOINTS:
             detect_kwargs["save_debug"] = save_debug

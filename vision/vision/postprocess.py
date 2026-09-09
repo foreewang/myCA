@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from .image_loader import save_image
+from .feature_extract import texture_processing_metadata
 from workflow.file_io import atomic_write_json
 
 
@@ -216,7 +217,7 @@ def save_outputs(
     copy_overlay=False 仅供持有独占 overlay 缓冲区的内部调用使用。
     输出文件:
     - 01_gray.bmp: 标准化后的灰度输入。
-    - 02_coarse_flat.bmp: 粗检测背景校正图。
+    - 02_coarse_flat.bmp: 粗检测纹理密度图（保留旧文件名）。
     - 03_coarse_binary.bmp: 粗检测二值候选图。
     - 04_refine_density.bmp: ROI 细化密度图合成到全图后的结果。
     - 05_contour_mask.bmp: 最终轮廓 mask。
@@ -244,13 +245,13 @@ def save_outputs(
             "height": int(gray.shape[0]),
         },
         "component_count": len(refined),
-        "coarse_seed_thresh": int(debug.get("coarse_seed_thresh", -1)),
         "coarse_density_thresh": debug.get("coarse_density_thresh"),
         "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
         "scale_bar": scale_bar_info,
         "component_ids": [d["id"] for d in refined],
         "components": refined,
     }
+    result_json["texture_processing"] = texture_processing_metadata(debug)
 
     atomic_write_json(out_dir / "07_result.json", result_json)
 
