@@ -30,7 +30,7 @@ camera:
   objective_settings:
     4x:
       exposure_auto: false
-      exposure_time_us: 5000
+      exposure_time_us: 10000
     10x:
       exposure_auto: false
       exposure_time_us: 20000

@@ -50,7 +50,7 @@ camera:
 
   # 默认曝光时间，单位：微秒。
   # 如果当前物镜没有在 objective_settings 中单独配置 exposure_us，就使用这里的值。
-  exposure_us: 5000
+  exposure_us: 10000
 
   # 默认相机增益。
   # 如果当前物镜没有在 objective_settings 中单独配置 gain，就使用这里的值。
@@ -63,7 +63,7 @@ camera:
     # 4x 物镜拍照参数。
     4x:
       # 4x 物镜曝光时间，单位：微秒。
-      exposure_us: 5000
+      exposure_us: 10000
       # 4x 物镜相机增益。
       gain: 0.0
 

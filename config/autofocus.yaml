@@ -44,7 +44,7 @@ camera:
       # 4x 自动对焦关闭自动曝光。
       exposure_auto: false
       # 4x 自动对焦曝光时间，单位：微秒。
-      exposure_time_us: 5000
+      exposure_time_us: 10000
     10x:
       # 10x 自动对焦关闭自动曝光。
       exposure_auto: false
