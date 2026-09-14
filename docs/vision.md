@@ -2,6 +2,12 @@
 
 workflow 经 `workflow.detect_api` 调用 vision，结果归一化为 `detect_result.json`。默认 overlay 是 vision 的 `06_overlay.bmp`，路径写在每张图的 `overlay_image_path`。
 
+业务结果中的 `clones` 和 `review_candidates` 不输出 `contour_points`，
+以减小 `detect_result.json` 及任务响应体积。
+`has_polygon` 仍表示算法是否提取到轮廓，不表示业务 JSON 内含轮廓坐标。
+轮廓保留在算法内存中供 overlay 绘制，视觉原始输出 `07_result.json`（启用对应输出时）
+仍保存轮廓点；补偿使用的定位点、边界框、面积和有效性字段保持不变。
+
 实现细节：[`vision/vision/README.md`](../vision/vision/README.md)。  
 模型打包：[`vision/models/ipsc_4x/README.md`](../vision/models/ipsc_4x/README.md)。
 
@@ -43,6 +49,32 @@ vision.vision.detect_pipeline:process_image
 输出控制沿用原语义：`save_overlay=false` 时 workflow 不向规则入口传输出目录；`overlay_source=workflow` 时只由 workflow 生成自己的 overlay；直接调用规则 Python 入口并传 `out_dir=None` 时只返回内存结果。这些情况下 `save_debug=true` 也不会强制生成规则产物。`process_image` 未传 `out_dir` 时仍默认不落盘；`detect_from_gray` 仍默认 `out_dir=None`；`detect_from_path` 仍默认 `out_dir="outputs_5120_contour_refined_opt"`。模型和第三方入口不会收到 workflow 新增的 `save_debug` 参数。
 
 同一输出目录里已有的 01–04 文件不会自动删除，切换为默认模式后这些历史文件仍可能存在。验收本次产物或体积时使用新的输出目录。
+
+### 规则误检调参
+
+规则入口新增 `detect.min_rotated_aspect_ratio`，默认 `0.30`，有效范围 `[0, 1]`。
+它检查细化轮廓的最小旋转外接矩形短边/长边比，避免斜向孔壁亮带因水平外接框较宽而通过筛选。
+低于阈值的候选标记为 `elongated_texture`，不绘制正式轮廓；设为 `0` 可关闭该筛选。
+该参数也支持规则 Python 入口，并透传到扫描检测和闭环复拍；不传给模型入口。
+
+`connected_texture_v1` 的原始 `07_result.json` 仍保留全部候选及失败原因。
+workflow 归一化时将明确 `is_valid_for_compensation=false` 的规则候选转入
+`review_candidates`，不参与正式克隆计数及去重，避免细化失败目标造成虚高计数。
+
+此前仅增加形状筛选时，在 `pipeline_202609011_0/B3` 的 33 张原图上离线回放，逐图正式检测从 23 次降到 9 次，唯一数从 21 降到 9；
+14 次观察进入复核，其中 10 次为细长条带、4 次为原本已无效的细化候选。
+这不是准确率评估：数据没有人工真值，剩余目标仍需核对；狭长或仅露出窄边的真实克隆也可能转入复核。
+
+后续根据 `pipeline_202609011_1/B3` 的漏检样本修正了纹理支持区域：
+
+- `preprocess.py` 中 `BACKGROUND_SUPPORT_MULTIPLIER=1.5`：前景阈值使用自适应背景噪声下限的 1.5 倍，抑制散在细胞连成整图背景。
+- 同文件 `DARK_BODY_CONTRAST=45.0`：平滑灰度比中位数低至少 45 的区域可补入主体，但内部仍需满足绝对纹理噪声门槛和覆盖率要求，平滑暗圆不会仅因颜色深而通过。
+- 同文件 `SUPPORT_CLOSE_WINDOW=7`：连接密集区域内的小间隙。以上均为内部常量，粗检测和局部细化共用，不是任务 JSON 参数。
+- `texture_segment.py` 中 `MIN_RETAINED_SUPPORT_RATIO=0.50`：在相同坐标网格上计算最终轮廓覆盖粗候选支持区域的比例，替代原先裁剪前支持面积比。未达到门槛的碎片不再绘制轮廓，保留失败原因供复核。
+
+本次用户确认的正样本为 003 右下深色主体、017 右侧中下密集区域；017 左下区域不作为目标。
+33 张图回放得到 7 个正式候选、25 个复核候选；003 和 017 各保留一个正式候选，轮廓面积分别为 1,874,108 和 730,094 原图像素。
+其余正式候选未获得人工确认，不能据此计算整批准确率或召回率。
 
 基准数据、验收工具及工控机同步/回退步骤见 [规则检测性能验收](rule_vision_performance.md)。该文档记录此前的性能优化验收。
 

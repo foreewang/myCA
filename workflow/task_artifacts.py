@@ -72,6 +72,16 @@ def existing_output_path_or_none(value: Any, field_name: str) -> str | None:
     return str(path) if path.exists() else None
 
 
+def resolve_pickable_result_file(record: Dict[str, Any], well_name: str) -> Path:
+    well = ensure_well_record(record, well_name)
+    raw = well.get("pickable_result_json")
+    if raw:
+        path = Path(resolve_output_path(raw, "pickable_result_json"))
+        if path.is_file():
+            return path
+    raise TaskArtifactError(404, "PICKABLE_RESULT_NOT_FOUND", "当前孔位尚无可挑取候选结果")
+
+
 def count_images(image_dir: Path) -> int:
     if not image_dir.exists() or not image_dir.is_dir():
         return 0
@@ -177,6 +187,9 @@ def build_well_images_response(
         "image_dir": str(image_dir),
         "capture_result_json": existing_output_path_or_none(capture_path, f"task.{task_id}.{well_name}.capture_result_json"),
         "detect_result_json": existing_output_path_or_none(detect_path, f"task.{task_id}.{well_name}.detect_result_json"),
+        "pickable_result_json": existing_output_path_or_none(
+            well_record.get("pickable_result_json"), f"task.{task_id}.{well_name}.pickable_result_json"
+        ),
         "compensate_result_json": existing_output_path_or_none(
             compensate_path,
             f"task.{task_id}.{well_name}.compensate_result_json",

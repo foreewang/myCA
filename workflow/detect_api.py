@@ -25,7 +25,7 @@ def rule_texture_kwargs(entrypoint, config):
         return {}
     return {key: config[key] for key in (
         "texture_backend", "texture_noise_floor", "texture_window", "coarse_work_max",
-        "refine_work_max", "safe_margin_px",
+        "refine_work_max", "safe_margin_px", "min_rotated_aspect_ratio",
     ) if key in config}
 
 
@@ -290,6 +290,23 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
 
     items = _normalize_items(raw_result)
     clones = _normalize_component_items(items, strict=False, kind="components")
+
+    # The connected-texture rule keeps failed candidates in its raw components
+    # for diagnostics. They are reviews, not confirmed clone observations.
+    if (isinstance(raw_result, dict)
+            and isinstance(raw_result.get("texture_processing"), dict)
+            and raw_result["texture_processing"].get("algorithm") == "connected_texture_v1"):
+        reviews = [c for c in clones if c["is_valid_for_compensation"] is False]
+        clones = [c for c in clones if c["is_valid_for_compensation"] is not False]
+        for candidate in reviews:
+            reason = candidate.get("segmentation_status") or "invalid_rule_candidate"
+            candidate["review_reasons"] = list(dict.fromkeys([*candidate["review_reasons"], reason]))
+        return {
+            "schema_version": schema_version,
+            "clone_count": len(clones), "clones": clones,
+            "review_candidate_count": len(reviews), "review_candidates": reviews,
+            "models": {}, "runtime": {}, "raw_result": raw_result,
+        }
 
     clone_count = len(clones)
     if isinstance(raw_result, dict):

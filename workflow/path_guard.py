@@ -89,6 +89,7 @@ def normalize_task_paths(task: Dict[str, Any]) -> Dict[str, Any]:
         ("capture", "save_dir"),
         ("scan", "output_json"),
         ("detect", "output_json"),
+        ("detect", "pickable_output_json"),
         ("detect", "input_scan_result_json"),
         ("compensate", "input_detect_json"),
         ("compensate", "output_json"),

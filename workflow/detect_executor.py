@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw
 from workflow.clone_dedupe import dedupe_well_clones
 from workflow.detect_api import run_detect_on_image, rule_texture_kwargs
 from workflow.file_io import atomic_write_json
+from workflow.pickable_result import build_pickable_detect_result, pickable_output_path
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
 
@@ -210,6 +211,7 @@ def _render_overlay_image(
 
 
 def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
+    pickable_path = pickable_output_path(params)
     detect_cfg = ctx["task"].get("detect", {}) or {}
     entrypoint = detect_cfg.get("entrypoint")
     save_debug = detect_cfg.get("save_debug", False)
@@ -325,8 +327,8 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                         "source_image_path": image_path,
                         "stage_x_actual": actual_x,
                         "stage_y_actual": actual_y,
+                        # Keep contour arrays in raw_clones for rendering only.
                         "has_polygon": bool(polygon),
-                        "contour_points": [list(point) for point in polygon] if polygon else None,
                         "touch_image_border": clone.get("touch_image_border"),
                         "image_border_sides": list(clone.get("image_border_sides") or []),
                         "image_edge_clipped": clone.get("image_edge_clipped"),
@@ -447,7 +449,10 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     }
 
     output_json = params.get("detect_output_json")
+    result["pickable_result_json"] = str(pickable_path) if pickable_path else None
     if output_json:
         atomic_write_json(output_json, result)
+    if pickable_path:
+        atomic_write_json(pickable_path, build_pickable_detect_result(result))
 
     return result

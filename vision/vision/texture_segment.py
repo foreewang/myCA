@@ -6,6 +6,8 @@ from .gpu_ops import DEFAULT_TEXTURE_BACKEND
 
 from .preprocess import map_bbox, map_points, resize_keep_ratio, texture_signal
 
+MIN_RETAINED_SUPPORT_RATIO = .50
+
 
 def _distance(mask):
     # Zero padding counts image/ROI edges as unsafe even for clipped instances.
@@ -69,7 +71,7 @@ def coarse_texture_rois(gray, *, work_max=1024, min_area=10000, max_keep=None,
         filled = np.zeros((bh, bw), np.uint8)
         local = contour - np.array([[[x, y]]], np.int32)
         cv2.drawContours(filled, [local], -1, 255, -1)
-        quality = _quality(filled, signal['std'][y:y+bh, x:x+bw], signal['noise_floor'], texture_window)
+        quality = _quality(filled, signal['quality_std'][y:y+bh, x:x+bw], signal['noise_floor'], texture_window)
         if quality is None:
             continue
         _, filled, coverage, solidity = quality
@@ -153,7 +155,7 @@ def refine_texture_roi(roi_gray, center_hint_local, *, max_work=1200,
     if not chosen:
         return None, debug
     support = (labels == chosen).astype(np.uint8) * 255
-    quality = _quality(support, signal['std'], signal['noise_floor'], texture_window)
+    quality = _quality(support, signal['quality_std'], signal['noise_floor'], texture_window)
     if quality is None:
         debug['failure_reason'] = 'insufficient_interior_texture'
         return None, debug
@@ -188,10 +190,13 @@ def refine_texture_roi(roi_gray, center_hint_local, *, max_work=1200,
     cv2.drawContours(mask_full, [contour], -1, 255, -1)
     point, clearance = safe_texture_point(mask_full, support_full, density_full, safe_margin_px)
     valid = point is not None
-    retained_ratio = (float(np.count_nonzero(support)) / max(1, np.count_nonzero(reference))
-                      if reference is not None else 1.0)
+    # Compare the FINAL mask with the same coarse instance in the same pixel
+    # grid. Counting pre-clipping support could authorize a collapsed fragment.
+    final_small = cv2.resize(mask_full, (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
+    retained_ratio = (float(np.count_nonzero((final_small > 0) & (reference > 0)))
+                      / max(1, np.count_nonzero(reference)) if reference is not None else 1.0)
     segmentation_status = 'accepted' if valid else 'no_safe_interior'
-    if retained_ratio < .25:
+    if retained_ratio < MIN_RETAINED_SUPPORT_RATIO:
         valid = False
         segmentation_status = 'insufficient_instance_support'
     if point is None:
@@ -209,6 +214,7 @@ def refine_texture_roi(roi_gray, center_hint_local, *, max_work=1200,
             'is_valid_for_compensation': valid, 'safe_point_method': 'texture_distance',
             'safe_clearance_px': clearance, 'safe_margin_px': float(safe_margin_px),
             'segmentation_status': segmentation_status,
+            'retained_support_ratio': retained_ratio,
             'texture_coverage': coverage, 'solidity': solidity,
             'texture_score': float(coverage * (.5 + .5 * solidity)),
             'texture_backend': signal['backend'], 'texture_fallback_reason': signal['fallback_reason']}, {**debug, **edge_meta}

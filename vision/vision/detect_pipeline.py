@@ -41,6 +41,7 @@ def detect_and_refine(
     texture_window=7,
     refine_work_max=1200,
     safe_margin_px=1.0,
+    min_rotated_aspect_ratio=0.30,
     collect_outputs=True,
     collect_debug=True,
 ):
@@ -57,6 +58,8 @@ def detect_and_refine(
             raise ValueError(f"{name} must be finite and nonnegative")
     if not np.isfinite(refine_work_max) or refine_work_max < 1:
         raise ValueError("refine_work_max must be positive")
+    if not np.isfinite(min_rotated_aspect_ratio) or not 0 <= min_rotated_aspect_ratio <= 1:
+        raise ValueError("min_rotated_aspect_ratio must be finite and between 0 and 1")
     coarse, coarse_debug = detect_coarse_rois(
         gray,
         work_max=coarse_work_max,
@@ -108,18 +111,34 @@ def detect_and_refine(
             clip_pad_ratio=refine_clip_pad_ratio,
         )
 
-        if refined_item is None:
+        if refined_item is None or not refined_item.get("is_valid_for_compensation", True):
+            if refined_item is not None:
+                refine_debug["failure_reason"] = refined_item["segmentation_status"]
             # 失败候选仅保留在结果记录中，不绘制粗框和未经细化的定位点。
-            refined.append(
-                build_failed_component(
-                    idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
-                )
+            failed = build_failed_component(
+                idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
             )
+            if refined_item is not None:
+                failed["retained_support_ratio"] = refined_item.get("retained_support_ratio")
+            refined.append(failed)
             del refined_item, refine_debug
             continue
 
         # 把 ROI 局部轮廓映射回原图坐标后绘制 overlay。
         _, cnt_global = to_global_contour(refined_item["contour_local"], x0, y0)
+        # Axis-aligned boxes make diagonal wall streaks look wide. Measure the
+        # final contour in its own orientation, after refinement has settled.
+        _, (rotated_w, rotated_h), _ = cv2.minAreaRect(cnt_global)
+        aspect_ratio = min(rotated_w, rotated_h) / max(rotated_w, rotated_h, 1.0)
+        if aspect_ratio < min_rotated_aspect_ratio:
+            rejected = build_failed_component(
+                idx, x, y, w, h, x0, y0, x1, y1, cx, cy,
+                {**refine_debug, "failure_reason": "elongated_texture"}, item,
+            )
+            rejected["rotated_aspect_ratio"] = float(aspect_ratio)
+            refined.append(rejected)
+            del refined_item, refine_debug
+            continue
         if overlay is not None:
             cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
 
@@ -214,6 +233,7 @@ def detect_from_gray(
     save_debug=False,
     *, texture_backend=DEFAULT_TEXTURE_BACKEND, texture_noise_floor=1.5, texture_window=7,
     refine_work_max=1200, safe_margin_px=1.0,
+    min_rotated_aspect_ratio=0.30,
 ):
     """从内存图片执行检测。
 
@@ -229,6 +249,7 @@ def detect_from_gray(
         save_debug=save_debug,
         texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
         texture_window=texture_window, refine_work_max=refine_work_max, safe_margin_px=safe_margin_px,
+        min_rotated_aspect_ratio=min_rotated_aspect_ratio,
         coarse_work_max=coarse_work_max,
         refine_pad_ratio=refine_pad_ratio,
         max_keep=max_keep,

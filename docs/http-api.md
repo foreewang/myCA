@@ -691,6 +691,30 @@ workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_
 
 ### 7.7 独立补偿完整示例
 
+观察识别任务会额外导出已去重且 `is_pickable=true` 的候选文件，原始检测结果保留。
+单孔可通过 `task.detect.pickable_output_json` 指定路径（仅允许 `data/` 或 `outputs/`），
+默认与检测 JSON 同目录；没有检测输出路径时使用 `capture.save_dir`。
+多孔固定逐孔生成 `pickable_detect_result.json`。每个原去重组只选一条可挑取观察，
+保留原图片编号、克隆 ID、拍摄位置和像素偏移。空列表也会落盘。
+
+完成任务的 `detect_result.pickable_result_json`（单孔）、孔记录的 `pickable_result_json`
+及孔图片查询响应提供实际文件路径。前端可直接读取或下载：
+
+```http
+GET /api/tasks/{task_id}/wells/{well_name}/pickable-result
+GET /api/tasks/{task_id}/wells/{well_name}/pickable-result?download=true
+```
+
+第一种返回 `application/json` 文件内容，第二种附带附件下载头；未记录文件或文件不存在时返回 404。
+前端从 `images[].clones[]` 展示候选，选择后把代表记录的图片 `index` 和 `clone_id` 提交给补偿。
+可直接将候选文件路径用作 `compensate.input_detect_json`，也可以将完整候选对象作为
+`compensate.input_detect_result` 上传到现有执行接口；两种方式均使用 `selector.purpose="pick"`。
+实际图片预览仍通过已有图片接口完成，JSON 中服务器路径不是浏览器 URL。
+候选结构及离线转换见 [任务文档](tasks.md#可挑取且去重的候选文件)。
+
+下面的 4x 转 10x 示例仍读取原始检测结果：只具备居中资格而 `is_pickable=false` 的模型目标
+不会进入可挑取候选文件。
+
 下面示例表示：读取已审核的 4x 定位结果，切换到 10x，并把 `eligible_for_10x_centering=true` 的指定目标移到视野中心。路径、图号和克隆 ID 必须先人工审核并替换。
 
 ```json

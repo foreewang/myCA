@@ -56,6 +56,7 @@ from workflow.task_artifacts import (
     build_task_result_response,
     build_well_images_response,
     resolve_well_image_file,
+    resolve_pickable_result_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -387,6 +388,13 @@ def list_well_images(
     effective_limit = int(page_size if page_size is not None else limit)
     effective_offset = int((page - 1) * effective_limit if page is not None else offset)
     return build_well_images_response(record, well_name, limit=effective_limit, offset=effective_offset)
+
+
+@app.get("/api/tasks/{task_id}/wells/{well_name}/pickable-result")
+def get_pickable_result(task_id: str, well_name: str, download: bool = False):
+    path = resolve_pickable_result_file(read_task_record(task_id), well_name)
+    return FileResponse(path=path, media_type="application/json",
+                        filename=path.name if download else None)
 
 
 @app.get("/api/tasks/{task_id}/wells/{well_name}/images/{filename}")

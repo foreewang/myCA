@@ -3,6 +3,11 @@ import cv2
 import numpy as np
 from .gpu_ops import DEFAULT_TEXTURE_BACKEND, texture_moments
 
+# Tuned in the working image grid, shared by coarse detection and ROI refinement.
+BACKGROUND_SUPPORT_MULTIPLIER = 1.5
+DARK_BODY_CONTRAST = 45.0
+SUPPORT_CLOSE_WINDOW = 7
+
 
 def resize_keep_ratio(gray, work_max=1024):
     """Return resized image and nominal scale; use actual axes for coordinates."""
@@ -42,10 +47,24 @@ def texture_signal(gray, *, backend=DEFAULT_TEXTURE_BACKEND, window=7, density_w
     heat = np.rint(np.clip(density / upper, 0, 1) * 255).astype(np.uint8)
     otsu, _ = cv2.threshold(heat, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     threshold = max(noise_floor, float(otsu) * upper / 255)
-    seed = (density > max(noise_floor * 1.5, threshold)).astype(np.uint8) * 255
-    support = (density > max(noise_floor, threshold * .65)).astype(np.uint8) * 255
-    support = cv2.morphologyEx(support, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    # Sparse cells must not percolate into a full-frame foreground component.
+    # Use the measured background floor for support as well as for quality.
+    support_floor = max(noise_floor, interior_floor * BACKGROUND_SUPPORT_MULTIPLIER, threshold * .65)
+    seed = (density > max(support_floor, threshold)).astype(np.uint8) * 255
+    support = (density > support_floor).astype(np.uint8) * 255
+    # Dense, optically dark colonies can have low internal contrast. Include
+    # their body, but still require real interior texture (a smooth disk fails).
+    smooth = cv2.GaussianBlur(gray, (0, 0), 5)
+    dark_body = smooth.astype(np.float32) < float(np.median(smooth)) - DARK_BODY_CONTRAST
+    support[dark_body] = 255
+    seed[dark_body & (std > noise_floor)] = 255
+    # Normalize dark-body variance to the same quality threshold. This is
+    # equivalent to testing std > noise_floor inside the dark body; elsewhere
+    # std must exceed the adaptive background floor. Keep raw std unchanged.
+    quality_std = np.where(dark_body, std * (interior_floor / noise_floor), std)
+    support = cv2.morphologyEx(support, cv2.MORPH_CLOSE,
+                             np.ones((SUPPORT_CLOSE_WINDOW, SUPPORT_CLOSE_WINDOW), np.uint8))
     support = cv2.morphologyEx(support, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    return {'std': std, 'density_raw': density, 'density': heat,
+    return {'std': std, 'quality_std': quality_std, 'density_raw': density, 'density': heat,
             'seed': seed, 'support': support, 'threshold': threshold,
             'noise_floor': interior_floor, **meta}

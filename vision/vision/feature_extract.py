@@ -22,7 +22,7 @@ def _texture_quality(coarse_item, refined_item=None):
     refined_item = refined_item or {}
     keys = ('detection_source', 'texture_score', 'texture_coverage', 'solidity', 'texture_center_pixel',
             'texture_backend', 'texture_fallback_reason', 'safe_point_method',
-            'safe_clearance_px', 'safe_margin_px', 'segmentation_status')
+            'safe_clearance_px', 'safe_margin_px', 'segmentation_status', 'retained_support_ratio')
     return {key: refined_item.get(key, coarse_item.get(key)) for key in keys}
 
 

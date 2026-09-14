@@ -149,6 +149,37 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 ## 补偿
 
+### 可挑取且去重的候选文件
+
+观察识别完成后额外生成 `pickable_detect_result.json`，保留原始检测结果。
+新文件依据原结果的 `unique_clones[].source_detections` 分组，在每组内严格筛选
+`is_pickable is True`，优先选择不触边、置信度高、距离图像中心近的观察记录，
+最后按图片编号、克隆 ID 打破并列。原代表记录不可挑取时，会改选组内有效观察；
+全组无有效观察则不输出。每个 `global_clone_id` 只输出一次，不重新编号。
+这是现有算法分组范围内的去重，不代表对真实生物实例身份作了额外确认。
+
+文件保留 `images[].clones[]` 及所属图片的原始坐标、比例尺、图片路径等信息，可直接作为
+`compensate.input_detect_json`，使用 `purpose="pick"` 和原始 `image_index + clone_id`。
+不对不同图片的像素坐标求平均。没有候选时仍生成空 `images` 和零计数。
+`total_image_clone_count`、`total_clone_count`、`unique_clone_count` 均表示输出候选数；
+`candidate_groups` 记录各候选的代表图片/克隆、原始来源 ID 和可挑取观察数，
+`source_deduplication` 保存原去重元数据。原来的 `unique_clones` 汇总不直接复制，避免代表坐标过期。
+
+单孔可指定 `task.detect.pickable_output_json`；省略时在 `detect.output_json`（或
+`output.detect_json`）同目录生成，未配置检测输出路径时使用 `capture.save_dir`。
+多孔固定在 `<capture.save_dir>/<well_name>/pickable_detect_result.json` 生成，覆盖单孔路径配置。
+候选路径不得与检测、扫描、补偿或总结果文件相同。该文件不受总结果的 `persist_result` 控制。
+检测结果及完成任务的孔记录通过 `pickable_result_json` 提供实际路径。
+
+已有检测结果也可以离线转换，原文件保持不变：
+
+```bash
+python -m workflow.pickable_result --input data/task/B2/detect_result.json
+```
+
+可选 `--output` 指定目标路径。缺失去重分组、重复来源 ID 或分组与目标不一致时会报错，
+不会把缺失去重信息的记录视为独立目标直接导出。
+
 
 
 ### 选择器
@@ -280,4 +311,3 @@ data/some_task/
 │  └─ ...
 └─ result.json
 ```
-

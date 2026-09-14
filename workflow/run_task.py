@@ -274,6 +274,7 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "detect_provider": detect_cfg.get("provider", "cuda"),
         "detect_allow_cpu_fallback": bool(detect_cfg.get("allow_cpu_fallback", False)),
         "detect_output_json": detect_cfg.get("output_json") or output_cfg.get("detect_json"),
+        "pickable_output_json": detect_cfg.get("pickable_output_json"),
         "scan_result_json": detect_cfg.get("input_scan_result_json") or output_cfg.get("scan_json") or scan_cfg.get("output_json"),
         "compensate_selector": compensate_cfg.get("selector", {}) or {},
         "compensate_approach": compensate_cfg.get("approach", {}) or {},
@@ -331,6 +332,7 @@ def _default_result_paths(base_save_dir: Path, well_name: str) -> Dict[str, str]
         "save_dir": str(well_dir / "images"),
         "scan_output_json": str(well_dir / "scan_result.json"),
         "detect_output_json": str(well_dir / "detect_result.json"),
+        "pickable_output_json": str(well_dir / "pickable_detect_result.json"),
         "compensate_output_json": str(well_dir / "compensate_result.json"),
     }
 
@@ -363,6 +365,7 @@ def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any
     well_params["save_dir"] = defaults["save_dir"]
     well_params["scan_output_json"] = defaults["scan_output_json"]
     well_params["detect_output_json"] = defaults["detect_output_json"]
+    well_params["pickable_output_json"] = defaults["pickable_output_json"]
     well_params["compensate_output_json"] = defaults["compensate_output_json"]
     well_params["scan_result_json"] = defaults["scan_output_json"]
 
@@ -468,6 +471,7 @@ def run_well_list_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], well_lis
                     "well_name": well_name,
                     "capture_result_json": well_params["scan_output_json"],
                     "detect_result_json": well_params.get("detect_output_json"),
+                    "pickable_result_json": (well_result.get("detect_result") or {}).get("pickable_result_json"),
                     "compensate_result_json": well_params.get("compensate_output_json"),
                     "result": well_result,
                 }
@@ -662,6 +666,7 @@ def execute_task_request(
     ctx["objectives_cfg"] = objectives_root_cfg
 
     params = build_pipeline_params(ctx)
+    params["_dump_json"] = dump_json
     params["_cancel_check"] = cancel_check
     params["_progress_callback"] = progress_callback
     # Validate model files/provider before objective, autofocus, stage, or camera

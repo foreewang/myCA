@@ -479,7 +479,8 @@ def test_dedupe_absolute_tolerance_prevents_large_neighbor_merge() -> None:
     assert len(result["unique_clones"]) == 2
 
 
-def test_detect_executor_emits_unique_and_review_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("save_overlay", [False, True])
+def test_detect_executor_emits_unique_and_review_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, save_overlay: bool) -> None:
     from workflow import detect_executor
 
     image_path = tmp_path / "scan.bmp"
@@ -524,7 +525,11 @@ def test_detect_executor_emits_unique_and_review_counts(tmp_path: Path, monkeypa
         {
             "task": {
                 "detect": {
-                    "save_overlay": False,
+                    "save_overlay": save_overlay,
+                    "overlay_source": "workflow",
+                    "draw_bbox": False,
+                    "draw_center": False,
+                    "draw_image_center": False,
                     "model_dir": "C:/models/release",
                     "provider": "cpu",
                     "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.10},
@@ -563,6 +568,11 @@ def test_detect_executor_emits_unique_and_review_counts(tmp_path: Path, monkeypa
     assert result["total_image_clone_count"] == 1
     assert result["unique_clone_count"] == result["total_clone_count"] == 1
     assert result["review_candidate_count"] == 1
+    assert '"contour_points"' not in json.dumps(result)
+    assert result["images"][0]["clones"][0]["has_polygon"] is True
+    if save_overlay:
+        overlay = load_image(result["images"][0]["overlay_image_path"])
+        assert overlay[30, 50].tolist() == [0, 255, 0]
     assert result["images"][0]["clones"][0]["is_pickable"] is False
     assert result["images"][0]["review_candidates"][0]["is_pickable"] is False
     assert result["unique_clones"][0]["quality_assessment"]["status"] == "not_assessed"
