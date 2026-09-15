@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
+
+from workflow.timing import measure
 from typing import Dict, List, Any
 
 from workflow.camera_executor import (
@@ -211,6 +214,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     - 本函数在第一个扫描点完成 XY 移动并等待稳定后、第一张拍照前执行 autofocus；
     - 这样 autofocus 看到的是目标孔实际观察视野，而不是上一次任务末尾位置。
     """
+    scan_started = perf_counter()
+    point_timings = []
     motion = apply_motion_profile_defaults(params.get("motion"))
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
@@ -224,110 +229,127 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
         total_points = max(1, len(points))
         report_progress(params, "capture", 0, params.get("well_name"), "capture started")
         for point_index, point in enumerate(points, start=1):
-            raise_if_cancel_requested(params, f"before_move:point_{int(point['index'])}")
-            report_progress(
-                params,
-                "capture",
-                (point_index - 1) * 100 / total_points,
-                params.get("well_name"),
-                f"moving to scan point {point_index}/{total_points}",
-            )
-            motion_result = move_to_absolute(
-                port=motion.get("port", DEFAULT_MODBUS_PORT),
-                x_target=int(point["stage_x_target"]),
-                y_target=int(point["stage_y_target"]),
-                profile_vel=int(motion["profile_vel"]),
-                profile_acc=int(motion["profile_acc"]),
-                profile_dec=int(motion["profile_dec"]),
-                x_slave=int(motion.get("x_slave", 1)),
-                y_slave=int(motion.get("y_slave", 2)),
-                baudrate=int(motion.get("baudrate", 115200)),
-                settle_s=float(params["settle_s"]),
-                timeout_s=float(motion.get("timeout_s", 120.0)),
-                poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
-                arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
-                stage_limits=ctx["plate"].get("stage_limits"),
-            )
-
-            _check_motion_guard(ctx["plate"], point, motion_result)
-            raise_if_cancel_requested(params, f"after_move:point_{int(point['index'])}")
-            report_progress(
-                params,
-                "capture",
-                (point_index - 0.5) * 100 / total_points,
-                params.get("well_name"),
-                f"capturing scan point {point_index}/{total_points}",
-            )
-
-            point_autofocus_result = None
-            should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
-            if should_autofocus:
-                raise_if_cancel_requested(params, f"before_autofocus:point_{int(point['index'])}")
+            timings = {}
+            point_timing = {
+                "index": int(point["index"]),
+                "status": "in_progress",
+                "timings_ms": timings,
+                "motion_timings_ms": {},
+            }
+            point_timings.append(point_timing)
+            with measure(timings, "point_total"):
+                raise_if_cancel_requested(params, f"before_move:point_{int(point['index'])}")
                 report_progress(
                     params,
-                    "autofocus",
+                    "capture",
+                    (point_index - 1) * 100 / total_points,
+                    params.get("well_name"),
+                    f"moving to scan point {point_index}/{total_points}",
+                )
+                with measure(timings, "move_total"):
+                    motion_result = move_to_absolute(
+                        timings_ms=point_timing["motion_timings_ms"],
+                        port=motion.get("port", DEFAULT_MODBUS_PORT),
+                        x_target=int(point["stage_x_target"]),
+                        y_target=int(point["stage_y_target"]),
+                        profile_vel=int(motion["profile_vel"]),
+                        profile_acc=int(motion["profile_acc"]),
+                        profile_dec=int(motion["profile_dec"]),
+                        x_slave=int(motion.get("x_slave", 1)),
+                        y_slave=int(motion.get("y_slave", 2)),
+                        baudrate=int(motion.get("baudrate", 115200)),
+                        settle_s=float(params["settle_s"]),
+                        timeout_s=float(motion.get("timeout_s", 120.0)),
+                        poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
+                        arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
+                        stage_limits=ctx["plate"].get("stage_limits"),
+                    )
+
+                with measure(timings, "motion_guard"):
+                    _check_motion_guard(ctx["plate"], point, motion_result)
+                raise_if_cancel_requested(params, f"after_move:point_{int(point['index'])}")
+                report_progress(
+                    params,
+                    "capture",
                     (point_index - 0.5) * 100 / total_points,
                     params.get("well_name"),
-                    f"autofocus before scan point {point_index}/{total_points}",
+                    f"capturing scan point {point_index}/{total_points}",
                 )
-                # autofocus 会通过 camera_executor 打开/关闭受监督的相机会话。
-                # 因此采用懒加载：先 autofocus，再打开正式采集会话，避免普通会话互相占用。
-                if local_cam is not None:
-                    if not owned_cam:
-                        raise RuntimeError(
-                            "当前扫描点需要 autofocus，但外部已传入打开的相机对象。"
-                            "为避免相机会话冲突，请在需要 autofocus 时不要提前打开 shared_cam。"
+
+                point_autofocus_result = None
+                should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
+                if should_autofocus:
+                    raise_if_cancel_requested(params, f"before_autofocus:point_{int(point['index'])}")
+                    report_progress(
+                        params,
+                        "autofocus",
+                        (point_index - 0.5) * 100 / total_points,
+                        params.get("well_name"),
+                        f"autofocus before scan point {point_index}/{total_points}",
+                    )
+                    # autofocus 会通过 camera_executor 打开/关闭受监督的相机会话。
+                    # 因此采用懒加载：先 autofocus，再打开正式采集会话，避免普通会话互相占用。
+                    if local_cam is not None:
+                        if not owned_cam:
+                            raise RuntimeError(
+                                "当前扫描点需要 autofocus，但外部已传入打开的相机对象。"
+                                "为避免相机会话冲突，请在需要 autofocus 时不要提前打开 shared_cam。"
+                            )
+                        close_camera(local_cam)
+                        local_cam = None
+                        owned_cam = False
+
+                    with measure(timings, "autofocus_total"):
+                        point_autofocus_result = _execute_autofocus_before_capture(
+                            ctx=ctx,
+                            params=params,
+                            point=point,
+                            scope_reason=autofocus_scope_reason,
                         )
-                    close_camera(local_cam)
-                    local_cam = None
-                    owned_cam = False
+                    if before_first_capture_autofocus_result is None:
+                        before_first_capture_autofocus_result = point_autofocus_result
 
-                point_autofocus_result = _execute_autofocus_before_capture(
-                    ctx=ctx,
-                    params=params,
-                    point=point,
-                    scope_reason=autofocus_scope_reason,
+                raise_if_cancel_requested(params, f"before_capture:point_{int(point['index'])}")
+                if local_cam is None:
+                    with measure(timings, "camera_open"):
+                        local_cam = open_camera(
+                            mvs_python_dir=params.get("mvs_python_dir"),
+                            device_index=int(params["device_index"]),
+                            serial_number=params.get("serial_number"),
+                            camera_ip=params.get("camera_ip"),
+                            pixel_format=params.get("pixel_format", "mono8"),
+                            exposure_us=params.get("exposure_us"),
+                            gain=params.get("gain"),
+                        )
+                    owned_cam = True
+
+                with measure(timings, "capture_total"):
+                    capture_result = capture_with_opened_camera(
+                        cam=local_cam,
+                        save_dir=params["save_dir"],
+                        filename_pattern=params["filename_pattern"],
+                        format_kwargs=_format_kwargs(params, point),
+                    )
+
+                capture_item = {
+                    **point,
+                    "timings_ms": timings,
+                    "motion_result": motion_result,
+                    "capture_result": capture_result,
+                }
+                if point_autofocus_result is not None:
+                    capture_item["autofocus_result"] = point_autofocus_result
+
+                captures.append(capture_item)
+                report_progress(
+                    params,
+                    "capture",
+                    point_index * 100 / total_points,
+                    params.get("well_name"),
+                    f"captured scan point {point_index}/{total_points}",
                 )
-                if before_first_capture_autofocus_result is None:
-                    before_first_capture_autofocus_result = point_autofocus_result
-
-            raise_if_cancel_requested(params, f"before_capture:point_{int(point['index'])}")
-            if local_cam is None:
-                local_cam = open_camera(
-                    mvs_python_dir=params.get("mvs_python_dir"),
-                    device_index=int(params["device_index"]),
-                    serial_number=params.get("serial_number"),
-                    camera_ip=params.get("camera_ip"),
-                    pixel_format=params.get("pixel_format", "mono8"),
-                    exposure_us=params.get("exposure_us"),
-                    gain=params.get("gain"),
-                )
-                owned_cam = True
-
-            capture_result = capture_with_opened_camera(
-                cam=local_cam,
-                save_dir=params["save_dir"],
-                filename_pattern=params["filename_pattern"],
-                format_kwargs=_format_kwargs(params, point),
-            )
-
-            capture_item = {
-                **point,
-                "motion_result": motion_result,
-                "capture_result": capture_result,
-            }
-            if point_autofocus_result is not None:
-                capture_item["autofocus_result"] = point_autofocus_result
-
-            captures.append(capture_item)
-            report_progress(
-                params,
-                "capture",
-                point_index * 100 / total_points,
-                params.get("well_name"),
-                f"captured scan point {point_index}/{total_points}",
-            )
-            raise_if_cancel_requested(params, f"after_capture:point_{int(point['index'])}")
+                raise_if_cancel_requested(params, f"after_capture:point_{int(point['index'])}")
+            point_timing["status"] = "success"
 
         result = {
             "task_id": params["task_id"],
@@ -354,12 +376,16 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "image_count": len(captures),
             "captures": captures,
+            "point_timings": point_timings,
+            "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
         }
         _write_result(scan_output_json, result)
         return result
 
     except Exception as exc:
         status = "canceled" if isinstance(exc, TaskCanceled) else "failed"
+        if point_timings and point_timings[-1]["status"] == "in_progress":
+            point_timings[-1]["status"] = status
         failed_result = {
             "task_id": params["task_id"],
             "status": status,
@@ -385,6 +411,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "completed_image_count": len(captures),
             "captures": captures,
+            "point_timings": point_timings,
+            "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
             "error": str(exc),
         }
         _write_result(scan_output_json, failed_result)

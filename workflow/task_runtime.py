@@ -1,11 +1,14 @@
 """管理 API 普通任务的提交、后台执行、进度监控、取消和资源释放生命周期。"""
 from __future__ import annotations
 
+from workflow.task_logging import with_task_logging, current_request_id
+
 import copy
 import logging
 import os
 import queue
 import threading
+from time import perf_counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict
@@ -196,7 +199,7 @@ def make_task_progress_callback(task_id: str) -> Callable[[str, int | float, str
         try:
             update_task_progress(task_id, stage, progress, well, message)
         except Exception:
-            logger.exception("task progress update failed: task_id=%s stage=%s", task_id, stage)
+            logger.exception("task progress update failed: stage=%s", stage, extra={"task_id": task_id})
 
     return _callback
 
@@ -256,7 +259,8 @@ def guess_current_progress(record: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
+@with_task_logging("task_id")
+def monitor_running_task(task_id: str, stop_event: threading.Event, *, request_id: str | None = None) -> None:
     while not stop_event.is_set():
         try:
             record = read_task_record(task_id)
@@ -271,7 +275,7 @@ def monitor_running_task(task_id: str, stop_event: threading.Event) -> None:
             patch["progress_source"] = "fallback"
             update_task_record(task_id, patch)
         except Exception:
-            logger.exception("monitor task failed: task_id=%s", task_id)
+            logger.exception("monitor task failed")
         stop_event.wait(1.0)
 
 
@@ -290,18 +294,24 @@ class QueuedTask:
     req: ExecuteTaskRequest
     cancel_event: threading.Event
     task_executor: TaskExecutor
+    request_id: str = "-"
 
 
+@with_task_logging("task")
 def run_task_async(
     task: Dict[str, Any],
     req: ExecuteTaskRequest,
     cancel_event: threading.Event,
     *,
     task_executor: TaskExecutor = default_execute_task_request,
+    request_id: str | None = None,
 ) -> None:
     task_id = str(task.get("task_id") or "").strip()
+    started = perf_counter()
+    logger.info("event=task_started")
     stop_event = threading.Event()
-    monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event), daemon=False)
+    monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event),
+                               kwargs={"request_id": current_request_id.get()}, daemon=False)
     monitor_started = False
     try:
         update_task_record(
@@ -328,8 +338,9 @@ def run_task_async(
             existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
         record = finalize_success_record(existing_record, task, result, req.dump_json, req.persist_result)
         write_task_record(record)
+        logger.info("event=task_completed elapsed_ms=%.1f", (perf_counter() - started) * 1000)
     except TaskCanceled as exc:
-        logger.info("task canceled: %s", task_id)
+        logger.info("event=task_canceled elapsed_ms=%.1f", (perf_counter() - started) * 1000)
         stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
         try:
@@ -338,7 +349,7 @@ def run_task_async(
             record = build_accepted_record(task, req.dump_json, req.persist_result)
         write_task_record(mark_record_canceled(record, str(exc)))
     except Exception:
-        logger.exception("task execution failed: %s", task_id)
+        logger.exception("event=task_failed error_code=TASK_EXECUTION_FAILED elapsed_ms=%.1f", (perf_counter() - started) * 1000)
         stop_monitor_thread(monitor, stop_event, monitor_started)
         monitor_started = False
         try:
@@ -408,6 +419,7 @@ class TaskRuntimeManager:
         with self._lock:
             return self._worker is not None and self._worker.is_alive() and self._accepting
 
+    @with_task_logging("req")
     def submit(
         self,
         req: ExecuteTaskRequest,
@@ -417,8 +429,6 @@ class TaskRuntimeManager:
     ) -> Dict[str, Any]:
         task = req.task or {}
         task_id = str(task.get("task_id") or "").strip()
-        if access_logger is not None:
-            access_logger.info("execute_task entered: task_id=%s", task_id or "<empty>")
         if not task_id:
             raise TaskRuntimeError(400, "TASK_ID_REQUIRED", "任务 ID 不能为空")
 
@@ -441,16 +451,16 @@ class TaskRuntimeManager:
             register_task_cancel_event(task_id, cancel_event)
             try:
                 record = create_accepted_task_record_if_allowed(task, req.dump_json, req.persist_result)
-                if access_logger is not None:
-                    access_logger.info("execute_task queued accepted record: task_id=%s", task_id)
                 self._queue.put_nowait(
                     QueuedTask(
                         task=copy.deepcopy(task),
                         req=req,
                         cancel_event=cancel_event,
                         task_executor=task_executor,
+                        request_id=current_request_id.get(),
                     )
                 )
+                logger.info("event=task_queued queue_size=%s", self._queue.qsize(), extra={"task_id": task_id})
             except queue.Full as exc:
                 unregister_task_cancel_event(task_id)
                 raise TaskRuntimeError(
@@ -462,9 +472,6 @@ class TaskRuntimeManager:
             except Exception:
                 unregister_task_cancel_event(task_id)
                 raise
-
-        if access_logger is not None:
-            access_logger.info("execute_task queued: task_id=%s queue_size=%s", task_id, self._queue.qsize())
 
         return {
             "task_id": task_id,
@@ -484,6 +491,9 @@ class TaskRuntimeManager:
             try:
                 if item is None:
                     return
+                # Wait for submit to finish recording admission before execution.
+                with self._lock:
+                    pass
                 if item.cancel_event.is_set() or is_task_cancel_requested(str(item.task.get("task_id") or "")):
                     self._mark_queued_task_canceled(item, "operator canceled before task started")
                     continue
@@ -500,20 +510,26 @@ class TaskRuntimeManager:
             try:
                 if item is not None:
                     unregister_task_cancel_event(str(item.task.get("task_id") or ""))
+                    logger.warning("event=task_deferred reason=runtime_shutdown",
+                                   extra={"task_id": item.task.get("task_id") or "-",
+                                          "request_id": item.request_id})
             finally:
                 self._queue.task_done()
 
+    @with_task_logging("item")
     def _execute_queued_task(self, item: QueuedTask) -> None:
         task_id = str(item.task.get("task_id") or "").strip()
         try:
             acquire_hardware_operation("task", task_id)
         except Exception as exc:
-            logger.exception("failed to acquire hardware for queued task: %s", task_id)
+            logger.exception("event=task_admission_failed error_code=HARDWARE_BUSY",
+                             extra={"task_id": task_id, "request_id": item.request_id})
             self._mark_queued_task_failed(item, "硬件正在执行其他任务，请稍后重试", "HARDWARE_BUSY")
             unregister_task_cancel_event(task_id)
             return
-        run_task_async(item.task, item.req, item.cancel_event, task_executor=item.task_executor)
+        run_task_async(item.task, item.req, item.cancel_event, task_executor=item.task_executor, request_id=item.request_id)
 
+    @with_task_logging("item")
     def _mark_queued_task_canceled(self, item: QueuedTask, reason: str) -> None:
         task_id = str(item.task.get("task_id") or "").strip()
         try:
@@ -521,8 +537,10 @@ class TaskRuntimeManager:
         except Exception:
             record = build_accepted_record(item.task, item.req.dump_json, item.req.persist_result)
         write_task_record(mark_record_canceled(record, reason))
+        logger.info("event=task_canceled reason=before_start", extra={"task_id": task_id, "request_id": item.request_id})
         unregister_task_cancel_event(task_id)
 
+    @with_task_logging("item")
     def _mark_queued_task_failed(self, item: QueuedTask, error: str, error_code: str) -> None:
         task_id = str(item.task.get("task_id") or "").strip()
         try:
@@ -538,6 +556,9 @@ class TaskRuntimeManager:
             error_code=error_code,
         )
         write_task_record(record)
+
+        logger.error("event=task_failed error_code=%s", error_code,
+                     extra={"task_id": task_id, "request_id": item.request_id})
 
 
 DEFAULT_TASK_RUNTIME_MANAGER = TaskRuntimeManager()

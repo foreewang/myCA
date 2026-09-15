@@ -147,6 +147,88 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 检测入口、`is_pickable` 与 10x 对中见 [视觉检测](vision.md)。含 `detect` 的 HTTP 示意见 [HTTP API](http-api.md)。
 
+## 观察步骤计时
+
+观察任务默认记录耗时，无需增加请求参数。所有 `timings_ms` 数值单位均为毫秒，
+使用 `time.perf_counter()` 计算。计时期间只更新内存字典，随原有结果 JSON 保存。
+
+### 在哪里查看
+
+| 位置 | 内容 |
+| --- | --- |
+| 任务结果 `timings_ms` | 配置加载、识别预检、物镜准备、对焦策略加载、观察流程及 `task_work` |
+| 单孔结果 `timings_ms` | `capture`、可选 `detect` / `compensate`、`well_total`；多孔时位于 `wells[].result` |
+| `scan_result.json` 的 `timings_ms.scan_work` | 扫描执行开始到构建扫描结果的耗时 |
+| `captures[].timings_ms` | 每个已完成采集点的移动、检查、对焦、相机打开、取图保存及点总耗时 |
+| `point_timings[]` | 所有已进入的扫描点，包含点号、状态、步骤耗时和 `motion_timings_ms` |
+| `captures[].motion_result.timings_ms` | 成功移动的内部计时，与对应 `point_timings[].motion_timings_ms` 相同 |
+
+`point_timings[].status` 为 `success`、`failed` 或 `canceled`。移动、取图或取消检查
+抛出异常时，扫描错误处理会保存当前点已执行步骤的耗时，随后继续抛出原异常。
+未执行的步骤不出现。例如共享相机已打开时，不会记录该点的 `camera_open`。
+拍照后收到取消请求时，图片仍保留在 `captures`，当前点状态为 `canceled`。
+
+### 每点字段
+
+| 字段 | 范围 |
+| --- | --- |
+| `move_total` | 整个 XY 移动调用，含串口会话、通信、轮询、稳定等待和校验 |
+| `motion_guard` | 扫描层的移动误差及卡死检查 |
+| `autofocus_total` | 完整自动对焦调用，包括内部采样及相机会话 |
+| `camera_open` | 获取正式采集相机会话 |
+| `capture_total` | 正式取帧及图片保存的外层调用，含进程通信 |
+| `point_total` | 当前点的取消检查、进度处理和上述动作 |
+
+`motion_timings_ms` 进一步提供 `position_snapshot`（移动前后快照累计）、
+`axis_ready`、`write_targets`（双轴累计）、`command_gap`、`trigger`、
+`wait_arrival`、`finish_control`（双轴累计）、`settle`、`command_snapshot`、
+`arrival_check`。`wait_arrival` 包含运动及轮询通信，不能视为纯机械运动耗时。
+`command_gap` 只包含目标参数写入之间及触发前的显式等待；辅助函数内的等待
+计入所属辅助函数，例如 `axis_ready` 和 `trigger`。
+
+### 统计和边界
+
+父级计时包含子级，不可重复相加。例如 `point_total` 包含 `move_total`，
+后者又包含 `settle`。`captures` 和 `point_timings` 中的每点计时也是同一份数据，
+统计时只选一处。未归类的通信、连接开关和 Python 调度等时间仍包含在外层总耗时内。
+
+下面的脚本统计成功扫描点的各步骤耗时；P95 使用最近秩定义。将文件路径替换为实际路径：
+
+```python
+import json
+import math
+import statistics
+from collections import defaultdict
+
+with open("data/example/scan_result.json", encoding="utf-8") as stream:
+    result = json.load(stream)
+
+samples = defaultdict(list)
+for point in result.get("point_timings", []):
+    if point["status"] != "success":
+        continue
+    for name, elapsed in point["timings_ms"].items():
+        samples[name].append(elapsed)
+
+for name, values in sorted(samples.items()):
+    ordered = sorted(values)
+    p95 = ordered[math.ceil(len(ordered) * 0.95) - 1]
+    print(f"{name}: 次数={len(values)}, 总计={sum(values):.1f} ms, "
+          f"均值={statistics.mean(values):.1f} ms, "
+          f"中位数={statistics.median(values):.1f} ms, "
+          f"P95={p95:.1f} ms, 最大={max(values):.1f} ms")
+```
+
+当前计时边界：
+
+- `task_work` 从 `execute_task_request` 开始计时，不含排队及最终任务结果写盘。
+- `scan_work` 不含扫描规划、扫描结果写盘及扫描末尾相机会话释放；这些工作包含在
+  更外层的单孔 `capture` 中。多孔共享相机最终释放计入任务 `pipeline`。
+- 对焦每次采样、SDK 取帧与图片写盘尚未分别计量，分别包含在 `autofocus_total`
+  和 `capture_total`；串口连接开关包含在 `move_total`。
+- 任务和单孔汇总计时在成功返回时附加；失败或取消时可查看已保存的扫描点计时。
+  扫描规划前失败、进程被强制终止或结果磁盘不可写时，不保证有扫描计时文件。
+
 ## 补偿
 
 ### 可挑取且去重的候选文件

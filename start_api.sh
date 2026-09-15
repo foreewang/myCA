@@ -14,7 +14,7 @@ fi
 export COLONY_API_WORKERS=1
 export UVICORN_WORKERS=1
 export WEB_CONCURRENCY=1
-export COLONY_LOG_REDACT_SENSITIVE=1
+export COLONY_LOG_REDACT_SENSITIVE=0
 
 MVS_ROOT="/opt/MVS"
 # Official MvImport does getenv('MVCAM_COMMON_RUNENV') + "/64/libMvCameraControl.so".

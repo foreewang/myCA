@@ -323,7 +323,11 @@ Content-Length: 0
 | `COLONY_CAMERA_RECORD_STALL_MIN_S` | 20 | 录像帧计数无进展的最小容忍时长 |
 | `COLONY_CAMERA_RECORD_STALL_GRACE_S` | 5 | 取帧超时之外的停滞判定余量 |
 
-API 侧超时、隔离和 PID 重建记录在 `logs/api_server.log`；子进程内的 MVS/controller 阶段日志单独轮转到 `logs/camera_worker.log`（10 MiB × 6 份）。可用 `COLONY_CAMERA_WORKER_LOG_LEVEL` 调整子进程日志级别，用 `COLONY_CAMERA_WORKER_LOG_PATH` 覆盖文件路径；显式设为空字符串可关闭子进程文件日志。
+API 错误、服务生命周期、非任务设备诊断及监督器超时、隔离和 PID 重建记录在 `logs/api_server.log`。`workflow.access` 为每个请求输出一条结果摘要到 `logs/api_access.log`：`event=request_completed`、方法、路由模板、状态码和耗时，不记录查询串或请求正文，未匹配路由记为 `<unmatched>`。响应头 `X-Request-ID` 返回服务生成的请求标识，错误日志和后台任务沿用该标识；Uvicorn 原生访问记录关闭，避免重复输出。
+
+任务入队、开始、阶段变化、完成、取消和失败，以及任务内设备诊断写入 `logs/task.log`。每条日志包含带时区时间、级别、logger、`pid`、`request_id` 和 `task_id`；任务阶段另外包含 `stage`、`well`，终态包含耗时或错误原因。非任务操作使用 `task_id=-`，正常任务执行记录出现 `-` 应作为上下文缺失排查。三个文件各由一个共享 handler 轮转，按本地日期每日轮转，归档带日期后缀，保留最近 30 个自然日（含当天）。完整职责、脱敏和验收方法见 [日志规范](logging.md)。
+
+子进程内的 MVS/controller 阶段日志单独轮转到 `logs/camera_worker.log`（同样每日轮转、保留最近 30 个自然日，含当天）。可用 `COLONY_CAMERA_WORKER_LOG_LEVEL` 调整子进程日志级别，用 `COLONY_CAMERA_WORKER_LOG_PATH` 覆盖文件路径；显式设为空字符串可关闭子进程文件日志。
 
 生产监控至少告警以下条件：`state=faulted`；终态 `error` 非空；`worker_restart_count` 增加；同目录持续积累唯一 `*.part.avi`。单次重建成功后系统可继续服务，但重建次数增长通常说明相机链路、MVS 驱动、网卡或设备供电仍不稳定，不能只靠自动重试掩盖。
 
@@ -1038,7 +1042,7 @@ Host: 127.0.0.1:8000
 4. 提交 `/api/tasks/execute`，保存原始请求和 202 响应。
 5. 每 0.5–2 秒轮询 `/status`，必须等到终态。
 6. 成功后读取 `/result`，有采集产物时再调用孔位图片列表和下载接口。
-7. 失败时记录 `task_id`、`error_code`、`error` 和 `logs/api_server.log`，不要仅重试同一个运动请求。
+7. 失败时记录 `task_id`、`error_code`、`error`，并收集 `logs/task.log` 中对应 `task_id=` 的记录及 `logs/api_server.log`；请求排查另查 `logs/api_access.log`，不要仅重试同一个运动请求。
 
 ## 10. 源码核对矩阵
 

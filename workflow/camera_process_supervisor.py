@@ -12,6 +12,8 @@ the camera runtime is broken or absent.
 """
 from __future__ import annotations
 
+from workflow.task_logging import current_task_id, current_request_id
+
 import copy
 import logging
 import math
@@ -23,7 +25,6 @@ import time
 import traceback
 import uuid
 from dataclasses import dataclass
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Mapping
@@ -83,8 +84,6 @@ RECORDING_STALL_GRACE_S = _env_seconds(
 ACTIVE_STATES = {"opening", "open", "starting", "recording", "stopping", "closing", "recovering"}
 
 CAMERA_WORKER_LOG_PATH = PROJECT_ROOT / "logs" / "camera_worker.log"
-CAMERA_WORKER_LOG_MAX_BYTES = 10 * 1024 * 1024
-CAMERA_WORKER_LOG_BACKUP_COUNT = 5
 
 
 class CameraProcessError(RuntimeError):
@@ -327,6 +326,18 @@ def _worker_response(request_id: str, *, result: Any = None, error: BaseExceptio
 def _configure_camera_worker_logging() -> None:
     """Persist native-worker diagnostics separately from the API process log."""
 
+    from workflow.logging_config import DailyLogHandler, SafeFormatter
+
+    # A child owns only its worker log, even if an embedding process used fork.
+    inherited = set()
+    for name in ("workflow", "devices", "uvicorn.error"):
+        parent = logging.getLogger(name)
+        for handler in parent.handlers[:]:
+            if getattr(handler, "_colony_api_log_path", None):
+                parent.removeHandler(handler)
+                inherited.add(handler)
+    for handler in inherited:
+        handler.close()
     root_logger = logging.getLogger()
     level_name = str(os.getenv("COLONY_CAMERA_WORKER_LOG_LEVEL", "INFO")).upper()
     level = getattr(logging, level_name, logging.INFO)
@@ -337,6 +348,9 @@ def _configure_camera_worker_logging() -> None:
         )
     if root_logger.getEffectiveLevel() > level:
         root_logger.setLevel(level)
+
+    for console_handler in root_logger.handlers:
+        console_handler.setFormatter(SafeFormatter())
 
     raw_path = str(os.getenv("COLONY_CAMERA_WORKER_LOG_PATH", str(CAMERA_WORKER_LOG_PATH))).strip()
     if not raw_path:
@@ -352,18 +366,9 @@ def _configure_camera_worker_logging() -> None:
         return
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        handler = RotatingFileHandler(
-            resolved,
-            maxBytes=CAMERA_WORKER_LOG_MAX_BYTES,
-            backupCount=CAMERA_WORKER_LOG_BACKUP_COUNT,
-            encoding="utf-8",
-        )
+        handler = DailyLogHandler(resolved)
         handler.setLevel(level)
-        handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s %(levelname)s pid=%(process)d [%(name)s] %(message)s"
-            )
-        )
+        handler.setFormatter(SafeFormatter())
         setattr(handler, "_colony_camera_worker_log_path", resolved)
         root_logger.addHandler(handler)
     except Exception:
@@ -397,6 +402,8 @@ def _camera_worker_main(command_connection) -> None:
             command = str(request.get("command") or "")
             payload = dict(request.get("payload") or {})
             response = None
+            task_token = current_task_id.set(str(request.get("task_id") or "-"))
+            trace_token = current_request_id.set(str(request.get("trace_id") or "-"))
             try:
                 if command == "ping":
                     result = {"pid": os.getpid(), "status": "ready"}
@@ -582,10 +589,14 @@ def _camera_worker_main(command_connection) -> None:
 
                 response = _worker_response(request_id, result=result)
             except BaseException as exc:
+                logger.exception("event=camera_command_failed command=%s", command)
                 fatal = bool(cam is not None and getattr(cam, "_sdk_hung", False))
                 response = _worker_response(request_id, error=exc, fatal=fatal)
                 if fatal:
                     should_exit = True
+            finally:
+                current_task_id.reset(task_token)
+                current_request_id.reset(trace_token)
             try:
                 command_connection.send(response)
             except (BrokenPipeError, EOFError, OSError):
@@ -1098,7 +1109,8 @@ class CameraProcessSupervisor:
             raise CameraProcessError("camera worker is unavailable")
         request_id = uuid.uuid4().hex
         try:
-            connection.send({"id": request_id, "command": command, "payload": dict(payload)})
+            connection.send({"id": request_id, "command": command, "payload": dict(payload),
+                             "task_id": current_task_id.get(), "trace_id": current_request_id.get()})
         except (BrokenPipeError, EOFError, OSError) as exc:
             wrapped = CameraProcessError(
                 f"camera worker pipe failed while sending {command}: {type(exc).__name__}: {exc}"

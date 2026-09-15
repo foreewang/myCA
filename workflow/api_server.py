@@ -5,8 +5,14 @@ import asyncio
 import logging
 import os
 import time
+from uuid import uuid4
+
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, AsyncIterator, Callable, Dict
+
+from workflow.task_logging import current_request_id
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
@@ -110,6 +116,7 @@ def _log_cleanup_error(message: str, exc: BaseException) -> None:
 
 @asynccontextmanager
 async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _configure_api_file_logging()
     single_worker_lock: SingleInstanceLock | None = None
     camera_supervisor_initialized = False
     body_error: BaseException | None = None
@@ -196,31 +203,48 @@ app = FastAPI(title="Colony Workflow API", version="0.4.0", lifespan=_api_lifesp
 register_api_error_handlers(app)
 
 
-@app.middleware("http")
-async def log_request_timing(request, call_next):
-    started = time.perf_counter()
-    access_logger.info("request start: %s %s", request.method, request.url.path)
-    try:
-        response = await call_next(request)
-    except Exception:
-        elapsed_ms = (time.perf_counter() - started) * 1000.0
-        access_logger.exception(
-            "request failed: %s %s elapsed_ms=%.1f",
-            request.method,
-            request.url.path,
-            elapsed_ms,
-        )
-        raise
+class RequestLoggingMiddleware:
+    """Keep correlation until the response body and background work finish."""
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
 
-    elapsed_ms = (time.perf_counter() - started) * 1000.0
-    access_logger.info(
-        "request end: %s %s status=%s elapsed_ms=%.1f",
-        request.method,
-        request.url.path,
-        response.status_code,
-        elapsed_ms,
-    )
-    return response
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = time.perf_counter()
+        request_id = uuid4().hex
+        scope.setdefault("state", {})["request_id"] = request_id
+        token = current_request_id.set(request_id)
+        status = 500
+        outcome = "completed"
+
+        async def send_response(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+                MutableHeaders(scope=message)["X-Request-ID"] = request_id
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_response)
+        except BaseException:
+            outcome = "failed"
+            raise
+        finally:
+            route = scope.get("route")
+            path = getattr(route, "path", "<unmatched>")
+            try:
+                access_logger.info(
+                    "event=request_completed method=%s path=%s status=%s outcome=%s elapsed_ms=%.1f",
+                    scope["method"], path, status, outcome, (time.perf_counter() - started) * 1000.0,
+                    extra={"http_route": path},
+                )
+            finally:
+                current_request_id.reset(token)
+
+
+app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.get("/health")

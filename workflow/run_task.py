@@ -1,14 +1,18 @@
 """执行 capture、pipeline、compensate 和 handoff 任务的主工作流。"""
 from __future__ import annotations
 
+from workflow.task_logging import with_task_logging
+
 import argparse
 import copy
 import json
 import sys
 import tempfile
+from time import perf_counter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
+from workflow.timing import measure
 from workflow.file_io import atomic_write_json, read_json_with_retry, read_text_with_retry
 from workflow.task_control import raise_if_cancel_requested, report_progress
 from workflow.task_store import normalize_task_objective_alias, task_objective_name
@@ -373,6 +377,8 @@ def _derive_well_ctx_params(base_ctx: Dict[str, Any], base_params: Dict[str, Any
 
 
 def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=None) -> Dict[str, Any]:
+    well_started = perf_counter()
+    timings = {}
     stages = params["stages"]
     stage_results: Dict[str, Any] = {}
     if "_progress_parent_base" not in params:
@@ -382,7 +388,8 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=N
     if "capture" in stages:
         _set_progress_window(params, 0.0, 65.0)
         report_progress(params, "capture", 0, params.get("well_name"), "capture started")
-        stage_results["capture"] = run_single_well_capture(ctx, params, cam=cam)
+        with measure(timings, "capture"):
+            stage_results["capture"] = run_single_well_capture(ctx, params, cam=cam)
         report_progress(params, "capture", 100, params.get("well_name"), "capture completed")
     else:
         raise ValueError("当前 pipeline 版本要求 stages 至少包含 capture。")
@@ -391,7 +398,8 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=N
     if "detect" in stages:
         _set_progress_window(params, 65.0, 25.0)
         report_progress(params, "detect", 0, params.get("well_name"), "detect started")
-        stage_results["detect"] = run_single_well_detect(ctx, params, stage_results["capture"])
+        with measure(timings, "detect"):
+            stage_results["detect"] = run_single_well_detect(ctx, params, stage_results["capture"])
         report_progress(params, "detect", 100, params.get("well_name"), "detect completed")
 
     raise_if_cancel_requested(params, "after_detect")
@@ -400,7 +408,8 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=N
             raise ValueError("compensate 依赖 detect，请在 stages 中包含 detect。")
         _set_progress_window(params, 90.0, 10.0)
         report_progress(params, "compensate", 0, params.get("well_name"), "compensate started")
-        stage_results["compensate"] = run_single_well_compensate(ctx, params, stage_results["detect"])
+        with measure(timings, "compensate"):
+            stage_results["compensate"] = run_single_well_compensate(ctx, params, stage_results["detect"])
         report_progress(params, "compensate", 100, params.get("well_name"), "compensate completed")
 
     return {
@@ -412,6 +421,7 @@ def _run_single_well_pipeline(ctx: Dict[str, Any], params: Dict[str, Any], cam=N
         "plate_type": params["plate_type"],
         "well_name": params["well_name"],
         "objective_name": params["objective_name"],
+        "timings_ms": {**timings, "well_total": (perf_counter() - well_started) * 1000.0},
         "capture_result": stage_results.get("capture"),
         "detect_result": stage_results.get("detect"),
         "compensate_result": stage_results.get("compensate"),
@@ -598,6 +608,7 @@ def run_handoff_task(
     return execute_handoff_task(task, handoff_root_cfg, plate_cfg=plate_cfg)
 
 
+@with_task_logging("raw_task_cfg", lifecycle=True)
 def execute_task_request(
     raw_task_cfg: Dict[str, Any],
     *,
@@ -610,6 +621,8 @@ def execute_task_request(
     cancel_check: Callable[[], bool] | None = None,
     progress_callback: Callable[[str, int | float, str | None, str], None] | None = None,
 ) -> Dict[str, Any]:
+    task_started = perf_counter()
+    task_timings = {}
     if "task" not in raw_task_cfg:
         raise KeyError("task 文件缺少顶层字段 'task'")
 
@@ -649,12 +662,13 @@ def execute_task_request(
     plates_path = plates_path or str(default_config_dir / "plates.yaml")
 
     try:
-        ctx = load_runtime_context(
-            task_path=runtime_task_path,
-            camera_path=camera_path,
-            objectives_path=objectives_path,
-            plates_path=plates_path,
-        )
+        with measure(task_timings, "load_context"):
+            ctx = load_runtime_context(
+                task_path=runtime_task_path,
+                camera_path=camera_path,
+                objectives_path=objectives_path,
+                plates_path=plates_path,
+            )
     finally:
         if tmp_task_path:
             try:
@@ -671,17 +685,20 @@ def execute_task_request(
     params["_progress_callback"] = progress_callback
     # Validate model files/provider before objective, autofocus, stage, or camera
     # hardware is moved.
-    preflight_detection_backend(ctx, params)
+    with measure(task_timings, "detect_preflight"):
+        preflight_detection_backend(ctx, params)
 
     raise_if_cancel_requested(cancel_params, "before_objective")
-    objective_result = ensure_objective_for_task(
-        task_cfg=task,
-        objectives_root_cfg=objectives_root_cfg,
-        extra_context={"task_id": task.get("task_id")},
-    )
+    with measure(task_timings, "objective"):
+        objective_result = ensure_objective_for_task(
+            task_cfg=task,
+            objectives_root_cfg=objectives_root_cfg,
+            extra_context={"task_id": task.get("task_id")},
+        )
     raise_if_cancel_requested(cancel_params, "after_objective")
 
-    autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
+    with measure(task_timings, "autofocus_policy"):
+        autofocus_cfg = load_local_autofocus_policy(task, default_config_dir)
     autofocus_should_run, autofocus_reason = should_run_autofocus(
         task_type=task_type,
         task_cfg=task,
@@ -717,10 +734,16 @@ def execute_task_request(
         raise_if_cancel_requested(params, "before_pipeline")
         if str(params.get("observe_scope") or "").lower() == "single_well":
             _set_progress_parent(params, 5.0, 90.0)
-        result = run_pipeline_task(ctx, params)
+        with measure(task_timings, "pipeline"):
+            result = run_pipeline_task(ctx, params)
 
     result = attach_objective_result(result, objective_result)
     result["autofocus_decision"] = autofocus_decision
+    result["timings_ms"] = {
+        **result.get("timings_ms", {}),
+        **task_timings,
+        "task_work": (perf_counter() - task_started) * 1000.0,
+    }
 
     output_path = dump_json or params.get("result_output_json") or params.get("compensate_output_json")
     if persist_result:
@@ -730,6 +753,8 @@ def execute_task_request(
 
 
 def main() -> None:
+    from workflow.logging_config import configure_logging
+    configure_logging()
     parser = argparse.ArgumentParser(description="Run capture/detect/compensate/handoff workflow task")
     parser.add_argument("--task", required=True, help="task json/yaml path")
     parser.add_argument("--camera", default=None)

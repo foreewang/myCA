@@ -64,19 +64,18 @@ def test_api_server_file_logging_is_configured_once() -> None:
     api_server._configure_api_file_logging()
     api_server._configure_api_file_logging()
 
-    api_handlers = [
-        handler for handler in api_server.logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
-    ]
-    access_handlers = [
-        handler for handler in api_errors.access_logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
-    ]
-    file_io_handlers = [
-        handler for handler in file_io.logger.handlers if getattr(handler, "_colony_api_log_path", None) == log_path
-    ]
-
-    assert len(api_handlers) == 1
-    assert len(access_handlers) == 1
-    assert len(file_io_handlers) == 1
+    for path in (api_errors.API_LOG_PATH, api_errors.ACCESS_LOG_PATH, api_errors.TASK_LOG_PATH):
+        handlers = [
+            handler for handler in api_errors.workflow_logger.handlers
+            if getattr(handler, "_colony_api_log_path", None) == str(path.resolve())
+        ]
+        assert len(handlers) == 1
+    for child in (api_server.logger, api_errors.access_logger, file_io.logger):
+        assert not any(getattr(h, "_colony_api_log_path", None) for h in child.handlers)
+    import logging
+    api_handler = next(h for h in api_errors.workflow_logger.handlers
+                       if getattr(h, "_colony_api_log_path", None) == log_path)
+    assert api_handler in logging.getLogger("uvicorn.error").handlers
     assert api_errors.API_LOG_PATH == path_guard.PROJECT_ROOT / "logs" / "api_server.log"
 
 

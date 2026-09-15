@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from logging.handlers import RotatingFileHandler
 from typing import Any, Iterable
 
 from fastapi import FastAPI, HTTPException, Request
@@ -11,22 +10,21 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from workflow.camera_record_service import CameraRecordServiceError
-from workflow.file_io import logger as file_io_logger
-from workflow.hardware_guard import HardwareGuardError, logger as hardware_guard_logger
+from workflow.hardware_guard import HardwareGuardError
 from workflow.log_sanitizer import log_redaction_enabled, sanitize_log_detail
-from workflow.path_guard import PROJECT_ROOT, PathGuardError
+from workflow.logging_config import LOG_DIR, configure_logging
+from workflow.path_guard import PathGuardError
 from workflow.task_artifacts import TaskArtifactError
 from workflow.task_runtime import TaskRuntimeError
-from workflow.task_store import TaskStoreError, logger as task_store_logger
+from workflow.task_store import TaskStoreError
 
-LOG_DIR = PROJECT_ROOT / "logs"
 API_LOG_PATH = LOG_DIR / "api_server.log"
-API_LOG_MAX_BYTES = 10 * 1024 * 1024
-API_LOG_BACKUP_COUNT = 5
-API_LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+ACCESS_LOG_PATH = LOG_DIR / "api_access.log"
+TASK_LOG_PATH = LOG_DIR / "task.log"
 
 logger = logging.getLogger(__name__)
-access_logger = logging.getLogger("uvicorn.error")
+access_logger = logging.getLogger("workflow.access")
+workflow_logger = logging.getLogger("workflow")
 
 
 def _log_warning(error_code: str, detail: Any) -> None:
@@ -45,31 +43,8 @@ def _log_exception(error_code: str, detail: Any, exc: BaseException | None = Non
 
 
 def configure_api_file_logging(extra_loggers: Iterable[logging.Logger] | None = None) -> None:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = str(API_LOG_PATH.resolve(strict=False))
-    formatter = logging.Formatter(API_LOG_FORMAT)
-
-    target_loggers = [logger, access_logger, task_store_logger, hardware_guard_logger, file_io_logger]
-    if extra_loggers:
-        for extra_logger in extra_loggers:
-            if not any(existing is extra_logger for existing in target_loggers):
-                target_loggers.append(extra_logger)
-
-    for target_logger in target_loggers:
-        if any(getattr(handler, "_colony_api_log_path", None) == log_path for handler in target_logger.handlers):
-            continue
-        handler = RotatingFileHandler(
-            log_path,
-            maxBytes=API_LOG_MAX_BYTES,
-            backupCount=API_LOG_BACKUP_COUNT,
-            encoding="utf-8",
-        )
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(formatter)
-        setattr(handler, "_colony_api_log_path", log_path)
-        target_logger.addHandler(handler)
-        if target_logger.getEffectiveLevel() > logging.INFO:
-            target_logger.setLevel(logging.INFO)
+    configure_logging(paths={"api": API_LOG_PATH, "access": ACCESS_LOG_PATH, "task": TASK_LOG_PATH},
+                      extra_loggers=extra_loggers or ())
 
 
 def error_detail(error_code: str, message: str) -> dict[str, str]:
@@ -209,16 +184,13 @@ async def task_runtime_exception_handler(_request: Request, exc: TaskRuntimeErro
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    if log_redaction_enabled():
-        logger.error(
-            "INTERNAL_SERVER_ERROR: %s exc_type=%s",
-            sanitize_log_detail(f"path={request.url.path}"),
-            type(exc).__name__,
-        )
-    else:
-        logger.exception("INTERNAL_SERVER_ERROR: path=%s", request.url.path)
+    request_id = getattr(request.state, "request_id", "-")
+    logger.error("event=request_failed error_code=INTERNAL_SERVER_ERROR",
+                 exc_info=(type(exc), exc, exc.__traceback__), extra={"request_id": request_id})
+    exc._colony_logged = True
     return JSONResponse(
         status_code=500,
+        headers={"X-Request-ID": request_id},
         content={
             "detail": error_detail(
                 "INTERNAL_SERVER_ERROR",

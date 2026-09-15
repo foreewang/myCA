@@ -55,7 +55,9 @@
 
 ## 相机接口超时，重启 API 后暂时恢复
 
-先同时请求 `/health` 和 `/api/camera/record/status`，再检查 `logs/api_server.log` 与 `logs/camera_worker.log`。旧实现把后台录像、状态查询和停止流程串在同一进程的 SDK 锁上；若 `MV_CC_GetOneFrameTimeout`、`MV_CC_StopRecord` 或关闭调用不返回，状态请求也会排队，重启只能暂时清掉句柄和锁，不能消除根因。
+先同时请求 `/health` 和 `/api/camera/record/status`，再检查 `logs/api_server.log`（API 错误、服务生命周期、非任务设备诊断与相机监督器）和 `logs/camera_worker.log`（相机子进程）。请求结果摘要位于 `logs/api_access.log`，用响应头 `X-Request-ID` 对应的 `request_id=` 关联 API 和后台任务记录。任务生命周期、阶段及任务内设备诊断位于 `logs/task.log`，按 `task_id=` 关联排查。生产模式使用跨文件一致的脱敏任务标识；非任务操作标记为 `task_id=-`，任务执行中出现该值需要检查上下文传递。各文件按本地日期每日轮转，归档名为 `原文件名.YYYY-MM-DD`，保留最近 30 个自然日（含当天），初始化和轮转时清理过期归档。详细配置与验收见 [日志规范](logging.md)。
+
+旧实现把后台录像、状态查询和停止流程串在同一进程的 SDK 锁上；若 `MV_CC_GetOneFrameTimeout`、`MV_CC_StopRecord` 或关闭调用不返回，状态请求也会排队，重启只能暂时清掉句柄和锁，不能消除根因。
 
 当前实现的状态查询只读 API 内存，MVS 原生调用由独立相机子进程承载。出现原生超时时应看到 `error_code`、`worker_restart_count` 增加且 `worker_pid` 被替换；恢复链路后应能直接重试，无需重启 API。若 `/health` 或状态查询仍长时间无响应，或者 PID 未被替换，均按发布阻断处理并保留两份日志、请求时间线和残留的唯一 `*.part.avi`。不要在 `Waiting for application shutdown` 时连续按两次 `Ctrl+C`，否则无法验证正常 lifespan 清理。
 

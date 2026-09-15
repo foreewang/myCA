@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 from typing import Any, Callable, Mapping
+import logging
+
+from workflow.task_logging import current_stage, current_task_id
 
 
 class TaskCanceled(RuntimeError):
@@ -43,6 +46,12 @@ def report_progress(
 ) -> None:
     if not params:
         return
+    stage_key = (str(stage), well or params.get("well_name"))
+    if current_task_id.get() != "-" and current_stage.get() != stage_key:
+        current_stage.set(stage_key)
+        logging.getLogger("workflow.run_task").info(
+            "event=task_stage stage=%s well=%s", stage_key[0], stage_key[1] or "-"
+        )
     callback = params.get("_progress_callback")
     if not callable(callback):
         return

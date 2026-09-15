@@ -6,6 +6,8 @@ import threading
 import time
 from typing import Any, Callable, Dict, Mapping
 
+from workflow.timing import measure
+
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient
 
@@ -308,6 +310,7 @@ def snapshot_xy(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, Any]:
 def move_to_absolute(
     *,
     port: str,
+    timings_ms: Dict[str, float] | None = None,
     x_target: int,
     y_target: int,
     profile_vel: int,
@@ -325,6 +328,7 @@ def move_to_absolute(
     progress_callback: Callable[[Dict[str, int]], None] | None = None,
 ) -> Dict[str, Any]:
     """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
+    timings = timings_ms if timings_ms is not None else {}
     port = str(port or "").strip()
     if not port:
         raise StageMotionError("port must not be empty")
@@ -359,46 +363,55 @@ def move_to_absolute(
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
         try:
-            before = snapshot_xy(x_motor, y_motor)
+            with measure(timings, "position_snapshot"):
+                before = snapshot_xy(x_motor, y_motor)
             _require_axis_position(before["x"], "x")
             _require_axis_position(before["y"], "y")
 
-            _ensure_xy_ready(x_motor, y_motor)
-            _write_axis_pp_target(
-                x_motor,
-                target_pos=x_target,
-                profile_vel=profile_vel,
-                profile_acc=profile_acc,
-                profile_dec=profile_dec,
-                axis_name="x",
-            )
-            time.sleep(_RS485_SLAVE_GAP_S)
-            _write_axis_pp_target(
-                y_motor,
-                target_pos=y_target,
-                profile_vel=profile_vel,
-                profile_acc=profile_acc,
-                profile_dec=profile_dec,
-                axis_name="y",
-            )
-            time.sleep(0.02)
-            _trigger_xy_pp(x_motor, y_motor)
+            with measure(timings, "axis_ready"):
+                _ensure_xy_ready(x_motor, y_motor)
+            with measure(timings, "write_targets"):
+                _write_axis_pp_target(
+                    x_motor,
+                    target_pos=x_target,
+                    profile_vel=profile_vel,
+                    profile_acc=profile_acc,
+                    profile_dec=profile_dec,
+                    axis_name="x",
+                )
+            with measure(timings, "command_gap"):
+                time.sleep(_RS485_SLAVE_GAP_S)
+            with measure(timings, "write_targets"):
+                _write_axis_pp_target(
+                    y_motor,
+                    target_pos=y_target,
+                    profile_vel=profile_vel,
+                    profile_acc=profile_acc,
+                    profile_dec=profile_dec,
+                    axis_name="y",
+                )
+            with measure(timings, "command_gap"):
+                time.sleep(0.02)
+            with measure(timings, "trigger"):
+                _trigger_xy_pp(x_motor, y_motor)
 
-            wait_result = _wait_xy_arrival(
-                x_motor=x_motor,
-                y_motor=y_motor,
-                x_target=x_target,
-                y_target=y_target,
-                timeout_s=timeout_s,
-                poll_s=poll_s,
-                monitor_tolerance=monitor_tolerance,
-                stage_limits=stage_limits,
-                stop_event=stop_event,
-                progress_callback=progress_callback,
-            )
+            with measure(timings, "wait_arrival"):
+                wait_result = _wait_xy_arrival(
+                    x_motor=x_motor,
+                    y_motor=y_motor,
+                    x_target=x_target,
+                    y_target=y_target,
+                    timeout_s=timeout_s,
+                    poll_s=poll_s,
+                    monitor_tolerance=monitor_tolerance,
+                    stage_limits=stage_limits,
+                    stop_event=stop_event,
+                    progress_callback=progress_callback,
+                )
             if wait_result.get("stopped_by_request"):
                 current = dict(wait_result.get("current") or {})
                 return {
+                    "timings_ms": timings,
                     "target": {"x": x_target, "y": y_target},
                     "before": before,
                     "after": {
@@ -425,25 +438,32 @@ def move_to_absolute(
                         "move_mode": "simultaneous_pp",
                     },
                 }
-            _finish_axis_pp(x_motor, axis_name="x")
-            _finish_axis_pp(y_motor, axis_name="y")
+            with measure(timings, "finish_control"):
+                _finish_axis_pp(x_motor, axis_name="x")
+            with measure(timings, "finish_control"):
+                _finish_axis_pp(y_motor, axis_name="y")
 
-            time.sleep(settle_s)
-            after = snapshot_xy(x_motor, y_motor)
+            with measure(timings, "settle"):
+                time.sleep(settle_s)
+            with measure(timings, "position_snapshot"):
+                after = snapshot_xy(x_motor, y_motor)
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
-            cmd_pos = _snapshot_command_positions(x_motor, y_motor)
+            with measure(timings, "command_snapshot"):
+                cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
             err_to_target = {
                 "x": after_x - x_target,
                 "y": after_y - y_target,
             }
-            _check_arrival_tolerance(
-                err_to_target=err_to_target,
-                arrival_tolerance_pulse=arrival_tolerance_pulse,
-            )
+            with measure(timings, "arrival_check"):
+                _check_arrival_tolerance(
+                    err_to_target=err_to_target,
+                    arrival_tolerance_pulse=arrival_tolerance_pulse,
+                )
 
             return {
+                "timings_ms": timings,
                 "target": {"x": x_target, "y": y_target},
                 "before": before,
                 "cmd_pos": cmd_pos,

@@ -67,6 +67,8 @@ def _redact_paths(text: str) -> str:
 
 
 def _task_hash(task_id: str) -> str:
+    if re.fullmatch(r"<task:[0-9a-f]{8}>", task_id) or task_id == "-":
+        return task_id
     digest = hashlib.sha256(task_id.encode("utf-8", errors="ignore")).hexdigest()[:8]
     return f"<task:{digest}>"
 
