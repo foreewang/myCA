@@ -14,7 +14,7 @@ from workflow.task_logging import current_request_id
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import FileResponse
 
 from workflow.api_errors import (
@@ -234,11 +234,15 @@ class RequestLoggingMiddleware:
         finally:
             route = scope.get("route")
             path = getattr(route, "path", "<unmatched>")
+            # Sync endpoints run in a thread pool: ContextVar changes there do
+            # not flow back here. Request state and resolved path params do.
+            task_id = (scope.get("state", {}).get("log_task_id")
+                       or scope.get("path_params", {}).get("task_id") or "-")
             try:
                 access_logger.info(
                     "event=request_completed method=%s path=%s status=%s outcome=%s elapsed_ms=%.1f",
                     scope["method"], path, status, outcome, (time.perf_counter() - started) * 1000.0,
-                    extra={"http_route": path},
+                    extra={"http_route": path, "task_id": str(task_id)},
                 )
             finally:
                 current_request_id.reset(token)
@@ -346,10 +350,12 @@ def get_stage_reciprocation_status() -> Dict[str, Any]:
 
 
 @app.post("/api/tasks/execute", status_code=202)
-def execute_task(req: ExecuteTaskRequest) -> Dict[str, Any]:
+def execute_task(req: ExecuteTaskRequest, request: Request) -> Dict[str, Any]:
     req = normalize_execute_task_request(req)
     try:
-        return submit_task_request(req, access_logger=access_logger)
+        result = submit_task_request(req, access_logger=access_logger)
+        request.state.log_task_id = result["task_id"]
+        return result
     except TaskRuntimeError as exc:
         raise _api_error(
             exc.status_code,

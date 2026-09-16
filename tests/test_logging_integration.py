@@ -40,6 +40,83 @@ def read(directory, name):
     return (directory / name).read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize("redact", [False, True])
+def test_task_access_ids_use_accepted_result_and_path_without_cross_request_leaks(log_files, monkeypatch, redact):
+    from fastapi import FastAPI, HTTPException
+    from workflow import api_server
+    from workflow.api_errors import register_api_error_handlers
+    from workflow.log_sanitizer import sanitize_log_detail
+    from workflow.task_runtime import TaskRuntimeError
+
+    monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "1" if redact else "0")
+    monkeypatch.setattr(api_server, "normalize_execute_task_request", lambda req: req)
+
+    def submit(req, **kwargs):
+        if req.task["task_id"] == "rejected-task":
+            raise TaskRuntimeError(429, "TASK_QUEUE_FULL", "queue full")
+        return {"task_id": "accepted-" + req.task["task_id"], "status": "accepted"}
+
+    def read_record(task_id):
+        if task_id == "missing-task":
+            raise HTTPException(404, "missing task")
+        return {"task_id": task_id, "status": "success"}
+
+    monkeypatch.setattr(api_server, "submit_task_request", submit)
+    monkeypatch.setattr(api_server, "read_task_record", read_record)
+    monkeypatch.setattr(api_server, "build_task_result_response", lambda record, *a, **kw: record)
+    monkeypatch.setattr(api_server, "cancel_task_request", lambda task_id: {"task_id": task_id})
+    app = FastAPI()
+    app.include_router(api_server.app.router)
+    app.add_middleware(api_server.RequestLoggingMiddleware)
+    register_api_error_handlers(app)
+    cases = [
+        ("POST", "/api/tasks/execute", {"task": {"task_id": "submitted-a"}}, "accepted-submitted-a", 202),
+        ("POST", "/api/tasks/execute", {"task": {"task_id": "submitted-b"}}, "accepted-submitted-b", 202),
+        ("GET", "/api/tasks/status-task/status", None, "status-task", 200),
+        ("GET", "/api/tasks/result-task/result", None, "result-task", 200),
+        ("POST", "/api/tasks/cancel-task/cancel", None, "cancel-task", 200),
+        ("GET", "/api/tasks/missing-task/status", None, "missing-task", 404),
+        ("GET", "/health", None, "-", 200),
+        ("POST", "/api/tasks/execute", {"task": {"task_id": "rejected-task"}}, "-", 429),
+        ("POST", "/api/tasks/execute", b"{", "-", 422),
+    ]
+
+    async def call(case):
+        method, path, body, _, expected_status = case
+        body = body if isinstance(body, bytes) else json.dumps(body).encode()
+        scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+                 "method": method, "scheme": "http", "path": path, "raw_path": path.encode(),
+                 "query_string": b"", "root_path": "", "headers": [(b"content-type", b"application/json")],
+                 "server": ("test", 80), "client": ("127.0.0.1", 1234)}
+        messages = []
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        async def send(message):
+            messages.append(message)
+
+        await app(scope, receive, send)
+        start = next(m for m in messages if m["type"] == "http.response.start")
+        assert start["status"] == expected_status
+        assert current_request_id.get() == current_task_id.get() == "-"
+        return dict(start["headers"])[b"x-request-id"].decode()
+
+    async def requests():
+        return await asyncio.gather(*(call(case) for case in cases))
+
+    ids = asyncio.run(requests())
+    assert len(set(ids)) == len(cases)
+    access = read(log_files, "api_access.log")
+    assert access.count("event=request_completed") == len(cases)
+    for case, request_id in zip(cases, ids):
+        lines = [line for line in access.splitlines() if "request_id=" + request_id in line]
+        assert len(lines) == 1
+        assert sanitize_log_detail("task_id=" + case[3]) + " " in lines[0]
+        if "/api/tasks/" in case[1] and case[1] != "/api/tasks/execute":
+            assert "path=/api/tasks/{task_id}/" in lines[0]
+
+
 def test_real_asgi_requests_have_one_summary_and_correlated_error(log_files, monkeypatch):
     monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "1")
     import socket
