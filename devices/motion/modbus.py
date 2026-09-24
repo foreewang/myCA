@@ -10,6 +10,7 @@ Modbus RTU 客户端模块，基于 pymodbus 库实现。
 
 import logging
 import time
+from devices.motion import evidence
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
 
@@ -162,13 +163,21 @@ class ModbusRTUClient:
             except Exception:
                 logger.debug("serial flush %s failed", name, exc_info=True)
 
-    def _transact(self, description: str, operation):
+    def _transact(self, description: str, operation, **metadata):
+        with evidence.transaction(description, port=self.port, timeout_s=self.timeout,
+                                  max_attempts=_RTU_COMM_ATTEMPTS,
+                                  retry_delay_s=_RTU_RETRY_DELAY_S, **metadata) as trace:
+            return self._transact_attempts(description, operation, trace)
+
+    def _transact_attempts(self, description: str, operation, trace):
         """Run one Modbus call and retry transient empty/timeout replies."""
         last_error: object | None = None
         for attempt in range(1, _RTU_COMM_ATTEMPTS + 1):
+            started = time.perf_counter()
             try:
                 result = operation()
             except ModbusException as exc:
+                evidence.attempt(trace, started, False, error=exc)
                 last_error = exc
                 if attempt < _RTU_COMM_ATTEMPTS and _is_transient_modbus_failure(exc):
                     logger.warning(
@@ -183,11 +192,16 @@ class ModbusRTUClient:
                     continue
                 logger.error("Modbus 异常: %s", exc)
                 return None
+            except Exception as exc:
+                evidence.attempt(trace, started, False, error=f"{type(exc).__name__}: {exc}")
+                raise
 
             if result is None:
+                evidence.attempt(trace, started, False, error="empty result")
                 logger.error("%s失败: empty result", description)
                 return None
             if hasattr(result, "isError") and result.isError():
+                evidence.attempt(trace, started, False, error=result)
                 last_error = result
                 if attempt < _RTU_COMM_ATTEMPTS and _is_transient_modbus_failure(result):
                     logger.warning(
@@ -202,6 +216,7 @@ class ModbusRTUClient:
                     continue
                 logger.error("%s失败: %s", description, result)
                 return None
+            evidence.attempt(trace, started, True, registers=getattr(result, "registers", None))
             return result
         logger.error("%s失败: %s", description, last_error)
         return None
@@ -225,6 +240,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"读保持寄存器 slave={slave} address={address} count={count}",
             lambda: self._client.read_holding_registers(address=address, count=count, slave=slave),
+            function="read_holding_registers", slave=slave, address=address, count=count,
         )
         if result is None:
             return None
@@ -250,6 +266,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"写寄存器 slave={slave} address={address} value={value}",
             lambda: self._client.write_register(address=address, value=value, slave=slave),
+            function="write_register", slave=slave, address=address, value=value,
         )
         if result is None:
             return False

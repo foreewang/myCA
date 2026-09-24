@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Mapping
 
 from workflow.timing import measure
 
+from devices.motion import evidence
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient
 
@@ -198,10 +199,12 @@ def _trigger_xy_pp(x_motor: MotorManager, y_motor: MotorManager) -> None:
 def _finish_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
     client = motor.client
     slave = motor.slave
-    if not client._restore_enabled_state(slave):
-        raise StageMotionError(f"{axis_name} axis failed to restore enabled state")
-    if not client.quick_stop(slave):
-        raise StageMotionError(f"{axis_name} axis failed to quick stop after arrival")
+    with evidence.phase(f"finish_restore_{axis_name}"):
+        if not client._restore_enabled_state(slave):
+            raise StageMotionError(f"{axis_name} axis failed to restore enabled state")
+    with evidence.phase(f"finish_stop_{axis_name}"):
+        if not client.quick_stop(slave):
+            raise StageMotionError(f"{axis_name} axis failed to quick stop after arrival")
 
 
 def _snapshot_positions(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, int]:
@@ -275,6 +278,10 @@ def _wait_xy_arrival(
         if progress_callback is not None:
             progress_callback(dict(current))
         if abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance:
+            evidence.event("arrival_tolerance_met", current=dict(current),
+                           target={"x": x_target, "y": y_target},
+                           tolerance_pulse=monitor_tolerance,
+                           standstill_verified=False)
             return {
                 "current": current,
                 "stopped_by_request": False,
@@ -292,6 +299,8 @@ def _wait_xy_arrival(
 def snapshot_axis(motor: MotorManager, axis_name: str) -> Dict[str, Any]:
     pos = motor.client._read_32bit(motor.slave, motor.client.REG_CURRENT_POS)
     sw = motor.client._read_statusword(motor.slave)
+    evidence.event("axis_snapshot", axis=axis_name, slave=motor.slave,
+                   current_pos=pos, statusword=sw, status_bits=evidence.status_bits(sw))
     return {
         "axis": axis_name,
         "slave": motor.slave,
@@ -349,6 +358,13 @@ def move_to_absolute(
         if arrival_tolerance_pulse < 0:
             raise StageMotionError("arrival_tolerance_pulse must be non-negative")
     monitor_tolerance = 50 if arrival_tolerance_pulse is None else int(arrival_tolerance_pulse)
+    evidence.event(
+        "move_configuration", port=port, baudrate=baudrate,
+        x_slave=x_slave, y_slave=y_slave,
+        target={"x": x_target, "y": y_target},
+        profile_vel=profile_vel, profile_acc=profile_acc, profile_dec=profile_dec,
+        monitor_tolerance_pulse=monitor_tolerance, settle_s=settle_s, poll_s=poll_s,
+    )
 
     _check_target_in_stage_limits(
         x_target=x_target,
@@ -363,14 +379,14 @@ def move_to_absolute(
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
         try:
-            with measure(timings, "position_snapshot"):
+            with evidence.phase("before_enable"), measure(timings, "position_snapshot"):
                 before = snapshot_xy(x_motor, y_motor)
             _require_axis_position(before["x"], "x")
             _require_axis_position(before["y"], "y")
 
-            with measure(timings, "axis_ready"):
+            with evidence.phase("axis_ready"), measure(timings, "axis_ready"):
                 _ensure_xy_ready(x_motor, y_motor)
-            with measure(timings, "write_targets"):
+            with evidence.phase("write_targets"), measure(timings, "write_targets"):
                 _write_axis_pp_target(
                     x_motor,
                     target_pos=x_target,
@@ -379,9 +395,9 @@ def move_to_absolute(
                     profile_dec=profile_dec,
                     axis_name="x",
                 )
-            with measure(timings, "command_gap"):
+            with evidence.phase("command_gap"), measure(timings, "command_gap"):
                 time.sleep(_RS485_SLAVE_GAP_S)
-            with measure(timings, "write_targets"):
+            with evidence.phase("write_targets"), measure(timings, "write_targets"):
                 _write_axis_pp_target(
                     y_motor,
                     target_pos=y_target,
@@ -390,12 +406,12 @@ def move_to_absolute(
                     profile_dec=profile_dec,
                     axis_name="y",
                 )
-            with measure(timings, "command_gap"):
+            with evidence.phase("command_gap"), measure(timings, "command_gap"):
                 time.sleep(0.02)
-            with measure(timings, "trigger"):
+            with evidence.phase("trigger"), measure(timings, "trigger"):
                 _trigger_xy_pp(x_motor, y_motor)
 
-            with measure(timings, "wait_arrival"):
+            with evidence.phase("wait_arrival"), measure(timings, "wait_arrival"):
                 wait_result = _wait_xy_arrival(
                     x_motor=x_motor,
                     y_motor=y_motor,
@@ -438,25 +454,32 @@ def move_to_absolute(
                         "move_mode": "simultaneous_pp",
                     },
                 }
-            with measure(timings, "finish_control"):
+            with evidence.phase("finish_control"), measure(timings, "finish_control"):
                 _finish_axis_pp(x_motor, axis_name="x")
-            with measure(timings, "finish_control"):
+            with evidence.phase("finish_control"), measure(timings, "finish_control"):
                 _finish_axis_pp(y_motor, axis_name="y")
 
-            with measure(timings, "settle"):
+            if evidence.enabled():
+                with evidence.phase("after_finish_control"), measure(timings, "diagnostic_snapshot"):
+                    try:
+                        snapshot_xy(x_motor, y_motor)
+                    except Exception as exc:
+                        evidence.event("diagnostic_read_error", error=f"{type(exc).__name__}: {exc}")
+
+            with evidence.phase("settle"), measure(timings, "settle"):
                 time.sleep(settle_s)
-            with measure(timings, "position_snapshot"):
+            with evidence.phase("after_settle"), measure(timings, "position_snapshot"):
                 after = snapshot_xy(x_motor, y_motor)
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
-            with measure(timings, "command_snapshot"):
+            with evidence.phase("command_snapshot"), measure(timings, "command_snapshot"):
                 cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
             err_to_target = {
                 "x": after_x - x_target,
                 "y": after_y - y_target,
             }
-            with measure(timings, "arrival_check"):
+            with evidence.phase("arrival_check"), measure(timings, "arrival_check"):
                 _check_arrival_tolerance(
                     err_to_target=err_to_target,
                     arrival_tolerance_pulse=arrival_tolerance_pulse,
@@ -489,7 +512,8 @@ def move_to_absolute(
                 },
             }
         except Exception:
-            _quick_stop_xy(x_motor, y_motor)
+            with evidence.phase("exception_stop"):
+                _quick_stop_xy(x_motor, y_motor)
             raise
 
 

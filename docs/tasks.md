@@ -229,6 +229,69 @@ for name, values in sorted(samples.items()):
 - 任务和单孔汇总计时在成功返回时附加；失败或取消时可查看已保存的扫描点计时。
   扫描规划前失败、进程被强制终止或结果磁盘不可写时，不保证有扫描计时文件。
 
+## 采集运动证据验证
+
+采集任务默认在每个 XY 移动期间记录证据，无需新增请求字段。更新代码并重启 API
+服务后，保持原来的速度、加减速度、容差和 `scan.settle_s`，执行一次原有采集任务。
+不需要为取证执行额外硬件动作，也不需要启动录像。
+
+结果位置：
+
+- 单孔任务 `result.json`：`capture_result.point_timings[].motion_evidence`。
+- 单孔扫描文件 `scan_result.json`：`point_timings[].motion_evidence`。
+- 多孔总结果：`wells[].result.capture_result.point_timings[].motion_evidence`。
+
+请返回完整的 `result.json` 或对应孔的 `scan_result.json`，不要只截取耗时汇总。
+失败的移动也会在扫描错误结果中保留已经收集的证据；进程强制退出或写盘失败除外。
+
+### 记录内容
+
+| 字段 | 含义 |
+| --- | --- |
+| `identity` | 任务 ID、孔号、扫描点号 |
+| `started_utc` / `started_monotonic_s` | 与服务日志及同进程其他扫描点对齐的起始时间 |
+| `events` | 运动配置、位置和状态快照、首次满足位置容差的事件 |
+| `transactions` | Modbus 事务的阶段、从站、寄存器、读写内容、实际控制字、尝试明细 |
+| `summary` | 事务数、尝试数、额外重试数、最终失败事务数、慢事务数及累计事务耗时 |
+| `outcome` | `returned` 或 `raised`，仅表示移动调用是否抛出异常，不是图像采集状态 |
+
+`events[].t_ms` 和 `transactions[].t_ms` 都相对于该移动证据起点，单位毫秒。
+事务 `elapsed_ms` 包含重试之间的清缓冲、等待和已有日志开销；每个
+`attempts[].elapsed_ms` 记录该次尝试耗时，`started_monotonic_s` 为其单调时钟起点。
+读状态字时保存原始寄存器值及位指示；写控制字时保存实际数值及 `controlword_hex`。
+写请求成功仅表示通信返回成功，是否进入预期状态需结合后续状态读取。
+
+关键阶段按执行顺序为：
+
+1. `before_enable`：复用移动前位置及状态快照。
+2. `axis_ready`：记录模式读取、使能控制字和原有状态确认读数。
+3. `write_targets` / `trigger`：参数下发、实际触发控制字。
+4. `wait_arrival`：复用轮询的双轴快照；`arrival_tolerance_met` 记录满足位置容差的时刻。
+5. `finish_restore_x/y`：正常结束时恢复使能及其状态读取。
+6. `finish_stop_x/y`：结束停止函数实际写出的控制字。当前实现仍发送 `0x0006`，未改动。
+7. `after_finish_control`：两轴原有结束控制都执行完后，额外读取一组双轴位置/状态。
+8. `after_settle`：复用稳定等待后的原有快照。与下一扫描点 `before_enable` 对照。
+
+### 观察边界和额外开销
+
+本次只增加取证，不改变运动参数、到位判定、重试策略、控制字或原有控制字顺序。
+大部分信息复用原有串口响应。唯一额外硬件读取是 `after_finish_control` 的一组
+双轴快照，正常为 4 个读事务；耗时单独计入 `motion_timings_ms.diagnostic_snapshot`，
+并包含在外层 `move_total` 中。额外读取也可能重试，因此此次任务总耗时不能直接当作
+提速后的性能数据。额外诊断读取抛异常会记录 `diagnostic_read_error`，不替代原有的
+运动校验或改变其异常传播。
+
+双轴位置和状态是顺序读取，并非同一时刻采样。`status_bits` 只是原始位的解释，
+不是经驱动器手册核实的完整状态机判定；尤其 `quick_stop_bit_5` 不等于“正在急停”。
+`arrival_tolerance_met.standstill_verified` 固定为 `false`：本版本没有新增实际速度读取，
+也没有延迟停止以观测自然减速，不能仅凭该事件或目标到达位证明已停止。
+稳定后与到位时的位置变化，是后续控制和等待共同作用的结果。
+
+证据仅在扫描移动的当前执行上下文中生效，不会混入其他线程的相机或调焦操作。
+每点最多保存 5000 条事务、4096 条事件；超出部分在 `dropped_transactions` /
+`dropped_events` 中明确计数，事务汇总仍继续累计。慢事务阈值为 100 ms，慢并不代表
+一定失败或重试，需查看 `attempts`。记录只在内存收集，随原有扫描结果一次写盘。
+
 ## 补偿
 
 ### 可挑取且去重的候选文件

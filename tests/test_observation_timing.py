@@ -29,6 +29,8 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     error = RuntimeError("hardware failed")
 
     def move(**kwargs):
+        from devices.motion.evidence import event
+        event("test_motion_started")
         events.append("move")
         kwargs["timings_ms"]["wait_arrival"] = 12.0
         if failure == "move":
@@ -75,6 +77,10 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     result = json.loads(path.read_text(encoding="utf-8"))
     status = "canceled" if failure == "cancel" else "failed" if failure else "success"
     record = result["point_timings"][0]
+    proof = record["motion_evidence"]
+    assert proof["identity"]["point_index"] == 1
+    assert proof["outcome"] == ("raised" if failure == "move" else "returned")
+    assert proof["events"][0]["kind"] == "test_motion_started"
     assert result["status"] == record["status"] == status
     assert record["motion_timings_ms"]["wait_arrival"] == 12.0
     times = record["timings_ms"]
