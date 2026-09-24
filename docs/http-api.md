@@ -699,7 +699,8 @@ workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_
 单孔可通过 `task.detect.pickable_output_json` 指定路径（仅允许 `data/` 或 `outputs/`），
 默认与检测 JSON 同目录；没有检测输出路径时使用 `capture.save_dir`。
 多孔固定逐孔生成 `pickable_detect_result.json`。每个原去重组只选一条可挑取观察，
-保留全部照片的原编号、原图及标注图路径，并为入选克隆保留 `clone_id`、`global_clone_id`、`is_pickable`。
+保留全部照片的原编号、原图及标注图路径，并为入选克隆保留 `clone_id`、`global_clone_id`、`is_pickable`、`center_px`。
+`center_px` 为入选代表在原图中的中心像素坐标 `[x, y]`，保持源值，缺失时为 null。
 `schema_version` 为 3；照片级 `is_pickable` 表示该照片是否包含入选代表。
 后端筛选照片级 `is_pickable=true` 的照片，筛选结果非空时获取这些照片，否则获取全部照片。
 没有可挑取克隆时仍保留全部照片，`clones` 为空；运动坐标、模型信息及去重明细留在完整结果中。

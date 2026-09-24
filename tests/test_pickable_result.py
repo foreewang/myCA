@@ -17,6 +17,7 @@ def source_result():
                        "image_path": f"images/{index}.bmp", "overlay_image_path": None,
                        "clones": [{"clone_id": "C01", "source_detection_id": f"I{index}:C01",
                                    "global_clone_id": gid, "is_pickable": pickable,
+                                   "center_px": [index * 10, 45],
                                    "confidence": confidence, "offset_from_image_center_px": [10, -5]}]})
     return {"schema_version": 2, "task_id": "test", "images": images,
             "unique_clones": [
@@ -39,7 +40,7 @@ def test_all_photos_with_minimal_pickable_representatives():
     assert [im["index"] for im in result["images"]] == [1, 2, 3, 4, 5]
     assert [im["index"] for im in result["images"] if im["is_pickable"]] == [3, 4]
     assert result["images"][2]["clones"] == [
-        {"clone_id": "C01", "global_clone_id": "G1", "is_pickable": True}]
+        {"clone_id": "C01", "global_clone_id": "G1", "is_pickable": True, "center_px": [30, 45]}]
     assert set(result) == {"schema_version", "task_id", "image_count",
                            "total_clone_count", "images"}
     for im in result["images"]:
@@ -170,3 +171,6 @@ def test_detection_integration_with_real_deduplication(tmp_path, monkeypatch, va
     assert "is_pickable" not in candidate
     assert candidate["image_count"] == 2
     assert sum(im["is_pickable"] for im in candidate["images"]) == int(valid)
+    for image in candidate["images"]:
+        for clone in image["clones"]:
+            assert clone["center_px"] == [50, 50]

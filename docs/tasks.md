@@ -249,7 +249,7 @@ for name, values in sorted(samples.items()):
 | 顶层 | `image_count`、`total_clone_count`、`images` | 全部照片数、去重可挑取克隆数及照片列表 |
 | 照片 | `index`、`image_path`、`overlay_image_path` | 原照片编号、原图和标注图路径（源结果中存在才输出，标注图可为 null） |
 | 照片 | `is_pickable`、`clones` | 是否包含入选的可挑取代表、入选克隆列表；无候选时为 false 和空列表 |
-| 克隆 | `clone_id`、`global_clone_id`、`is_pickable` | 原克隆 ID、去重 ID 及 true 标记 |
+| 克隆 | `clone_id`、`global_clone_id`、`is_pickable`、`center_px` | 原克隆 ID、去重 ID、true 标记及该代表在原图中的中心像素坐标 `[x, y]`（源值缺失时为 null） |
 
 后端筛选 `images[].is_pickable == true` 的照片：筛选结果非空时获取这些照片，
 否则获取全部 `images`。即使完全没有可挑取克隆，照片列表仍完整；只有源结果无照片时才为空。
