@@ -1,4 +1,4 @@
-"""Export one explicitly pickable observation per existing deduplication group."""
+"""Export all photos and a minimal index of deduplicated pickable clones."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -44,8 +44,7 @@ def build_pickable_detect_result(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(groups, list):
         raise ValueError("unique_clones is required; deduplicate the detection result first")
     seen_sources, seen_groups = set(), set()
-    selected, group_details = {}, []
-    pickable_observations = 0
+    selected = set()
     for group in groups:
         gid = group.get("global_clone_id")
         if not gid or gid in seen_groups:
@@ -64,46 +63,29 @@ def build_pickable_detect_result(result: dict[str, Any]) -> dict[str, Any]:
                 raise ValueError(f"inconsistent global_clone_id: {source}")
             if clone.get("is_pickable") is True:
                 eligible.append((image, clone))
-        pickable_observations += len(eligible)
         if not eligible:
             continue
         image, clone = min(eligible, key=_rank)
         source = clone.get("source_detection_id") or f"I{image['index']}:{clone['clone_id']}"
-        selected[source] = gid
-        # Only provenance IDs are retained for discarded observations. Do not
-        # copy an old representative's geometry/confidence into the new result.
-        group_details.append({
-            "global_clone_id": gid, "is_pickable": True,
-            "representative": {"image_index": image["index"], "clone_id": clone["clone_id"],
-                               "source_detection_id": source},
-            "source_detections": list(sources), "observation_count": len(sources),
-            "pickable_observation_count": len(eligible),
-        })
+        selected.add(source)
     if seen_sources != set(refs):
         raise ValueError("deduplication groups do not cover all observations")
 
     images = []
     for original in result.get("images", []):
-        clones = [deepcopy(c) for c in original.get("clones", [])
+        clones = [{"clone_id": c["clone_id"], "global_clone_id": c["global_clone_id"],
+                   "is_pickable": True} for c in original.get("clones", [])
                   if (c.get("source_detection_id") or f"I{original['index']}:{c['clone_id']}") in selected]
-        if clones:
-            image = {k: deepcopy(v) for k, v in original.items()
-                     if k not in {"clones", "review_candidates", "clone_count", "review_candidate_count"}}
-            image.update(clones=clones, clone_count=len(clones), review_candidates=[], review_candidate_count=0)
-            images.append(image)
-    metadata = ("schema_version", "task_id", "task_type", "status", "plate_type", "well_name",
-                "objective_name", "reference", "scan_config", "scan_result_json", "detect_overlay_dir",
-                "quality_assessment")
+        # Allowlist fields: newly added diagnostic fields must stay internal.
+        image = {k: deepcopy(original[k]) for k in
+                 ("index", "image_path", "overlay_image_path") if k in original}
+        image.update(is_pickable=bool(clones), clones=clones)
+        images.append(image)
+    metadata = ("task_id", "status", "plate_type", "well_name", "objective_name")
     output = {k: deepcopy(result[k]) for k in metadata if k in result}
     output.update(
-        images=images, image_count=len(images), total_image_clone_count=len(selected),
-        total_clone_count=len(selected), unique_clone_count=len(selected), review_candidate_count=0,
-        selection={"is_pickable": True, "one_observation_per_global_clone": True,
-                   "representative_order": ["not_touching_border", "highest_confidence", "nearest_image_center", "image_index", "clone_id"]},
-        candidate_groups=group_details,
-        source_deduplication=deepcopy(result.get("deduplication") or {}),
-        eligible_observation_count=pickable_observations,
-        removed_duplicate_observation_count=pickable_observations - len(selected),
+        schema_version=3, images=images,
+        image_count=len(images), total_clone_count=len(selected),
     )
     return output
 

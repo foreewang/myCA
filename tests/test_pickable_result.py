@@ -14,6 +14,7 @@ def source_result():
                                              (5, "true", "G3", 1)]:
         images.append({"index": index, "stage_x_actual": index * 100, "stage_y_actual": 200,
                        "mm_per_pixel": {"x": .01, "y": .02}, "schema_version": 1,
+                       "image_path": f"images/{index}.bmp", "overlay_image_path": None,
                        "clones": [{"clone_id": "C01", "source_detection_id": f"I{index}:C01",
                                    "global_clone_id": gid, "is_pickable": pickable,
                                    "confidence": confidence, "offset_from_image_center_px": [10, -5]}]})
@@ -25,23 +26,32 @@ def source_result():
                 {"global_clone_id": "G3", "source_detections": ["I5:C01"]}]}
 
 
-def test_unique_pickable_representatives_and_unchanged_coordinates():
+def test_all_photos_with_minimal_pickable_representatives():
     from workflow.compensate_executor import select_clone_for_compensation, _calc_compensate_target
     source = source_result()
     before = deepcopy(source)
     result = build_pickable_detect_result(source)
     assert source == before
-    assert result["unique_clone_count"] == result["total_image_clone_count"] == 2
-    assert result["eligible_observation_count"] == 3
-    assert result["removed_duplicate_observation_count"] == 1
-    assert [im["index"] for im in result["images"]] == [3, 4]
-    image, clone = select_clone_for_compensation(result, {"mode": "image_and_clone", "purpose": "pick",
-                                                         "image_index": 3, "clone_id": "C01"})
+    assert result["schema_version"] == 3
+    assert result["total_clone_count"] == 2
+    assert "is_pickable" not in result
+    assert result["image_count"] == 5
+    assert [im["index"] for im in result["images"]] == [1, 2, 3, 4, 5]
+    assert [im["index"] for im in result["images"] if im["is_pickable"]] == [3, 4]
+    assert result["images"][2]["clones"] == [
+        {"clone_id": "C01", "global_clone_id": "G1", "is_pickable": True}]
+    assert set(result) == {"schema_version", "task_id", "image_count",
+                           "total_clone_count", "images"}
+    for im in result["images"]:
+        assert set(im) == {"index", "image_path", "overlay_image_path", "is_pickable", "clones"}
+    # Resolve the exported IDs against the full result for compensation.
+    selected = result["images"][2]
+    image, clone = select_clone_for_compensation(source, {"mode": "image_and_clone", "purpose": "pick",
+        "image_index": selected["index"], "clone_id": selected["clones"][0]["clone_id"]})
     assert clone == source["images"][2]["clones"][0]
     ctx = {"plate": {"pulses_per_mm": {"x": 100, "y": 200},
                      "x_stage_sign_for_view_right": -1, "y_stage_sign_for_view_down": -1}}
     assert _calc_compensate_target(ctx=ctx, params={}, image_item=image, clone_item=clone)["compensate_target"] == {"x": 310, "y": 180}
-    assert result["candidate_groups"][0]["representative"]["image_index"] == 3
     assert build_pickable_detect_result(source) == result
 
 
@@ -62,6 +72,23 @@ def test_empty_and_missing_or_inconsistent_deduplication():
     source["unique_clones"].pop()
     with pytest.raises(ValueError, match="cover"):
         build_pickable_detect_result(source)
+
+
+@pytest.mark.parametrize("flag", [False, None, "true", 1])
+def test_backend_falls_back_to_all_photos_without_explicit_pickable_clones(flag):
+    source = source_result()
+    for image in source["images"]:
+        image["clones"][0]["is_pickable"] = flag
+    # A review-only photo is retained but never promoted to a pickable clone.
+    source["images"].append({"index": 6, "image_path": "images/6.bmp", "clones": [],
+                             "review_candidates": [{"is_pickable": True}]})
+    result = build_pickable_detect_result(source)
+    photos = [im for im in result["images"] if im["is_pickable"]] or result["images"]
+    assert "is_pickable" not in result
+    assert result["total_clone_count"] == 0
+    assert result["image_count"] == len(photos) == 6
+    assert [im["image_path"] for im in photos] == [im["image_path"] for im in source["images"]]
+    assert all(im["is_pickable"] is False and im["clones"] == [] for im in photos)
 
 
 def test_paths_and_multiwell(tmp_path):
@@ -140,5 +167,6 @@ def test_detection_integration_with_real_deduplication(tmp_path, monkeypatch, va
     assert result["unique_clone_count"] == 1
     candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
     assert candidate["total_clone_count"] == int(valid)
-    assert candidate["removed_duplicate_observation_count"] == int(valid)
-    assert candidate["image_count"] == int(valid)
+    assert "is_pickable" not in candidate
+    assert candidate["image_count"] == 2
+    assert sum(im["is_pickable"] for im in candidate["images"]) == int(valid)

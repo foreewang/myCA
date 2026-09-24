@@ -240,12 +240,25 @@ for name, values in sorted(samples.items()):
 全组无有效观察则不输出。每个 `global_clone_id` 只输出一次，不重新编号。
 这是现有算法分组范围内的去重，不代表对真实生物实例身份作了额外确认。
 
-文件保留 `images[].clones[]` 及所属图片的原始坐标、比例尺、图片路径等信息，可直接作为
-`compensate.input_detect_json`，使用 `purpose="pick"` 和原始 `image_index + clone_id`。
-不对不同图片的像素坐标求平均。没有候选时仍生成空 `images` 和零计数。
-`total_image_clone_count`、`total_clone_count`、`unique_clone_count` 均表示输出候选数；
-`candidate_groups` 记录各候选的代表图片/克隆、原始来源 ID 和可挑取观察数，
-`source_deduplication` 保存原去重元数据。原来的 `unique_clones` 汇总不直接复制，避免代表坐标过期。
+文件使用独立的 `schema_version: 3` 精简结构，`images` 始终保留检测结果中的全部照片及原顺序，
+包括无克隆、仅有待复核目标、不可挑取或未被选为去重代表的照片。
+
+| 层级 | 字段 | 含义 |
+| --- | --- | --- |
+| 顶层 | `schema_version`、`task_id`、`status`、`plate_type`、`well_name`、`objective_name` | 版本及任务标识（源结果中存在的标识才输出） |
+| 顶层 | `image_count`、`total_clone_count`、`images` | 全部照片数、去重可挑取克隆数及照片列表 |
+| 照片 | `index`、`image_path`、`overlay_image_path` | 原照片编号、原图和标注图路径（源结果中存在才输出，标注图可为 null） |
+| 照片 | `is_pickable`、`clones` | 是否包含入选的可挑取代表、入选克隆列表；无候选时为 false 和空列表 |
+| 克隆 | `clone_id`、`global_clone_id`、`is_pickable` | 原克隆 ID、去重 ID 及 true 标记 |
+
+后端筛选 `images[].is_pickable == true` 的照片：筛选结果非空时获取这些照片，
+否则获取全部 `images`。即使完全没有可挑取克隆，照片列表仍完整；只有源结果无照片时才为空。
+照片级标记表示有入选的去重代表，同组其他照片仍保留但不重复标记为可挑取。
+
+运动坐标、比例尺、模型运行信息、质量评估、复核候选和去重明细不再导出，
+详细信息在 `detect_result.json` 和 `scan_result.json` 复核。
+精简文件不再直接用于 `compensate.input_detect_json` 或 `compensate.input_detect_result`；
+补偿使用完整检测结果，配合 `purpose="pick"` 及导出的原始 `image_index + clone_id`。
 
 单孔可指定 `task.detect.pickable_output_json`；省略时在 `detect.output_json`（或
 `output.detect_json`）同目录生成，未配置检测输出路径时使用 `capture.save_dir`。
