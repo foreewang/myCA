@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 import pytest
 
-from vision.vision import detect_pipeline as pipeline
+from vision.vision import legacy_detect_pipeline as pipeline
 from vision.vision import image_loader, postprocess
 
 

@@ -32,7 +32,7 @@ def test_profiling_preserves_real_results_pixels_and_restores_functions(tmp_path
     assert actual == expected
     assert timing['pickable_count'] == 1
     assert sum(timing['stage_seconds'].values()) == pytest.approx(timing['total_s'], abs=1e-9)
-    assert timing['stage_seconds']['roi_texture_compute'] > 0
+    assert timing['stage_seconds']['coarse_candidates'] > 0
     assert timing['stage_seconds']['save_mask'] > 0
     assert timing['stage_seconds']['save_json'] > 0
     assert np.fromfile is original_fromfile and cv2.circle is original_circle

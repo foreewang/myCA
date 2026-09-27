@@ -1,0 +1,207 @@
+{
+  "description": "User-accepted green candidates from the frozen 2026-09-24 v1 review; not biological ground truth.",
+  "fov_mm": [
+    3.22,
+    3.22
+  ],
+  "config": {
+    "working_um_per_pixel": 3.14453125,
+    "activity_relative_floor": 0.018,
+    "activity_absolute_floor": 2.5,
+    "texture_sigma_um": 3.46,
+    "density_window_um": 78.6,
+    "support_occupancy": 0.64,
+    "seed_occupancy": 0.78,
+    "seed_radius_um": 25.0,
+    "instance_core_radius_um": 65.0,
+    "min_instance_core_mm2": 0.008,
+    "opening_um": 22.0,
+    "min_area_mm2": 0.06,
+    "normal_min_area_mm2": 0.12,
+    "normal_min_solidity": 0.72,
+    "dark_background_window_um": 800.0,
+    "dark_relative_deficit": 0.35,
+    "dark_mean_limit": 115.0,
+    "min_dark_area_mm2": 0.012,
+    "large_dark_area_mm2": 0.035,
+    "dark_reject_fraction": 0.2,
+    "low_visibility_mean": 25.0
+  },
+  "images": [
+    {
+      "name": "A1_013_row02_col02.bmp",
+      "sha256": "faae98c6b11da42d1cbfe8e0832cc4d66045200f00b753e43ab2ba33999cde62",
+      "normal_candidates": [
+        {
+          "id": "C01",
+          "center_pixel": [
+            3152,
+            1217
+          ],
+          "bbox": [
+            0,
+            0,
+            5040,
+            2875
+          ],
+          "contour_sha256": "5c7a80e96aae2e253ba79bf92a91ac8a272456eb4eec62168a352611a541ea3c",
+          "area_mm2": 3.7369810821533207
+        },
+        {
+          "id": "C03",
+          "center_pixel": [
+            4492,
+            4482
+          ],
+          "bbox": [
+            3510,
+            2855,
+            1610,
+            2265
+          ],
+          "contour_sha256": "e90f6fa693f8228495beba2200bdde2ac2082bb24c263e30dc7862d5efe405a6",
+          "area_mm2": 1.0771082038879396
+        }
+      ]
+    },
+    {
+      "name": "A2_011_row02_col00.bmp",
+      "sha256": "5fdbb3a0bc84712b6c5a716ec89848afc183126ee38527afc8f7b14ff030db18",
+      "normal_candidates": []
+    },
+    {
+      "name": "A5_012_row02_col01.bmp",
+      "sha256": "6ee0513c7def1c13761cd0a390bf61a65ad4df032c5a2cf404f3f95bb76edc18",
+      "normal_candidates": [
+        {
+          "id": "C01",
+          "center_pixel": [
+            3162,
+            672
+          ],
+          "bbox": [
+            2835,
+            435,
+            925,
+            860
+          ],
+          "contour_sha256": "4c40b203a506b36ab93a9b7e89ab2e140e8a92d2baa3ec08f1ffa31c5c7febdb",
+          "area_mm2": 0.17675926055908206
+        },
+        {
+          "id": "C02",
+          "center_pixel": [
+            4727,
+            2197
+          ],
+          "bbox": [
+            4235,
+            580,
+            885,
+            3335
+          ],
+          "contour_sha256": "40a989ddba05eb5892e350b835e95ce8b6f578f9d1e8eae849f4fc2361d4485a",
+          "area_mm2": 0.6092439628601075
+        },
+        {
+          "id": "C03",
+          "center_pixel": [
+            2017,
+            1997
+          ],
+          "bbox": [
+            0,
+            965,
+            3235,
+            2720
+          ],
+          "contour_sha256": "405fed55ef558484097b69f6ea7da73c7957f984accfd8c3ed0ab67f529c04af",
+          "area_mm2": 2.25391788597107
+        }
+      ]
+    },
+    {
+      "name": "C1_001_row00_col00.bmp",
+      "sha256": "ded1eb1061203de9ef8925f7dfc36c8c777f7a8b5f8e44eb1f2673f7de876657",
+      "normal_candidates": [
+        {
+          "id": "C01",
+          "center_pixel": [
+            4707,
+            1417
+          ],
+          "bbox": [
+            3625,
+            0,
+            1495,
+            1885
+          ],
+          "contour_sha256": "6327bb9defd30e7f161f32765a8db9fb6be67b7006922a1ab6f19d49c06e58ef",
+          "area_mm2": 0.7110614894866945
+        }
+      ]
+    },
+    {
+      "name": "C6_011_row02_col00.bmp",
+      "sha256": "7172aed8a2509ea9b7b76ded1830ba3250fdf0c205fab2859dce581cd7ff217a",
+      "normal_candidates": [
+        {
+          "id": "C01",
+          "center_pixel": [
+            3732,
+            3682
+          ],
+          "bbox": [
+            3110,
+            2800,
+            1685,
+            1620
+          ],
+          "contour_sha256": "0ccd76694f42a230a0a6c6fb294d1da49558d0bbdc6226315c79dae91ba5d56d",
+          "area_mm2": 0.6589216606140137
+        }
+      ]
+    },
+    {
+      "name": "D1_012_row02_col01.bmp",
+      "sha256": "0668c47bcba806c33df6fad5834d756e79f604a46844c6b2399f3fbd75eca4e5",
+      "normal_candidates": []
+    },
+    {
+      "name": "D6_012_row02_col01.bmp",
+      "sha256": "4e8db16c04d09c38b7100742a6838feda23e31dbbb595bc9c1086083b2f8de96",
+      "normal_candidates": [
+        {
+          "id": "C05",
+          "center_pixel": [
+            2067,
+            4032
+          ],
+          "bbox": [
+            1450,
+            3565,
+            1050,
+            880
+          ],
+          "contour_sha256": "aeeb18d65f5e20a81687a735717a7291d76fb4234db35eb850cef032038fa1f5",
+          "area_mm2": 0.24509575920104984
+        },
+        {
+          "id": "C06",
+          "center_pixel": [
+            282,
+            4837
+          ],
+          "bbox": [
+            0,
+            4285,
+            1805,
+            835
+          ],
+          "contour_sha256": "91adbbc2587b8729eb1af5154b15beab62ba353604da64a402a0c9e155cd20bc",
+          "area_mm2": 0.3877510429382325
+        }
+      ]
+    }
+  ]
+}

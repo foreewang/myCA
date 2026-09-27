@@ -40,20 +40,53 @@ def test_all_photos_with_minimal_pickable_representatives():
     assert [im["index"] for im in result["images"]] == [1, 2, 3, 4, 5]
     assert [im["index"] for im in result["images"] if im["is_pickable"]] == [3, 4]
     assert result["images"][2]["clones"] == [
-        {"clone_id": "C01", "global_clone_id": "G1", "is_pickable": True, "center_px": [30, 45]}]
+        {"clone_id": "C01", "global_clone_id": "G1", "is_pickable": True, "center_px": [30, 45],
+         "offset_from_image_center_px": [10, -5]}]
     assert set(result) == {"schema_version", "task_id", "image_count",
                            "total_clone_count", "images"}
     for im in result["images"]:
-        assert set(im) == {"index", "image_path", "overlay_image_path", "is_pickable", "clones"}
-    # Resolve the exported IDs against the full result for compensation.
+        assert set(im) == {"index", "image_path", "overlay_image_path", "is_pickable", "clones",
+                           "stage_x_actual", "stage_y_actual", "mm_per_pixel"}
+    # Use the exported file directly for compensation.
     selected = result["images"][2]
-    image, clone = select_clone_for_compensation(source, {"mode": "image_and_clone", "purpose": "pick",
+    image, clone = select_clone_for_compensation(result, {"mode": "image_and_clone", "purpose": "pick",
         "image_index": selected["index"], "clone_id": selected["clones"][0]["clone_id"]})
-    assert clone == source["images"][2]["clones"][0]
+    assert clone["offset_from_image_center_px"] == source["images"][2]["clones"][0]["offset_from_image_center_px"]
     ctx = {"plate": {"pulses_per_mm": {"x": 100, "y": 200},
                      "x_stage_sign_for_view_right": -1, "y_stage_sign_for_view_down": -1}}
     assert _calc_compensate_target(ctx=ctx, params={}, image_item=image, clone_item=clone)["compensate_target"] == {"x": 310, "y": 180}
     assert build_pickable_detect_result(source) == result
+
+
+@pytest.mark.parametrize("inline", [False, True])
+@pytest.mark.parametrize("actual", [False, True])
+def test_export_as_compensation_input(tmp_path, monkeypatch, inline, actual):
+    from workflow import compensate_executor
+    from workflow.run_task import run_compensate_task
+    source = source_result()
+    for im in source["images"]:
+        im.update(stage_x_target=1000, stage_y_target=2000)
+        if not actual:
+            im.update(stage_x_actual=None, stage_y_actual=None)
+    exported = build_pickable_detect_result(source)
+    path = tmp_path / "pickable_detect_result.json"
+    path.write_text(json.dumps(exported), encoding="utf-8")
+    moves = []
+    def move(**kwargs):
+        moves.append((kwargs["target_x"], kwargs["target_y"]))
+        return {}
+    monkeypatch.setattr(compensate_executor, "_move_to_compensate_target", move)
+    params = {"task_id": "comp", "plate_type": "24-well", "well_name": "A4", "objective_name": "4x",
+              "compensate_selector": {"mode": "image_and_clone", "purpose": "pick",
+                                      "image_index": 3, "clone_id": "C01"},
+              "compensate_input_detect_result": exported if inline else None,
+              "compensate_input_detect_json": str(path)}
+    ctx = {"plate": {"pulses_per_mm": {"x": 100, "y": 200},
+                     "x_stage_sign_for_view_right": -1, "y_stage_sign_for_view_down": -1}}
+    result = run_compensate_task(ctx, params)
+    assert moves == ([(310, 180)] if actual else [(1010, 1980)])
+    assert result["selected_image_index"] == 3
+    assert result["selected_clone"]["clone_id"] == "C01"
 
 
 def test_empty_and_missing_or_inconsistent_deduplication():

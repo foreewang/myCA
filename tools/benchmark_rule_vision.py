@@ -182,8 +182,9 @@ def _watch_arrays(pipeline):
             return result
         return watched
 
-    for name in ("load_gray_image", "detect_and_refine", "refine_contour_in_roi"):
-        setattr(pipeline, name, wrap(getattr(pipeline, name)))
+    for name in ("load_gray_image", "detect_and_refine", "refine_contour_in_roi", "segment_single_image"):
+        if hasattr(pipeline, name):
+            setattr(pipeline, name, wrap(getattr(pipeline, name)))
     return refs
 
 

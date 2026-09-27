@@ -74,12 +74,14 @@ def build_pickable_detect_result(result: dict[str, Any]) -> dict[str, Any]:
     images = []
     for original in result.get("images", []):
         clones = [{"clone_id": c["clone_id"], "global_clone_id": c["global_clone_id"],
-                   "is_pickable": True, "center_px": deepcopy(c.get("center_px"))}
+                   "is_pickable": True, "center_px": deepcopy(c.get("center_px")),
+                   "offset_from_image_center_px": deepcopy(c.get("offset_from_image_center_px"))}
                   for c in original.get("clones", [])
                   if (c.get("source_detection_id") or f"I{original['index']}:{c['clone_id']}") in selected]
         # Allowlist fields: newly added diagnostic fields must stay internal.
         image = {k: deepcopy(original[k]) for k in
-                 ("index", "image_path", "overlay_image_path") if k in original}
+                 ("index", "image_path", "overlay_image_path", "stage_x_actual", "stage_y_actual",
+                  "stage_x_target", "stage_y_target", "mm_per_pixel") if k in original}
         image.update(is_pickable=bool(clones), clones=clones)
         images.append(image)
     metadata = ("task_id", "status", "plate_type", "well_name", "objective_name")

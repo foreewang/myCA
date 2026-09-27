@@ -10,6 +10,8 @@ import numpy as np
 
 def texture_processing_metadata(debug):
     """Stable diagnostics, including empty detections; excludes per-run timing."""
+    if 'texture_processing' in debug:
+        return dict(debug['texture_processing'])
     return {
         "algorithm": "connected_texture_v1",
         "coarse_backend": debug.get("texture_backend"),

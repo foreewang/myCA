@@ -26,6 +26,7 @@ def rule_texture_kwargs(entrypoint, config):
     return {key: config[key] for key in (
         "texture_backend", "texture_noise_floor", "texture_window", "coarse_work_max",
         "refine_work_max", "safe_margin_px", "min_rotated_aspect_ratio",
+        "rule_algorithm", "single_image_options",
     ) if key in config}
 
 
@@ -334,10 +335,10 @@ def normalize_detect_result(raw_result: Any) -> Dict[str, Any]:
 
 
 def _call_detect_entrypoint(fn: Callable[..., Any], image_path: str, detect_kwargs: Dict[str, Any]) -> Any:
-    # Physical scale remains workflow/model metadata. Rule rendering receives
-    # scale_bar separately; do not forward unused scale into rule segmentation.
+    # Only the frozen legacy entrypoint lacks physical-scale support. Current
+    # rules need the same calibration on scan and recapture frames.
     if getattr(fn, "__module__", "") in {
-        "vision.vision.detect_pipeline", "vision.detect_pipeline",
+        "vision.vision.legacy_detect_pipeline", "vision.legacy_detect_pipeline",
     }:
         detect_kwargs = {key: value for key, value in detect_kwargs.items() if key != "mm_per_pixel"}
     if not detect_kwargs:

@@ -21,7 +21,7 @@ vision.vision.instance_pipeline:process_image
 
 `detect.model_dir` 必须是含严格 manifest 和两份 ONNX 的发布目录。模型缺失、校验失败或运行时不兼容会让任务失败，不会变成“0 个克隆”，也不会静默回退规则算法。
 
-旧入口仅在显式指定时可用：
+规则入口仅在显式指定时可用：
 
 ```text
 vision.vision.detect_pipeline:process_image
@@ -50,7 +50,33 @@ vision.vision.detect_pipeline:process_image
 
 同一输出目录里已有的 01–04 文件不会自动删除，切换为默认模式后这些历史文件仍可能存在。验收本次产物或体积时使用新的输出目录。
 
-### 规则误检调参
+### 当前单图规则（2026-09-27）
+
+规则入口默认使用 `single_image_rules_v4`，采用用户确认可上线的 V4 单图复核效果（7 图共 12 个绿色候选）。
+包含 C1 外凸收回、图边凹口补全和 D6 稀疏纹理区域合并；D6 合并区域仍为待复核。
+`components` 只包含正常纹理目标，`is_pickable=true`；大暗团、边缘暗区及其他待复核纹理进入
+`review_candidates`，其 `is_pickable` 和 `is_valid_for_compensation` 均为 `false`。
+返回 schema v2，正式计数和 overlay/mask 只包含绿色目标，诊断记录保存在 `07_result.json`。
+
+扫描及补拍的 `mm_per_pixel.x/y` 已接入分割，图像尺度使用对应 FOV 标定；直接 Python 调用
+可传 `mm_per_pixel` 或 `fov_mm`，均未传时明确记录为默认 4x 完整视野 3.22×3.22 mm。
+裁剪图应传正确尺度。比例尺 `scale_bar` 仅用于绘制，不替代分割标定。
+
+当前版本保持验收版 OpenCV CPU 计算结果；旧任务中的 `texture_backend=cuda/auto` 不会触发 GPU
+计算，结果元数据记录请求值、实际 CPU 和原因。未做本算法的 GPU 加速。
+旧 ROI 参数（如 `texture_noise_floor`、`texture_window`、`coarse_work_max`、
+`min_rotated_aspect_ratio`）对新版不生效，元数据列出 `ignored_legacy_options`。
+`detect.single_image_options` 继续控制基础分割参数；V2/V3/V4 细化阶段使用固定验收参数，
+结果的 `rule_stage_configs` 记录全部阶段配置。现有接口不新增必填参数。
+
+未指定 `detect.rule_algorithm` 时自动使用 V4；显式写了 `single_image_rules_v2` 的配置仍运行上一版，
+需要升级时改为 `single_image_rules_v4` 或删除该配置。上一版保留作显式回退。
+
+需要旧算法对照时设置 `detect.rule_algorithm="connected_texture_v1"`；需要其 CUDA 路径再显式设置
+`texture_backend="cuda"`。默认模型入口及跨图处理未变更。详见
+[V4 正式接入与部署说明](ipscell_v4_production_20260927.md)。
+
+### 旧 connected_texture_v1 调参记录
 
 规则入口新增 `detect.min_rotated_aspect_ratio`，默认 `0.30`，有效范围 `[0, 1]`。
 它检查细化轮廓的最小旋转外接矩形短边/长边比，避免斜向孔壁亮带因水平外接框较宽而通过筛选。
@@ -129,7 +155,7 @@ python vision/run_detect.py path/to/image.bmp --backend model \
   --out-dir data/vision_debug
 ```
 
-旧规则算法：
+当前规则算法（CLI 的 `legacy` 表示规则路由）：
 
 ```bash
 python vision/run_detect.py path/to/image.bmp --backend legacy --out-dir data/vision_debug

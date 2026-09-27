@@ -1,7 +1,7 @@
 """vision 包的对外入口。
 
-默认业务入口是模型化 4x 实例定位。旧规则算法保留 ``legacy_*`` 别名，
-只在调用方显式选择 legacy 时使用。
+默认业务入口是模型化 4x 实例定位。规则路由保留 ``legacy_*`` 兼容别名，
+默认执行已验收单图算法；旧 connected_texture_v1 需显式选择 rule_algorithm。
 """
 
 from .instance_pipeline import detect_from_array, detect_from_path, process_image

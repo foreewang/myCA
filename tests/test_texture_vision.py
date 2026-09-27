@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from vision.vision import gpu_ops
-from vision.vision.detect_pipeline import detect_from_gray, process_image
+from vision.vision.legacy_detect_pipeline import detect_from_gray, process_image
 from vision.vision.preprocess import map_bbox, map_points, resize_keep_ratio
 from vision.vision.texture_segment import safe_texture_point
 
@@ -172,7 +172,7 @@ def test_process_image_downstream_normalization(tmp_path):
     cv2.imencode('.png', image)[1].tofile(str(path))
     raw = process_image(path, texture_backend='cpu')
     normalized = run_detect_on_image(str(path), entrypoint='vision.vision.detect_pipeline:process_image',
-                                    detect_kwargs={'texture_backend': 'cpu', 'mm_per_pixel': {'x': .01, 'y': .01}})
+                                    detect_kwargs={'rule_algorithm': 'connected_texture_v1', 'texture_backend': 'cpu', 'mm_per_pixel': {'x': .01, 'y': .01}})
     assert raw['component_count'] == len(normalized['clones']) == 1
     assert list(normalized['clones'][0]['center_px']) == raw['components'][0]['safe_point']
     json.dumps(raw, allow_nan=False)
@@ -211,7 +211,7 @@ def test_failed_components_omit_obsolete_dark_fields(tmp_path):
     'radial_mode', 'recenter_iterations', 'mm_per_pixel',
 ])
 def test_removed_public_options_are_rejected_by_array_and_path_entrypoints(tmp_path, name):
-    from vision.vision.detect_pipeline import detect_and_refine, detect_from_path
+    from vision.vision.legacy_detect_pipeline import detect_and_refine, detect_from_path
     image = np.full((32, 32), 180, np.uint8)
     path = tmp_path / 'input.png'
     cv2.imencode('.png', image)[1].tofile(str(path))
@@ -265,7 +265,7 @@ def test_real_cuda_moments_and_final_instances():
 
 
 def test_all_texture_entrypoints_default_to_cuda():
-    from vision.vision import detect_pipeline, preprocess, segment, texture_segment
+    from vision.vision import legacy_detect_pipeline as detect_pipeline, preprocess, segment, texture_segment
     assert gpu_ops.DEFAULT_TEXTURE_BACKEND == 'cuda'
     for fn, key in [(gpu_ops.texture_moments, 'backend'), (preprocess.texture_signal, 'backend'),
                     (segment.detect_coarse_rois, 'texture_backend'),
@@ -313,7 +313,7 @@ def test_closed_loop_recapture_uses_same_texture_options_and_coordinates(tmp_pat
     image = textured(disk())
     cv2.imencode('.png', image)[1].tofile(str(path))
     params = {'fov_mm': {'width': 8., 'height': 6.},
-              'detect_rule_options': {'texture_backend': 'cpu', 'safe_margin_px': 12}}
+              'detect_rule_options': {'rule_algorithm': 'connected_texture_v1', 'texture_backend': 'cpu', 'safe_margin_px': 12}}
     captured = {}
     actual_detect = compensate_executor.run_detect_on_image
     def observe(*args, **kwargs):

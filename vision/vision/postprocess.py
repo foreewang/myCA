@@ -252,6 +252,7 @@ def save_outputs(
         "components": refined,
     }
     result_json["texture_processing"] = texture_processing_metadata(debug)
+    result_json.update(debug.get("result_fields", {}))
 
     atomic_write_json(out_dir / "07_result.json", result_json)
 

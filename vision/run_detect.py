@@ -39,8 +39,10 @@ def main() -> None:
         help="explicitly allow rebuilding sessions on CPU when CUDA initialization fails",
     )
     parser.add_argument("--mm-per-pixel", type=float, default=None)
+    parser.add_argument("--rule-algorithm", choices=("single_image_rules_v4", "single_image_rules_v2", "connected_texture_v1"),
+                        default=None, help="rule mode: accepted single-image algorithm by default")
     parser.add_argument("--texture-backend", choices=("cpu", "cuda", "auto"), default=None,
-                        help="legacy rule texture backend (default: cuda; errors if unavailable)")
+                        help="rule backend request; single-image rules use OpenCV CPU")
     parser.add_argument("--safe-margin-px", type=float, default=None,
                         help="legacy minimum distance from texture boundary in original pixels")
     parser.add_argument(
@@ -53,6 +55,8 @@ def main() -> None:
         parser.error("--save-debug is only supported when --backend=legacy")
     if args.backend != "legacy" and (args.texture_backend is not None or args.safe_margin_px is not None):
         parser.error("--texture-backend and --safe-margin-px require --backend=legacy")
+    if args.backend != "legacy" and args.rule_algorithm is not None:
+        parser.error("--rule-algorithm requires --backend=legacy")
 
     scale_bar = None
     if args.mm_per_pixel is not None:
@@ -76,6 +80,10 @@ def main() -> None:
         from vision.vision.detect_pipeline import detect_from_path
 
         texture_options = {}
+        if args.rule_algorithm is not None:
+            texture_options["rule_algorithm"] = args.rule_algorithm
+        if args.mm_per_pixel is not None:
+            texture_options["mm_per_pixel"] = args.mm_per_pixel
         if args.texture_backend is not None:
             texture_options["texture_backend"] = args.texture_backend
         if args.safe_margin_px is not None:

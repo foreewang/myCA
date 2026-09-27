@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pytest
 
-from vision.vision.detect_pipeline import detect_from_gray
+from vision.vision.legacy_detect_pipeline import detect_from_gray
 from vision.vision.texture_segment import refine_texture_roi
 from workflow.detect_api import normalize_detect_result
 

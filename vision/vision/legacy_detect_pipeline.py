@@ -1,0 +1,322 @@
+"""视觉检测流水线入口。
+
+本模块把底层算法串成完整流程:
+1. 统一输入图片格式。
+2. 在整图上按内部纹理寻找多候选 ROI。
+3. 在每个 ROI 内提取连通纹理轮廓，并可选用 GrabCut 细化边缘。
+4. 根据目标自身有效性标注 is_pickable。
+5. 生成 overlay、mask、JSON 等输出。
+
+workflow 层如果配置 entrypoint 为 ``vision.detect_pipeline:process_image``，
+最终会走到这里。
+"""
+
+import cv2
+import numpy as np
+
+from .gpu_ops import DEFAULT_TEXTURE_BACKEND
+
+from .feature_extract import (build_failed_component, build_refined_component,
+                              to_global_contour, texture_processing_metadata)
+from .image_loader import load_gray_image, to_gray_u8
+from .postprocess import save_outputs
+from .scorer import score_components_by_area
+from .segment import detect_coarse_rois, refine_contour_in_roi
+
+
+def detect_and_refine(
+    gray,
+    coarse_work_max=1024,
+    refine_pad_ratio=0.20,
+    max_keep=None,
+    edge_refine_method="none",
+    edge_refine_iterations=2,
+    max_bbox_area_ratio=0.30,
+    refine_clip_to_coarse_bbox=True,
+    refine_clip_pad_ratio=0.05,
+    reject_border_touch=False,
+    *,
+    texture_backend=DEFAULT_TEXTURE_BACKEND,
+    texture_noise_floor=1.5,
+    texture_window=7,
+    refine_work_max=1200,
+    safe_margin_px=1.0,
+    min_rotated_aspect_ratio=0.30,
+    collect_outputs=True,
+    collect_debug=True,
+):
+    """执行“粗检测 + 局部轮廓细化 + 可挑取标注”的核心流程。
+
+    返回 refined 和 debug:
+    - refined 是最终目标列表，会写入 07_result.json 的 components。
+    - debug 保存中间图和检测元数据，供 save_outputs 生成调试图片和 overlay。
+    - 直接调用默认保留全部中间图；流水线可关闭无需输出的全图缓冲区。
+    """
+    for name, value in (("safe_margin_px", safe_margin_px), ("refine_pad_ratio", refine_pad_ratio),
+                        ("refine_clip_pad_ratio", refine_clip_pad_ratio)):
+        if not np.isfinite(value) or value < 0:
+            raise ValueError(f"{name} must be finite and nonnegative")
+    if not np.isfinite(refine_work_max) or refine_work_max < 1:
+        raise ValueError("refine_work_max must be positive")
+    if not np.isfinite(min_rotated_aspect_ratio) or not 0 <= min_rotated_aspect_ratio <= 1:
+        raise ValueError("min_rotated_aspect_ratio must be finite and between 0 and 1")
+    coarse, coarse_debug = detect_coarse_rois(
+        gray,
+        work_max=coarse_work_max,
+        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+        texture_window=texture_window,
+        max_keep=max_keep,
+        max_bbox_area_ratio=max_bbox_area_ratio,
+        reject_border_touch=reject_border_touch,
+    )
+
+    H, W = gray.shape
+    refined = []
+
+    # 这些全图缓冲区仅用于输出，不参与候选、轮廓或安全点计算。
+    full_refine_density = np.zeros_like(gray, dtype=np.uint8) if collect_outputs and collect_debug else None
+    full_contour_mask = np.zeros_like(gray, dtype=np.uint8) if collect_outputs else None
+    overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) if collect_outputs else None
+
+    for idx, item in enumerate(coarse, start=1):
+        # coarse_bbox 和 safe_point 都是原图坐标。
+        x, y, w, h = item["coarse_bbox"]
+        cx, cy = item.get("safe_point") or item["coarse_center_pixel"]
+
+        # 对未扩边的粗框扩边一次，保留细化所需的背景参照。
+        pad_x = int(round(w * refine_pad_ratio))
+        pad_y = int(round(h * refine_pad_ratio))
+        x0 = max(0, x - pad_x)
+        y0 = max(0, y - pad_y)
+        x1 = min(W, x + w + pad_x)
+        y1 = min(H, y + h + pad_y)
+
+        roi = gray[y0:y1, x0:x1]
+        center_local = [cx - x0, cy - y0]
+
+        refined_item, refine_debug = refine_contour_in_roi(
+            roi,
+            center_local,
+            max_work=refine_work_max,
+            instance_support=item.get("_support_small"),
+            texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+            texture_window=texture_window, safe_margin_px=safe_margin_px,
+            edge_refine_method=edge_refine_method,
+            edge_refine_iterations=edge_refine_iterations,
+            clip_bbox_local=(
+                [x - x0, y - y0, w, h]
+                if refine_clip_to_coarse_bbox
+                else None
+            ),
+            clip_pad_ratio=refine_clip_pad_ratio,
+        )
+
+        if refined_item is None or not refined_item.get("is_valid_for_compensation", True):
+            if refined_item is not None:
+                refine_debug["failure_reason"] = refined_item["segmentation_status"]
+            # 失败候选仅保留在结果记录中，不绘制粗框和未经细化的定位点。
+            failed = build_failed_component(
+                idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
+            )
+            if refined_item is not None:
+                failed["retained_support_ratio"] = refined_item.get("retained_support_ratio")
+            refined.append(failed)
+            del refined_item, refine_debug
+            continue
+
+        # 把 ROI 局部轮廓映射回原图坐标后绘制 overlay。
+        _, cnt_global = to_global_contour(refined_item["contour_local"], x0, y0)
+        # Axis-aligned boxes make diagonal wall streaks look wide. Measure the
+        # final contour in its own orientation, after refinement has settled.
+        _, (rotated_w, rotated_h), _ = cv2.minAreaRect(cnt_global)
+        aspect_ratio = min(rotated_w, rotated_h) / max(rotated_w, rotated_h, 1.0)
+        if aspect_ratio < min_rotated_aspect_ratio:
+            rejected = build_failed_component(
+                idx, x, y, w, h, x0, y0, x1, y1, cx, cy,
+                {**refine_debug, "failure_reason": "elongated_texture"}, item,
+            )
+            rejected["rotated_aspect_ratio"] = float(aspect_ratio)
+            refined.append(rejected)
+            del refined_item, refine_debug
+            continue
+        if overlay is not None:
+            cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
+
+            cxl = refined_item["center_local"][0]
+            cyl = refined_item["center_local"][1]
+            cxg = int(cxl + x0)
+            cyg = int(cyl + y0)
+
+            cv2.circle(overlay, (cxg, cyg), 26, (0, 0, 255), -1, cv2.LINE_AA)
+            cv2.circle(overlay, (cxg, cyg), 30, (255, 255, 255), 2, cv2.LINE_AA)
+            text_org = (cxg + 36, cyg - 36)
+            cv2.putText(
+                overlay,
+                f"C{idx:02d}",
+                text_org,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                (255, 255, 255),
+                9,
+                cv2.LINE_AA,
+            )
+            cv2.putText(
+                overlay,
+                f"C{idx:02d}",
+                text_org,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                (0, 0, 255),
+                6,
+                cv2.LINE_AA,
+            )
+
+        # 合成全图 mask。多个 ROI 重叠时取最大值，相当于保留任一前景。
+        if full_contour_mask is not None:
+            mask_view = full_contour_mask[y0:y1, x0:x1]
+            np.maximum(mask_view, refined_item["mask_full"], out=mask_view)
+            del mask_view
+
+        # 把 ROI 内的密度图恢复到 ROI 原始尺寸，再贴回全图。
+        if full_refine_density is not None:
+            density_full = cv2.resize(
+                refine_debug["density"],
+                (roi.shape[1], roi.shape[0]),
+                interpolation=cv2.INTER_LINEAR,
+            )
+            density_view = full_refine_density[y0:y1, x0:x1]
+            np.maximum(density_view, density_full, out=density_view)
+            del density_view, density_full
+
+        refined.append(
+            build_refined_component(
+                idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global, item
+            )
+        )
+        # 不把上一 ROI 的图像缓冲区保留到下一次 GrabCut 执行期间。
+        del refined_item, refine_debug
+
+    refined = score_components_by_area(refined)
+    # is_pickable 表示目标自身有效，细化失败或质量不合格的目标不可挑取。
+    for item in refined:
+        item["is_pickable"] = item.get("is_valid_for_compensation") is not False
+
+    debug = {
+        "coarse_flat": coarse_debug["flat"],
+        "coarse_binary": coarse_debug["binary_small"],
+        "coarse_scale": coarse_debug["scale"],
+        "coarse_density_thresh": coarse_debug.get("density_thresh"),
+        "coarse_candidate_count": coarse_debug.get("coarse_candidate_count", len(coarse)),
+        "texture_backend": coarse_debug.get("texture_backend"),
+        "texture_fallback_reason": coarse_debug.get("texture_fallback_reason"),
+        "full_refine_density": full_refine_density,
+        "overlay": overlay,
+        "contour_mask": full_contour_mask,
+    }
+    return refined, debug
+
+
+def detect_from_gray(
+    gray,
+    src_path="in_memory",
+    out_dir=None,
+    coarse_work_max=1024,
+    refine_pad_ratio=0.20,
+    max_keep=None,
+    edge_refine_method="none",
+    edge_refine_iterations=2,
+    max_bbox_area_ratio=0.30,
+    refine_clip_to_coarse_bbox=True,
+    refine_clip_pad_ratio=0.05,
+    reject_border_touch=False,
+    scale_bar=None,
+    save_debug=False,
+    *, texture_backend=DEFAULT_TEXTURE_BACKEND, texture_noise_floor=1.5, texture_window=7,
+    refine_work_max=1200, safe_margin_px=1.0,
+    min_rotated_aspect_ratio=0.30,
+):
+    """从内存图片执行检测。
+
+    out_dir 为 None 时只返回字典，也不构建全图可视化缓冲区；传入目录时
+    默认写出 05_contour_mask.bmp、06_overlay.bmp、07_result.json。
+    save_debug=True 时额外生成 01–04 调试图，不改变识别结果。
+    """
+    return _detect_from_normalized_gray(
+        to_gray_u8(gray),
+        src_path=src_path,
+        out_dir=out_dir,
+        scale_bar=scale_bar,
+        save_debug=save_debug,
+        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
+        texture_window=texture_window, refine_work_max=refine_work_max, safe_margin_px=safe_margin_px,
+        min_rotated_aspect_ratio=min_rotated_aspect_ratio,
+        coarse_work_max=coarse_work_max,
+        refine_pad_ratio=refine_pad_ratio,
+        max_keep=max_keep,
+        edge_refine_method=edge_refine_method,
+        edge_refine_iterations=edge_refine_iterations,
+        max_bbox_area_ratio=max_bbox_area_ratio,
+        refine_clip_to_coarse_bbox=refine_clip_to_coarse_bbox,
+        refine_clip_pad_ratio=refine_clip_pad_ratio,
+        reject_border_touch=reject_border_touch,
+    )
+
+
+def _detect_from_normalized_gray(
+    gray, src_path="in_memory", out_dir=None, *,
+    scale_bar=None, save_debug=False, **detect_kwargs,
+):
+    """Execute using an owned uint8 grayscale buffer without copying it again."""
+    if not isinstance(save_debug, bool):
+        raise ValueError("save_debug must be a boolean")
+    refined, debug = detect_and_refine(
+        gray,
+        collect_outputs=out_dir is not None,
+        collect_debug=save_debug,
+        **detect_kwargs,
+    )
+
+    if out_dir is None:
+        return {
+            "input_path": str(src_path),
+            "input_size": {
+                "width": int(gray.shape[1]),
+                "height": int(gray.shape[0]),
+            },
+            "component_count": len(refined),
+            "coarse_density_thresh": debug.get("coarse_density_thresh"),
+            "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
+            "scale_bar": None,
+            "component_ids": [d["id"] for d in refined],
+            "components": refined,
+            "texture_processing": texture_processing_metadata(debug),
+        }
+
+    return save_outputs(
+        src_path, out_dir, gray, refined, debug, scale_bar=scale_bar,
+        save_debug=save_debug, copy_overlay=False,
+    )
+
+
+def detect_from_path(image_path, out_dir="outputs_5120_contour_refined_opt", **kwargs):
+    """读取图片路径并执行检测。其他参数透传给 detect_from_gray。"""
+    # load_gray_image 返回自持有的灰度图，并在返回前释放解码的彩色原图。
+    # 内存入口继续复制/转换以保护调用方；文件入口不需要再复制这份灰度图。
+    gray = load_gray_image(image_path)
+    return _detect_from_normalized_gray(gray, src_path=image_path, out_dir=out_dir, **kwargs)
+
+
+def process_image(image_path, **kwargs):
+    """给 workflow 或外部脚本使用的轻量入口。
+
+    如果调用方没有显式传 out_dir，默认只返回内存结果，不额外写盘。
+    workflow 当前会传入自己的 out_dir，用来生成 overlay 和 07_result.json。
+    """
+    if "out_dir" not in kwargs:
+        kwargs["out_dir"] = None
+    # workflow v2 forwards model-selection metadata to every configured
+    # entrypoint.  Explicit legacy mode ignores those keys rather than leaking
+    # them into detect_from_gray, which has no model runtime.
+    for key in ("model_dir", "provider", "allow_cpu_fallback", "objective_name"):
+        kwargs.pop(key, None)
+    return detect_from_path(image_path=image_path, **kwargs)

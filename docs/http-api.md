@@ -703,7 +703,9 @@ workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_
 `center_px` 为入选代表在原图中的中心像素坐标 `[x, y]`，保持源值，缺失时为 null。
 `schema_version` 为 3；照片级 `is_pickable` 表示该照片是否包含入选代表。
 后端筛选照片级 `is_pickable=true` 的照片，筛选结果非空时获取这些照片，否则获取全部照片。
-没有可挑取克隆时仍保留全部照片，`clones` 为空；运动坐标、模型信息及去重明细留在完整结果中。
+没有可挑取克隆时仍保留全部照片，`clones` 为空；模型信息及去重明细留在完整结果中。
+照片同时保留 `stage_x_actual`、`stage_y_actual`、`stage_x_target`、`stage_y_target`、`mm_per_pixel`，
+入选克隆保留 `offset_from_image_center_px`，以支持直接补偿；各值均来自原始代表照片及克隆。
 
 完成任务的 `detect_result.pickable_result_json`（单孔）、孔记录的 `pickable_result_json`
 及孔图片查询响应提供实际文件路径。前端可直接读取或下载：
@@ -715,9 +717,10 @@ GET /api/tasks/{task_id}/wells/{well_name}/pickable-result?download=true
 
 第一种返回 `application/json` 文件内容，第二种附带附件下载头；未记录文件或文件不存在时返回 404。
 前端从 `images[].clones[]` 展示候选，选择后把代表记录的图片 `index` 和 `clone_id` 提交给补偿。
-补偿的 `compensate.input_detect_json` 应使用完整的 `detect_result.json`，或将完整检测结果作为
-`compensate.input_detect_result` 上传；精简候选文件不再包含补偿坐标，不可直接作为补偿输入。
-两种方式均使用 `selector.purpose="pick"`，并提交所选照片的 `index` 和 `clone_id`。
+补偿的 `compensate.input_detect_json` 可指向 `pickable_detect_result.json`，或将该文件内容作为
+`compensate.input_detect_result` 上传；完整的 `detect_result.json` 也仍可使用。
+两种方式均使用 `selector.mode="image_and_clone"`、`selector.purpose="pick"`，
+并将所选照片的 `index` 作为 `image_index`，同时提交 `clone_id`。无可挑取克隆时不能执行补偿。
 实际图片预览仍通过已有图片接口完成，JSON 中服务器路径不是浏览器 URL。
 候选结构及离线转换见 [任务文档](tasks.md#可挑取且去重的候选文件)。
 

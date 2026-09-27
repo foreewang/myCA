@@ -1,0 +1,67 @@
+{
+  "task_id": "pipeline_202609022_1_A1",
+  "status": "success",
+  "plate_type": "24-well",
+  "well_name": "A1",
+  "objective_name": "4x",
+  "schema_version": 3,
+  "images": [
+    {
+      "index": 1,
+      "image_path": "data/interface_tasks/pipeline_202609022_1/A1/images/A1_001_row00_col00.bmp",
+      "overlay_image_path": "data/interface_tasks/pipeline_202609022_1/A1/detect_overlays/A1_001_row00_col00_vision/06_overlay.bmp",
+      "is_pickable": true,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "global_clone_id": "G1",
+          "is_pickable": true,
+          "center_px": [
+            2410,
+            2600
+          ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "image_path": "data/interface_tasks/pipeline_202609022_1/A1/images/A1_002_row00_col01.bmp",
+      "overlay_image_path": "data/interface_tasks/pipeline_202609022_1/A1/detect_overlays/A1_002_row00_col01_vision/06_overlay.bmp",
+      "is_pickable": false,
+      "clones": []
+    },
+    {
+      "index": 3,
+      "image_path": "data/interface_tasks/pipeline_202609022_1/A1/images/A1_003_row00_col02.bmp",
+      "overlay_image_path": "data/interface_tasks/pipeline_202609022_1/A1/detect_overlays/A1_003_row00_col02_vision/06_overlay.bmp",
+      "is_pickable": true,
+      "clones": [
+        {
+          "clone_id": "C01",
+          "global_clone_id": "G2",
+          "is_pickable": true,
+          "center_px": [
+            2550,
+            2480
+          ]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "image_path": "data/interface_tasks/pipeline_202609022_1/A1/images/A1_004_row01_col00.bmp",
+      "overlay_image_path": "data/interface_tasks/pipeline_202609022_1/A1/detect_overlays/A1_004_row01_col00_vision/06_overlay.bmp",
+      "is_pickable": false,
+      "clones": []
+    },
+    {
+      "index": 5,
+      "image_path": "data/interface_tasks/pipeline_202609022_1/A1/images/A1_005_row01_col01.bmp",
+      "overlay_image_path": "data/interface_tasks/pipeline_202609022_1/A1/detect_overlays/A1_005_row01_col01_vision/06_overlay.bmp",
+      "is_pickable": false,
+      "clones": []
+    }
+  ],
+  "image_count": 5,
+  "total_clone_count": 2
+}

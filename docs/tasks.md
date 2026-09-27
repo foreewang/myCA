@@ -249,16 +249,19 @@ for name, values in sorted(samples.items()):
 | 顶层 | `image_count`、`total_clone_count`、`images` | 全部照片数、去重可挑取克隆数及照片列表 |
 | 照片 | `index`、`image_path`、`overlay_image_path` | 原照片编号、原图和标注图路径（源结果中存在才输出，标注图可为 null） |
 | 照片 | `is_pickable`、`clones` | 是否包含入选的可挑取代表、入选克隆列表；无候选时为 false 和空列表 |
+| 照片 | `stage_x_actual`、`stage_y_actual`、`stage_x_target`、`stage_y_target`、`mm_per_pixel` | 原始拍摄坐标及像素比例尺；补偿优先使用实际坐标，为 null 时使用目标坐标 |
 | 克隆 | `clone_id`、`global_clone_id`、`is_pickable`、`center_px` | 原克隆 ID、去重 ID、true 标记及该代表在原图中的中心像素坐标 `[x, y]`（源值缺失时为 null） |
+| 克隆 | `offset_from_image_center_px` | 入选代表相对所属照片中心的原始像素偏移 `[dx, dy]`，用于补偿 |
 
 后端筛选 `images[].is_pickable == true` 的照片：筛选结果非空时获取这些照片，
 否则获取全部 `images`。即使完全没有可挑取克隆，照片列表仍完整；只有源结果无照片时才为空。
 照片级标记表示有入选的去重代表，同组其他照片仍保留但不重复标记为可挑取。
 
-运动坐标、比例尺、模型运行信息、质量评估、复核候选和去重明细不再导出，
+保留补偿必需的运动坐标、比例尺及像素偏移；模型运行信息、质量评估、复核候选和去重明细不再导出，
 详细信息在 `detect_result.json` 和 `scan_result.json` 复核。
-精简文件不再直接用于 `compensate.input_detect_json` 或 `compensate.input_detect_result`；
-补偿使用完整检测结果，配合 `purpose="pick"` 及导出的原始 `image_index + clone_id`。
+精简文件可直接用于 `compensate.input_detect_json`，也可将文件内容作为 `compensate.input_detect_result`；
+使用 `mode="image_and_clone"`、`purpose="pick"` 及导出的原始 `image_index + clone_id`。
+补偿所需字段必须来自同一入选代表及其所属照片。无可挑取克隆的文件用于抓图，不能选择补偿目标。
 
 单孔可指定 `task.detect.pickable_output_json`；省略时在 `detect.output_json`（或
 `output.detect_json`）同目录生成，未配置检测输出路径时使用 `capture.save_dir`。

@@ -1,5 +1,10 @@
 # 规则视觉默认GPU：配置与实现
 
+> 历史记录：本文描述 2026-09-09 的 `connected_texture_v1`。
+> 2026-09-24 规则入口已改用验收通过的 `single_image_rules_v2`，保持 OpenCV CPU 实现。
+> 重现本文 GPU 路径需显式设置 `rule_algorithm="connected_texture_v1"` 和 `texture_backend="cuda"`。
+> 当前行为见 [视觉检测](vision.md)。
+
 2026-09-09按用户要求，将规则视觉默认后端改为 `cuda`，使用本地ca环境和RTX 500 Ada验证。入口仍为 `vision.vision.detect_pipeline:process_image`。
 
 ## 默认调用

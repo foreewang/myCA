@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pytest
 
-from vision.vision.detect_pipeline import detect_from_gray
+from vision.vision.legacy_detect_pipeline import detect_from_gray
 from workflow.detect_api import normalize_detect_result, rule_texture_kwargs
 
 

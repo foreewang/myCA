@@ -1,322 +1,241 @@
-"""视觉检测流水线入口。
+"""Production rules using the accepted V4 single-image green candidates.
 
-本模块把底层算法串成完整流程:
-1. 统一输入图片格式。
-2. 在整图上按内部纹理寻找多候选 ROI。
-3. 在每个 ROI 内提取连通纹理轮廓，并可选用 GrabCut 细化边缘。
-4. 根据目标自身有效性标注 is_pickable。
-5. 生成 overlay、mask、JSON 等输出。
-
-workflow 层如果配置 entrypoint 为 ``vision.detect_pipeline:process_image``，
-最终会走到这里。
+Select rule_algorithm='connected_texture_v1' for the frozen old algorithm.
+Model inference keeps its separate entrypoint.
 """
+from dataclasses import fields
+from collections.abc import Mapping
 
 import cv2
 import numpy as np
 
-from .gpu_ops import DEFAULT_TEXTURE_BACKEND
-
-from .feature_extract import (build_failed_component, build_refined_component,
-                              to_global_contour, texture_processing_metadata)
 from .image_loader import load_gray_image, to_gray_u8
 from .postprocess import save_outputs
-from .scorer import score_components_by_area
-from .segment import detect_coarse_rois, refine_contour_in_roi
+from .single_image_segment import SingleImageConfig, segment_single_image
+
+RULE_ALGORITHM = 'single_image_rules_v4'
+PREVIOUS_ALGORITHM = 'single_image_rules_v2'
+LEGACY_ALGORITHM = 'connected_texture_v1'
+LEGACY_OPTIONS = {
+    'coarse_work_max', 'refine_pad_ratio', 'edge_refine_method',
+    'edge_refine_iterations', 'max_bbox_area_ratio', 'refine_clip_to_coarse_bbox',
+    'refine_clip_pad_ratio', 'texture_noise_floor', 'texture_window',
+    'refine_work_max', 'min_rotated_aspect_ratio',
+}
+
+
+def _options(options):
+    unknown = set(options) - LEGACY_OPTIONS
+    if unknown:
+        raise TypeError(f'Unsupported rule arguments: {", ".join(sorted(unknown))}')
+
+
+def _physical_scale(shape, mm_per_pixel, fov_mm):
+    h, w = shape
+    explicit = None
+    if fov_mm is not None:
+        explicit = ([fov_mm['width'], fov_mm['height']] if isinstance(fov_mm, Mapping) else fov_mm)
+        if len(explicit) != 2:
+            raise ValueError('fov_mm must contain width and height')
+        explicit = tuple(float(v) for v in explicit)
+    if mm_per_pixel is not None:
+        pixel = ([mm_per_pixel['x'], mm_per_pixel['y']] if isinstance(mm_per_pixel, Mapping)
+                 else [mm_per_pixel, mm_per_pixel])
+        if any(isinstance(v, bool) for v in pixel):
+            raise ValueError('mm_per_pixel must be positive finite numbers')
+        pixel = tuple(float(v) for v in pixel)
+        if not all(np.isfinite(v) and v > 0 for v in pixel):
+            raise ValueError('mm_per_pixel must be positive finite numbers')
+        calculated = (pixel[0]*w, pixel[1]*h)
+        if explicit is not None and not np.allclose(explicit, calculated, rtol=1e-6, atol=1e-9):
+            raise ValueError('fov_mm conflicts with mm_per_pixel and image dimensions')
+        explicit, source = calculated, 'mm_per_pixel'
+    else:
+        source = 'fov_mm' if explicit is not None else 'default_4x_fov'
+        explicit = explicit if explicit is not None else (3.22, 3.22)
+    if not all(np.isfinite(v) and v > 0 for v in explicit):
+        raise ValueError('fov_mm must contain positive finite numbers')
+    return explicit, source
 
 
 def detect_and_refine(
-    gray,
-    coarse_work_max=1024,
-    refine_pad_ratio=0.20,
-    max_keep=None,
-    edge_refine_method="none",
-    edge_refine_iterations=2,
-    max_bbox_area_ratio=0.30,
-    refine_clip_to_coarse_bbox=True,
-    refine_clip_pad_ratio=0.05,
-    reject_border_touch=False,
-    *,
-    texture_backend=DEFAULT_TEXTURE_BACKEND,
-    texture_noise_floor=1.5,
-    texture_window=7,
-    refine_work_max=1200,
-    safe_margin_px=1.0,
-    min_rotated_aspect_ratio=0.30,
-    collect_outputs=True,
-    collect_debug=True,
+    gray, *, mm_per_pixel=None, fov_mm=None, single_image_options=None,
+    rule_algorithm=RULE_ALGORITHM, texture_backend='cpu', safe_margin_px=1.0,
+    max_keep=None, reject_border_touch=False, collect_outputs=True,
+    collect_debug=True, **legacy_options,
 ):
-    """执行“粗检测 + 局部轮廓细化 + 可挑取标注”的核心流程。
+    """Return accepted components plus rendering/result metadata.
 
-    返回 refined 和 debug:
-    - refined 是最终目标列表，会写入 07_result.json 的 components。
-    - debug 保存中间图和检测元数据，供 save_outputs 生成调试图片和 overlay。
-    - 直接调用默认保留全部中间图；流水线可关闭无需输出的全图缓冲区。
+    Defaults preserve the accepted review, including clipped green candidates.
+    Explicit restrictions (margin, border rejection, max_keep) may demote these
+    candidates; excluded records remain in review_candidates.
     """
-    for name, value in (("safe_margin_px", safe_margin_px), ("refine_pad_ratio", refine_pad_ratio),
-                        ("refine_clip_pad_ratio", refine_clip_pad_ratio)):
-        if not np.isfinite(value) or value < 0:
-            raise ValueError(f"{name} must be finite and nonnegative")
-    if not np.isfinite(refine_work_max) or refine_work_max < 1:
-        raise ValueError("refine_work_max must be positive")
-    if not np.isfinite(min_rotated_aspect_ratio) or not 0 <= min_rotated_aspect_ratio <= 1:
-        raise ValueError("min_rotated_aspect_ratio must be finite and between 0 and 1")
-    coarse, coarse_debug = detect_coarse_rois(
-        gray,
-        work_max=coarse_work_max,
-        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
-        texture_window=texture_window,
-        max_keep=max_keep,
-        max_bbox_area_ratio=max_bbox_area_ratio,
-        reject_border_touch=reject_border_touch,
-    )
+    _options(legacy_options)
+    if rule_algorithm == LEGACY_ALGORITHM:
+        from .legacy_detect_pipeline import detect_and_refine as legacy_detect
+        return legacy_detect(gray, texture_backend=texture_backend,
+                             safe_margin_px=safe_margin_px, max_keep=max_keep,
+                             reject_border_touch=reject_border_touch,
+                             collect_outputs=collect_outputs, collect_debug=collect_debug,
+                             **legacy_options)
+    if rule_algorithm not in {RULE_ALGORITHM, PREVIOUS_ALGORITHM}:
+        raise ValueError(f'Unknown rule_algorithm: {rule_algorithm}')
+    if texture_backend not in {'cpu', 'cuda', 'auto'}:
+        raise ValueError('texture_backend must be cpu, cuda or auto')
+    if not np.isfinite(safe_margin_px) or safe_margin_px < 0:
+        raise ValueError('safe_margin_px must be finite and nonnegative')
+    if max_keep is not None and (isinstance(max_keep, bool) or not isinstance(max_keep, int) or max_keep < 1):
+        raise ValueError('max_keep must be a positive integer or None')
+    if not isinstance(reject_border_touch, bool):
+        raise ValueError('reject_border_touch must be a boolean')
+    if single_image_options is not None and not isinstance(single_image_options, Mapping):
+        raise ValueError('single_image_options must be a mapping')
+    options = dict(single_image_options or {})
+    unknown = set(options) - {f.name for f in fields(SingleImageConfig)}
+    if unknown:
+        raise ValueError(f'Unknown single_image_options: {", ".join(sorted(unknown))}')
+    fov, scale_source = _physical_scale(gray.shape, mm_per_pixel, fov_mm)
+    base, base_maps = segment_single_image(gray, fov_mm=fov, config=SingleImageConfig(**options))
+    evidence, maps = base, base_maps
+    if rule_algorithm == RULE_ALGORITHM:
+        # These are frozen, image-only refinements from the accepted V4 report.
+        # The production adapter alone authorizes normal candidates for picking.
+        from .single_image_refine_v2 import refine_evidence
+        from .single_image_refine_v3 import revise as revise_v3
+        from .single_image_refine_v4 import revise as revise_v4
+        v2, m2 = refine_evidence(base, base_maps)
+        v3, m3 = revise_v3(base, base_maps, v2, m2)
+        evidence, maps = revise_v4(base, base_maps, v3, m3)
+    h, w = gray.shape
+    wh, ww = maps['gray'].shape
+    accepted, reviews, accepted_labels = [], [], []
+    for candidate in evidence['components'] + evidence['dark_regions']:
+        item = dict(candidate)
+        points = np.asarray(item['contour_points'], np.int32)
+        if 'center_pixel' not in item:
+            x, y, bw, bh = item['bbox']
+            item['center_pixel'] = [x+bw//2, y+bh//2]
+        normal = item['status'] == 'normal_candidate'
+        clearance = float(item.get('safe_clearance_px', 0.))
+        occupancy_mean = float(item.get('texture_occupancy_mean', 0.))
+        if rule_algorithm == RULE_ALGORITHM and normal:
+            # Measure clearance at the reviewed point, not at a potentially
+            # different maximum, and retain holes / dark exclusions.
+            safe = maps['safe_labels'] == int(item['id'][1:])
+            center = item.get('center_pixel')
+            clearance = 0.
+            if center is not None and 0 <= center[0] < w and 0 <= center[1] < h:
+                x = min(ww-1, int((center[0]+.5)*ww/w))
+                y = min(wh-1, int((center[1]+.5)*wh/h))
+                if safe[y, x]:
+                    distance = cv2.distanceTransform(np.pad(safe.astype(np.uint8), 1), cv2.DIST_L2, 5)[1:-1,1:-1]
+                    clearance = float(distance[y, x]) * min(w/ww, h/wh)
+            occupancy_mean = float(maps['occupancy'][safe].mean()) if safe.any() else 0.
+        reasons = list(item.get('review_reasons') or [])
+        if normal and clearance < max(1., safe_margin_px):
+            normal = False
+            reasons.append('no_safe_interior')
+        if normal and reject_border_touch and item['touch_image_border']:
+            normal = False
+            reasons.append('image_border_rejected')
+        if normal and max_keep is not None and len(accepted) >= max_keep:
+            normal = False
+            reasons.append('max_keep_limit')
+        if not normal and not reasons:
+            reasons.append(item['status'])
+        tolerance_x, tolerance_y = max(1.,w/ww), max(1.,h/wh)
+        sides = [side for side, touched in (
+            ('left',points[:,0].min()<tolerance_x), ('right',points[:,0].max()>=w-tolerance_x),
+            ('top',points[:,1].min()<tolerance_y), ('bottom',points[:,1].max()>=h-tolerance_y),
+        ) if item['touch_image_border'] and touched]
+        confidence = float(occupancy_mean * item.get('solidity',0.)) if normal else 0.
+        item.update(is_pickable=normal, is_valid_for_compensation=normal,
+                    requires_human_validation=not normal, location_valid=normal,
+                    safe_point=list(item['center_pixel']) if normal else None,
+                    safe_margin_px=float(safe_margin_px), safe_clearance_px=clearance,
+                    safe_point_method='accepted_texture_distance' if normal else None,
+                    area_px=int(round(cv2.contourArea(points))),
+                    confidence=confidence, detection_confidence=confidence,
+                    segmentation_status='success' if normal else reasons[-1],
+                    detection_source=rule_algorithm, image_border_sides=sides,
+                    image_edge_clipped=item['touch_image_border'], truncated=item['touch_image_border'],
+                    review_reasons=reasons,
+                    quality_assessment={'status':'accepted' if normal else 'excluded',
+                                        'method':rule_algorithm, 'label':item['status']})
+        if normal:
+            accepted.append(item)
+            accepted_labels.append(int(item['id'][1:]))
+        else:
+            reviews.append(item)
 
-    H, W = gray.shape
-    refined = []
-
-    # 这些全图缓冲区仅用于输出，不参与候选、轮廓或安全点计算。
-    full_refine_density = np.zeros_like(gray, dtype=np.uint8) if collect_outputs and collect_debug else None
-    full_contour_mask = np.zeros_like(gray, dtype=np.uint8) if collect_outputs else None
-    overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) if collect_outputs else None
-
-    for idx, item in enumerate(coarse, start=1):
-        # coarse_bbox 和 safe_point 都是原图坐标。
-        x, y, w, h = item["coarse_bbox"]
-        cx, cy = item.get("safe_point") or item["coarse_center_pixel"]
-
-        # 对未扩边的粗框扩边一次，保留细化所需的背景参照。
-        pad_x = int(round(w * refine_pad_ratio))
-        pad_y = int(round(h * refine_pad_ratio))
-        x0 = max(0, x - pad_x)
-        y0 = max(0, y - pad_y)
-        x1 = min(W, x + w + pad_x)
-        y1 = min(H, y + h + pad_y)
-
-        roi = gray[y0:y1, x0:x1]
-        center_local = [cx - x0, cy - y0]
-
-        refined_item, refine_debug = refine_contour_in_roi(
-            roi,
-            center_local,
-            max_work=refine_work_max,
-            instance_support=item.get("_support_small"),
-            texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
-            texture_window=texture_window, safe_margin_px=safe_margin_px,
-            edge_refine_method=edge_refine_method,
-            edge_refine_iterations=edge_refine_iterations,
-            clip_bbox_local=(
-                [x - x0, y - y0, w, h]
-                if refine_clip_to_coarse_bbox
-                else None
-            ),
-            clip_pad_ratio=refine_clip_pad_ratio,
-        )
-
-        if refined_item is None or not refined_item.get("is_valid_for_compensation", True):
-            if refined_item is not None:
-                refine_debug["failure_reason"] = refined_item["segmentation_status"]
-            # 失败候选仅保留在结果记录中，不绘制粗框和未经细化的定位点。
-            failed = build_failed_component(
-                idx, x, y, w, h, x0, y0, x1, y1, cx, cy, refine_debug, item
-            )
-            if refined_item is not None:
-                failed["retained_support_ratio"] = refined_item.get("retained_support_ratio")
-            refined.append(failed)
-            del refined_item, refine_debug
-            continue
-
-        # 把 ROI 局部轮廓映射回原图坐标后绘制 overlay。
-        _, cnt_global = to_global_contour(refined_item["contour_local"], x0, y0)
-        # Axis-aligned boxes make diagonal wall streaks look wide. Measure the
-        # final contour in its own orientation, after refinement has settled.
-        _, (rotated_w, rotated_h), _ = cv2.minAreaRect(cnt_global)
-        aspect_ratio = min(rotated_w, rotated_h) / max(rotated_w, rotated_h, 1.0)
-        if aspect_ratio < min_rotated_aspect_ratio:
-            rejected = build_failed_component(
-                idx, x, y, w, h, x0, y0, x1, y1, cx, cy,
-                {**refine_debug, "failure_reason": "elongated_texture"}, item,
-            )
-            rejected["rotated_aspect_ratio"] = float(aspect_ratio)
-            refined.append(rejected)
-            del refined_item, refine_debug
-            continue
-        if overlay is not None:
-            cv2.drawContours(overlay, [cnt_global], -1, (0, 255, 0), 10, cv2.LINE_AA)
-
-            cxl = refined_item["center_local"][0]
-            cyl = refined_item["center_local"][1]
-            cxg = int(cxl + x0)
-            cyg = int(cyl + y0)
-
-            cv2.circle(overlay, (cxg, cyg), 26, (0, 0, 255), -1, cv2.LINE_AA)
-            cv2.circle(overlay, (cxg, cyg), 30, (255, 255, 255), 2, cv2.LINE_AA)
-            text_org = (cxg + 36, cyg - 36)
-            cv2.putText(
-                overlay,
-                f"C{idx:02d}",
-                text_org,
-                cv2.FONT_HERSHEY_SIMPLEX,
-                2.0,
-                (255, 255, 255),
-                9,
-                cv2.LINE_AA,
-            )
-            cv2.putText(
-                overlay,
-                f"C{idx:02d}",
-                text_org,
-                cv2.FONT_HERSHEY_SIMPLEX,
-                2.0,
-                (0, 0, 255),
-                6,
-                cv2.LINE_AA,
-            )
-
-        # 合成全图 mask。多个 ROI 重叠时取最大值，相当于保留任一前景。
-        if full_contour_mask is not None:
-            mask_view = full_contour_mask[y0:y1, x0:x1]
-            np.maximum(mask_view, refined_item["mask_full"], out=mask_view)
-            del mask_view
-
-        # 把 ROI 内的密度图恢复到 ROI 原始尺寸，再贴回全图。
-        if full_refine_density is not None:
-            density_full = cv2.resize(
-                refine_debug["density"],
-                (roi.shape[1], roi.shape[0]),
-                interpolation=cv2.INTER_LINEAR,
-            )
-            density_view = full_refine_density[y0:y1, x0:x1]
-            np.maximum(density_view, density_full, out=density_view)
-            del density_view, density_full
-
-        refined.append(
-            build_refined_component(
-                idx, x, y, w, h, x0, y0, x1, y1, refined_item, cnt_global, item
-            )
-        )
-        # 不把上一 ROI 的图像缓冲区保留到下一次 GrabCut 执行期间。
-        del refined_item, refine_debug
-
-    refined = score_components_by_area(refined)
-    # is_pickable 表示目标自身有效，细化失败或质量不合格的目标不可挑取。
-    for item in refined:
-        item["is_pickable"] = item.get("is_valid_for_compensation") is not False
-
-    debug = {
-        "coarse_flat": coarse_debug["flat"],
-        "coarse_binary": coarse_debug["binary_small"],
-        "coarse_scale": coarse_debug["scale"],
-        "coarse_density_thresh": coarse_debug.get("density_thresh"),
-        "coarse_candidate_count": coarse_debug.get("coarse_candidate_count", len(coarse)),
-        "texture_backend": coarse_debug.get("texture_backend"),
-        "texture_fallback_reason": coarse_debug.get("texture_fallback_reason"),
-        "full_refine_density": full_refine_density,
-        "overlay": overlay,
-        "contour_mask": full_contour_mask,
-    }
-    return refined, debug
+    metadata = {'algorithm':rule_algorithm, 'coarse_backend':'cpu',
+                'requested_backend':texture_backend,
+                'fallback_reason':None if texture_backend=='cpu' else 'accepted_single_image_algorithm_uses_opencv_cpu',
+                'physical_scale_source':scale_source,
+                'ignored_legacy_options':sorted(legacy_options)}
+    result_fields = dict(schema_version=2, objective_name=None, purpose='single_image_rule_detection',
+                         review_candidates=reviews, review_candidate_count=len(reviews),
+                         fov_mm=evidence['fov_mm'], rule_config=evidence['config'],
+                         working_grid=evidence['working_grid'],
+                         rejected_candidates=base['rejected_candidates'],
+                         quality_assessment={'status':'rule_assessed','method':rule_algorithm})
+    if rule_algorithm == RULE_ALGORITHM:
+        result_fields.update(
+            rule_revision='accepted_ipscell_v4_20260927',
+            rule_stage_configs={'segmentation':base['config'], 'refine_v2':v2['config'],
+                                'refine_v3':v3['config'], 'refine_v4':evidence['config']},
+            suppressed_candidates=evidence['suppressed_candidates'])
+    overlay = cv2.cvtColor(gray,cv2.COLOR_GRAY2BGR) if collect_outputs else None
+    mask = density = None
+    if collect_outputs:
+        small_mask = np.where(np.isin(maps['proposal_labels'],accepted_labels),maps['accepted_mask'],0).astype(np.uint8)
+        mask = cv2.resize(small_mask,(w,h),interpolation=cv2.INTER_NEAREST)
+        for item in accepted:
+            cv2.polylines(overlay,[np.asarray(item['contour_points'],np.int32)],True,(0,255,0),max(2,round(w/512)))
+            center=tuple(item['center_pixel'])
+            cv2.circle(overlay,center,max(3,round(w/200)),(0,0,255),-1)
+            cv2.putText(overlay,item['id'],center,cv2.FONT_HERSHEY_SIMPLEX,max(.5,w/3000),(0,0,255),max(1,round(w/1800)))
+        if collect_debug:
+            density=cv2.resize(np.uint8(np.clip(maps['occupancy'],0,1)*255),(w,h),interpolation=cv2.INTER_LINEAR)
+    debug=dict(coarse_flat=np.uint8(np.clip(maps['occupancy'],0,1)*255),
+               coarse_binary=base_maps['support'], coarse_scale=max(w/ww,h/wh),
+               coarse_density_thresh=base['config']['support_occupancy'],
+               coarse_candidate_count=len(evidence['components']),
+               overlay=overlay, contour_mask=mask, full_refine_density=density,
+               texture_processing=metadata, result_fields=result_fields)
+    return accepted, debug
 
 
-def detect_from_gray(
-    gray,
-    src_path="in_memory",
-    out_dir=None,
-    coarse_work_max=1024,
-    refine_pad_ratio=0.20,
-    max_keep=None,
-    edge_refine_method="none",
-    edge_refine_iterations=2,
-    max_bbox_area_ratio=0.30,
-    refine_clip_to_coarse_bbox=True,
-    refine_clip_pad_ratio=0.05,
-    reject_border_touch=False,
-    scale_bar=None,
-    save_debug=False,
-    *, texture_backend=DEFAULT_TEXTURE_BACKEND, texture_noise_floor=1.5, texture_window=7,
-    refine_work_max=1200, safe_margin_px=1.0,
-    min_rotated_aspect_ratio=0.30,
-):
-    """从内存图片执行检测。
-
-    out_dir 为 None 时只返回字典，也不构建全图可视化缓冲区；传入目录时
-    默认写出 05_contour_mask.bmp、06_overlay.bmp、07_result.json。
-    save_debug=True 时额外生成 01–04 调试图，不改变识别结果。
-    """
-    return _detect_from_normalized_gray(
-        to_gray_u8(gray),
-        src_path=src_path,
-        out_dir=out_dir,
-        scale_bar=scale_bar,
-        save_debug=save_debug,
-        texture_backend=texture_backend, texture_noise_floor=texture_noise_floor,
-        texture_window=texture_window, refine_work_max=refine_work_max, safe_margin_px=safe_margin_px,
-        min_rotated_aspect_ratio=min_rotated_aspect_ratio,
-        coarse_work_max=coarse_work_max,
-        refine_pad_ratio=refine_pad_ratio,
-        max_keep=max_keep,
-        edge_refine_method=edge_refine_method,
-        edge_refine_iterations=edge_refine_iterations,
-        max_bbox_area_ratio=max_bbox_area_ratio,
-        refine_clip_to_coarse_bbox=refine_clip_to_coarse_bbox,
-        refine_clip_pad_ratio=refine_clip_pad_ratio,
-        reject_border_touch=reject_border_touch,
-    )
+def detect_from_gray(gray, src_path='in_memory', out_dir=None, *, scale_bar=None,
+                     save_debug=False, **kwargs):
+    return _detect_from_normalized_gray(to_gray_u8(gray),src_path=src_path,out_dir=out_dir,
+                                        scale_bar=scale_bar,save_debug=save_debug,**kwargs)
 
 
-def _detect_from_normalized_gray(
-    gray, src_path="in_memory", out_dir=None, *,
-    scale_bar=None, save_debug=False, **detect_kwargs,
-):
-    """Execute using an owned uint8 grayscale buffer without copying it again."""
-    if not isinstance(save_debug, bool):
-        raise ValueError("save_debug must be a boolean")
-    refined, debug = detect_and_refine(
-        gray,
-        collect_outputs=out_dir is not None,
-        collect_debug=save_debug,
-        **detect_kwargs,
-    )
-
-    if out_dir is None:
-        return {
-            "input_path": str(src_path),
-            "input_size": {
-                "width": int(gray.shape[1]),
-                "height": int(gray.shape[0]),
-            },
-            "component_count": len(refined),
-            "coarse_density_thresh": debug.get("coarse_density_thresh"),
-            "coarse_candidate_count": int(debug.get("coarse_candidate_count", len(refined))),
-            "scale_bar": None,
-            "component_ids": [d["id"] for d in refined],
-            "components": refined,
-            "texture_processing": texture_processing_metadata(debug),
-        }
-
-    return save_outputs(
-        src_path, out_dir, gray, refined, debug, scale_bar=scale_bar,
-        save_debug=save_debug, copy_overlay=False,
-    )
+def _detect_from_normalized_gray(gray, src_path='in_memory', out_dir=None, *,
+                                 scale_bar=None,save_debug=False, **kwargs):
+    if not isinstance(save_debug,bool):
+        raise ValueError('save_debug must be a boolean')
+    components,debug=detect_and_refine(gray,collect_outputs=out_dir is not None,
+                                      collect_debug=save_debug,**kwargs)
+    if out_dir is not None:
+        return save_outputs(src_path,out_dir,gray,components,debug,scale_bar=scale_bar,
+                            save_debug=save_debug,copy_overlay=False)
+    from .feature_extract import texture_processing_metadata
+    return dict(input_path=str(src_path),input_size={'width':gray.shape[1],'height':gray.shape[0]},
+                component_count=len(components), component_ids=[c['id'] for c in components],
+                components=components,coarse_density_thresh=debug.get('coarse_density_thresh'),
+                coarse_candidate_count=debug.get('coarse_candidate_count',len(components)),
+                scale_bar=None,texture_processing=texture_processing_metadata(debug),
+                **debug.get('result_fields',{}))
 
 
-def detect_from_path(image_path, out_dir="outputs_5120_contour_refined_opt", **kwargs):
-    """读取图片路径并执行检测。其他参数透传给 detect_from_gray。"""
-    # load_gray_image 返回自持有的灰度图，并在返回前释放解码的彩色原图。
-    # 内存入口继续复制/转换以保护调用方；文件入口不需要再复制这份灰度图。
-    gray = load_gray_image(image_path)
-    return _detect_from_normalized_gray(gray, src_path=image_path, out_dir=out_dir, **kwargs)
+def detect_from_path(image_path,out_dir='outputs_5120_contour_refined_opt',**kwargs):
+    return _detect_from_normalized_gray(load_gray_image(image_path),src_path=image_path,out_dir=out_dir,**kwargs)
 
 
-def process_image(image_path, **kwargs):
-    """给 workflow 或外部脚本使用的轻量入口。
-
-    如果调用方没有显式传 out_dir，默认只返回内存结果，不额外写盘。
-    workflow 当前会传入自己的 out_dir，用来生成 overlay 和 07_result.json。
-    """
-    if "out_dir" not in kwargs:
-        kwargs["out_dir"] = None
-    # workflow v2 forwards model-selection metadata to every configured
-    # entrypoint.  Explicit legacy mode ignores those keys rather than leaking
-    # them into detect_from_gray, which has no model runtime.
-    for key in ("model_dir", "provider", "allow_cpu_fallback", "objective_name"):
-        kwargs.pop(key, None)
-    return detect_from_path(image_path=image_path, **kwargs)
+def process_image(image_path,**kwargs):
+    kwargs.setdefault('out_dir',None)
+    for key in ('model_dir','provider','allow_cpu_fallback','objective_name'):
+        kwargs.pop(key,None)
+    return detect_from_path(image_path,**kwargs)

@@ -94,6 +94,7 @@ class StageProfiler:
     @contextmanager
     def install(self):
         from vision.vision import detect_pipeline as pipeline
+        from vision.vision import legacy_detect_pipeline as legacy_pipeline
         from vision.vision import image_loader, postprocess, preprocess, segment, texture_segment as ts
         import cv2
         import numpy as np
@@ -103,8 +104,9 @@ class StageProfiler:
             (cv2, 'imdecode', 'decode', None),
             (image_loader, 'to_gray_u8', 'gray_normalize', None),
             (pipeline, 'load_gray_image', 'input_other', None),
-            (pipeline, 'detect_coarse_rois', 'coarse_candidates', 'coarse'),
-            (pipeline, 'refine_contour_in_roi', 'roi_contour', 'roi'),
+            (legacy_pipeline, 'detect_coarse_rois', 'coarse_candidates', 'coarse'),
+            (legacy_pipeline, 'refine_contour_in_roi', 'roi_contour', 'roi'),
+            (pipeline, 'segment_single_image', 'coarse_candidates', 'coarse'),
             (ts, 'resize_keep_ratio', lambda *a, **k: self.phase + '_resize', None),
             (ts, 'texture_signal', lambda *a, **k: self.phase + '_threshold', None),
             (preprocess, 'texture_moments', lambda *a, **k: self.phase + '_texture_compute', None),
@@ -112,9 +114,9 @@ class StageProfiler:
             (segment, '_edge_refine_mask_grabcut', 'roi_grabcut', None),
             (ts, 'map_points', 'coordinate_result', None),
             (ts, 'map_bbox', 'coordinate_result', None),
-            (pipeline, 'to_global_contour', 'coordinate_result', None),
-            (pipeline, 'build_refined_component', 'coordinate_result', None),
-            (pipeline, 'build_failed_component', 'coordinate_result', None),
+            (legacy_pipeline, 'to_global_contour', 'coordinate_result', None),
+            (legacy_pipeline, 'build_refined_component', 'coordinate_result', None),
+            (legacy_pipeline, 'build_failed_component', 'coordinate_result', None),
             (pipeline, 'save_outputs', 'output_other', None),
             (postprocess, 'draw_scale_bar', 'render_overlay', None),
             (postprocess, 'save_image', lambda path, *a, **k: {
