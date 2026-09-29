@@ -42,7 +42,7 @@ def main() -> None:
     parser.add_argument("--rule-algorithm", choices=("single_image_rules_v4", "single_image_rules_v2", "connected_texture_v1"),
                         default=None, help="rule mode: accepted single-image algorithm by default")
     parser.add_argument("--texture-backend", choices=("cpu", "cuda", "auto"), default=None,
-                        help="rule backend request; single-image rules use OpenCV CPU")
+                        help="V4 defaults to auto (GPU background closing with CPU fallback); cuda is strict")
     parser.add_argument("--safe-margin-px", type=float, default=None,
                         help="legacy minimum distance from texture boundary in original pixels")
     parser.add_argument(

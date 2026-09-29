@@ -63,13 +63,13 @@ def test_output_modes_serialize_same_reviews_and_preserve_internal_exclusions(tm
 def test_workflow_aliases_use_physical_calibration_and_match_direct_result(tmp_path,alias):
     path=tmp_path/'sample.bmp';save_image(path,sample())
     scale={'x':2/640,'y':2/640}
-    result=run_detect_on_image(path,entrypoint=alias,detect_kwargs={'mm_per_pixel':scale,'texture_backend':'cuda'})
+    result=run_detect_on_image(path,entrypoint=alias,detect_kwargs={'mm_per_pixel':scale,'texture_backend':'auto'})
     assert result['clone_count']==1
     assert result['review_candidate_count']>0
     raw=result['raw_result']
     assert raw['texture_processing']['physical_scale_source']=='mm_per_pixel'
     assert raw['texture_processing']['coarse_backend']=='cpu'
-    assert raw['texture_processing']['requested_backend']=='cuda'
+    assert raw['texture_processing']['requested_backend']=='auto'
     assert raw['fov_mm']=={'width':2.,'height':2.}
     assert all(c['is_pickable'] for c in result['clones'])
     assert not any(c['is_pickable'] for c in result['review_candidates'])

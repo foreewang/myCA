@@ -43,6 +43,8 @@ def test_file_routes_and_shared_rollover(tmp_path, monkeypatch):
     uvicorn = logging.getLogger("uvicorn.error")
     old_parent, old_uvicorn = parent.handlers[:], uvicorn.handlers[:]
     devices = logging.getLogger("devices")
+    vision = logging.getLogger("vision")
+    old_vision, old_vision_level = vision.handlers[:], vision.level
     old_devices = devices.handlers[:]
     old_devices_level, old_uvicorn_level = devices.level, uvicorn.level
     old_access_disabled = logging.getLogger("uvicorn.access").disabled
@@ -50,6 +52,7 @@ def test_file_routes_and_shared_rollover(tmp_path, monkeypatch):
     parent.handlers = []
     uvicorn.handlers = []
     devices.handlers = []
+    vision.handlers = []
     for constant, filename in (("API_LOG_PATH", "api_server.log"),
                                ("ACCESS_LOG_PATH", "api_access.log"),
                                ("TASK_LOG_PATH", "task.log")):
@@ -89,6 +92,8 @@ def test_file_routes_and_shared_rollover(tmp_path, monkeypatch):
         parent.handlers, uvicorn.handlers = old_parent, old_uvicorn
         devices.handlers = old_devices
         devices.setLevel(old_devices_level)
+        vision.handlers = old_vision
+        vision.setLevel(old_vision_level)
         uvicorn.setLevel(old_uvicorn_level)
         logging.getLogger("uvicorn.access").disabled = old_access_disabled
         parent.setLevel(old_level)

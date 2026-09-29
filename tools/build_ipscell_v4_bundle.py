@@ -6,8 +6,11 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 FILES=[*sorted(p.relative_to(ROOT).as_posix() for p in (ROOT/'vision/vision').glob('*.py')),
     'vision/run_detect.py','workflow/detect_api.py',
+    'workflow/logging_config.py','workflow/camera_process_supervisor.py',
     'vision/experiments/__init__.py','vision/experiments/single_image_rules.py',
     'tests/test_accepted_single_image_rules.py','tests/test_v4_production_rules.py',
+    'tests/test_single_image_gpu.py','requirements-vision-texture-gpu.txt',
+    'tests/test_logging_integration.py','tests/test_logging_routes.py','docs/logging.md',
     'tests/fixtures/ipscell_green_acceptance.json','tests/fixtures/ipscell_v4_acceptance.json',
     'tools/verify_ipscell_green_acceptance.py',
     'docs/vision.md','docs/ipscell_v4_production_20260927.md']

@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw
 from workflow.clone_dedupe import dedupe_well_clones
 from workflow.detect_api import run_detect_on_image, rule_texture_kwargs
 from workflow.file_io import atomic_write_json
+from workflow.overlay_preview import save_overlay_preview
 from workflow.pickable_result import build_pickable_detect_result, pickable_output_path
 from workflow.task_control import raise_if_cancel_requested, report_progress
 
@@ -360,6 +361,8 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                     draw_image_center=draw_image_center,
                 )
 
+        overlay_preview_path = save_overlay_preview(overlay_image_path) if overlay_image_path else None
+
         images.append(
             {
                 "index": int(capture["index"]),
@@ -367,6 +370,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "col_index": int(capture["col_index"]),
                 "image_path": image_path,
                 "overlay_image_path": overlay_image_path,
+                "overlay_preview_path": overlay_preview_path,
                 "stage_x_target": int(capture["stage_x_target"]),
                 "stage_y_target": int(capture["stage_y_target"]),
                 "stage_x_actual": actual_x,

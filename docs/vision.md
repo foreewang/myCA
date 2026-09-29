@@ -62,8 +62,14 @@ vision.vision.detect_pipeline:process_image
 可传 `mm_per_pixel` 或 `fov_mm`，均未传时明确记录为默认 4x 完整视野 3.22×3.22 mm。
 裁剪图应传正确尺度。比例尺 `scale_bar` 仅用于绘制，不替代分割标定。
 
-当前版本保持验收版 OpenCV CPU 计算结果；旧任务中的 `texture_backend=cuda/auto` 不会触发 GPU
-计算，结果元数据记录请求值、实际 CPU 和原因。未做本算法的 GPU 加速。
+V4 未传 `detect.texture_backend` 时默认 `auto`：背景闭运算优先使用 CuPy/CUDA，
+其余阶段继续使用 CPU。现有请求体无需修改。显式 `cpu` 强制 CPU，显式 `cuda` 必须成功使用 GPU，否则报错。
+`auto` 在 GPU 初始化、编译或执行失败时回退 CPU，记录日志和原因；该进程后续自动请求保持 CPU，
+重启服务或调用 `single_image_gpu.reset_backend()` 后重试，显式 `cuda` 始终重试。
+`texture_processing.requested_backend` 记录请求，`stage_backends.background_close` 记录实际 `cpu/cuda`，
+`stage_backends.remaining_stages` 为 `cpu`，`fallback_reason` 记录回退原因；`coarse_backend` 仍为 CPU。
+GPU 环境需安装 `requirements-vision-texture-gpu.txt` 中锁定的 CuPy（CUDA 12 环境），不要求 OpenCV CUDA 构建。
+CPU 环境无需安装 CuPy；上一版 V2 和旧算法的默认后端行为保持不变。
 旧 ROI 参数（如 `texture_noise_floor`、`texture_window`、`coarse_work_max`、
 `min_rotated_aspect_ratio`）对新版不生效，元数据列出 `ignored_legacy_options`。
 `detect.single_image_options` 继续控制基础分割参数；V2/V3/V4 细化阶段使用固定验收参数，

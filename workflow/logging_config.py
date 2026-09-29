@@ -111,7 +111,7 @@ def configure_logging(*, log_dir=None, paths=None, extra_loggers=()):
     directory = Path(log_dir) if log_dir is not None else LOG_DIR
     paths = paths or {"api": directory / "api_server.log",
                       "access": directory / "api_access.log", "task": directory / "task.log"}
-    parents = [logging.getLogger(name) for name in ("workflow", "devices", "uvicorn.error")]
+    parents = [logging.getLogger(name) for name in ("workflow", "devices", "vision", "uvicorn.error")]
     for logger in extra_loggers:
         if not any(logger.name == p.name or logger.name.startswith(p.name + ".") for p in parents):
             parents.append(logger)

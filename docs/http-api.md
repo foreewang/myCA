@@ -629,6 +629,10 @@ Host: 127.0.0.1:8000
 
 检测字段中，`save_overlay` 默认 true，`overlay_source` 默认 `vision`；可选 `workflow`。工作流绘图时还会读取 `draw_bbox`、`draw_center`、`draw_image_center`。`detect.output_json` 适用于单孔；多孔任务会固定派生为 `<capture.save_dir>/<well>/detect_result.json`。
 
+工作流保存 overlay 时，同时在其旁生成 `<overlay文件名去掉扩展名>_preview.jpg`，固定使用 JPEG quality=90、4:4:4（Pillow `subsampling=0`），保持原始宽高。完整检测结果和 `pickable_detect_result.json` 的 `images[]` 新增可空字段 `overlay_preview_path`；原有 `image_path`（算法输入）和 `overlay_image_path`（完整 overlay）含义不变。不需要新增请求参数，原 schema 版本保持不变。关闭 `save_overlay` 时两个 overlay 字段均为 `null`。压缩失败仅记录警告，当前结果的 `overlay_preview_path=null`，不返回历史展示图路径，也不影响识别结果。展示图通过同目录临时文件完成后原子替换。
+
+读取 JSON 路径的取图服务应优先使用存在的 `overlay_preview_path`，否则回退 `overlay_image_path`；JPEG 响应使用 `Content-Type: image/jpeg`。历史 JSON 没有新增字段时沿用原逻辑。展示图存放在 overlay 子目录，不混入孔位原图列表。本次不增加 HTTP 路由，现有 `/images/{filename}` 仍只访问孔位图片目录的直接子文件；外部取图服务需自行接入新增路径。直接调用视觉 Python/CLI 入口，以及当前未生成 overlay 的闭环补偿路径，不会因本工作流功能自动产生展示图。
+
 规则入口新增可选布尔字段 `task.detect.save_debug`，默认 `false`；`null`、数字和字符串均不是合法布尔值，在检测执行阶段报错，仍遵循任务 202 入队后异步报告业务错误的契约。此选项不改变 HTTP 路由、请求外层和结果结构，默认入口仍为 4x 模型。使用规则算法需显式设置以下任务片段：
 
 ```json
@@ -692,6 +696,13 @@ workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_
 ```
 
 `full_plate` 会按 `plates.yaml` 展开全部孔，首次硬件联调不要使用。
+
+规则入口的 V4 默认采用 `detect.texture_backend="auto"`，现有请求体不传该字段即可优先 GPU。
+背景闭运算使用 GPU，其余步骤使用 CPU；GPU 不可用时自动回退，并记录原因。
+可选 `cpu` 强制 CPU；`cuda` 强制 GPU，失败时报错。扫描和补拍沿用同一参数透传。
+实际执行情况见单图视觉结果的 `texture_processing.stage_backends.background_close`、
+`requested_backend` 和 `fallback_reason`。自动回退后重启服务或重置后端才自动重试。
+部署依赖和详细说明见 [视觉检测](vision.md)。
 
 ### 7.7 独立补偿完整示例
 

@@ -9,7 +9,7 @@
 | `logs/task.log` | 任务入队、执行、阶段、终态以及任务内设备和文件读写诊断 |
 | `logs/camera_worker.log` | 相机子进程和 SDK 诊断，独立进程写入 |
 
-监督器始终写 API 日志，即使它被任务调用；关联字段仍会保留。设备日志根据当前任务上下文分流，非任务调用写 API 日志。
+监督器始终写 API 日志，即使它被任务调用；关联字段仍会保留。设备及视觉日志根据当前任务上下文分流，非任务调用写 API 日志。V4 GPU 自动回退原因沿用该规则，并携带当前任务和请求标识。
 
 ## 字段与级别
 
@@ -30,7 +30,7 @@
 
 ## 初始化与轮转
 
-`workflow/logging_config.py` 是主进程配置入口。API 初始化和 CLI `main()` 调用它；库函数本身不擅自初始化文件。`workflow`、`devices` 和 `uvicorn.error` 共享相应文件的 handler，子 logger 通过传播使用父 handler，不重复挂载。重复初始化不能增加文件 writer。
+`workflow/logging_config.py` 是主进程配置入口。API 初始化和 CLI `main()` 调用它；库函数本身不擅自初始化文件。`workflow`、`devices`、`vision` 和 `uvicorn.error` 共享相应文件的 handler，子 logger 通过传播使用父 handler，不重复挂载。重复初始化不能增加文件 writer。
 
 四类日志统一按服务器本地日期每日轮转，保留最近 30 个自然日（含当天，作为一个月的固定保留期），不再按文件大小切分。活动文件名保持不变，例如 `api_server.log`；归档文件带日期，例如 `api_server.log.2026-09-15`。跨过本地午夜后的第一条日志触发轮转，无日志的日期不生成空归档。
 

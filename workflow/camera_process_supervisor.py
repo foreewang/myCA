@@ -330,7 +330,7 @@ def _configure_camera_worker_logging() -> None:
 
     # A child owns only its worker log, even if an embedding process used fork.
     inherited = set()
-    for name in ("workflow", "devices", "uvicorn.error"):
+    for name in ("workflow", "devices", "vision", "uvicorn.error"):
         parent = logging.getLogger(name)
         for handler in parent.handlers[:]:
             if getattr(handler, "_colony_api_log_path", None):

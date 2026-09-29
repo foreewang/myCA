@@ -14,7 +14,7 @@ from workflow.task_logging import current_request_id, current_task_id
 def log_files(tmp_path, monkeypatch):
     from workflow import api_server, api_errors, logging_config
 
-    parents = [logging.getLogger(n) for n in ("workflow", "devices", "uvicorn.error")]
+    parents = [logging.getLogger(n) for n in ("workflow", "devices", "vision", "uvicorn.error")]
     saved = [(p, p.handlers[:], p.level) for p in parents]
     access_disabled = logging.getLogger("uvicorn.access").disabled
     for p in parents:
@@ -38,6 +38,46 @@ def log_files(tmp_path, monkeypatch):
 
 def read(directory, name):
     return (directory / name).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("logger_name", ["vision.single_image_gpu", "vision.vision.single_image_gpu"])
+@pytest.mark.parametrize("task_id", ["gpu-task", "-"])
+def test_gpu_fallback_is_persisted_once_with_context(log_files, monkeypatch, logger_name, task_id):
+    import cv2
+    import numpy as np
+    from workflow import api_server
+    from vision.vision import single_image_gpu as gpu
+
+    api_server._configure_api_file_logging()  # Reinitialization must not duplicate writers.
+    monkeypatch.setattr(gpu, "_logger", logging.getLogger(logger_name))
+    calls = []
+
+    def unavailable(*args):
+        calls.append(1)
+        raise RuntimeError("gpu-fallback-marker")
+
+    monkeypatch.setattr(gpu, "_cuda_close", unavailable)
+    task_token = current_task_id.set(task_id)
+    request_token = current_request_id.set("gpu-request")
+    gpu.reset_backend()
+    try:
+        image = np.arange(25, dtype=np.float32).reshape(5, 5)
+        kernel = np.ones((3, 3), np.uint8)
+        for _ in range(2):
+            result, meta = gpu.background_close(image, kernel, "auto")
+            np.testing.assert_array_equal(result, cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel))
+            assert meta == {"backend": "cpu", "fallback_reason": "RuntimeError: gpu-fallback-marker"}
+    finally:
+        gpu.reset_backend()
+        current_request_id.reset(request_token)
+        current_task_id.reset(task_token)
+    assert len(calls) == 1
+    destination = "task.log" if task_id != "-" else "api_server.log"
+    for filename in ("task.log", "api_server.log", "api_access.log"):
+        text = read(log_files, filename)
+        assert text.count("gpu-fallback-marker") == int(filename == destination)
+        if filename == destination:
+            assert "request_id=gpu-request task_id=" + task_id in text
 
 
 @pytest.mark.parametrize("redact", [False, True])
@@ -185,7 +225,7 @@ def test_real_asgi_requests_have_one_summary_and_correlated_error(log_files, mon
 
 
 def test_all_main_files_rotate_automatically_with_one_shared_writer(log_files):
-    parents = [logging.getLogger(n) for n in ("workflow", "devices", "uvicorn.error")]
+    parents = [logging.getLogger(n) for n in ("workflow", "devices", "vision", "uvicorn.error")]
     for handler in parents[0].handlers:
         assert all(sum(h is handler for h in parent.handlers) == 1 for parent in parents)
         assert handler.when == "MIDNIGHT"
@@ -332,14 +372,19 @@ def test_cli_initializes_logging_and_preserves_json_output(log_files, monkeypatc
 
 def _worker_logging_probe(path):
     import os
+    from pathlib import Path
     from workflow.camera_process_supervisor import _configure_camera_worker_logging
+    from workflow.logging_config import configure_logging
     os.environ["COLONY_CAMERA_WORKER_LOG_PATH"] = path
     os.environ["COLONY_LOG_REDACT_SENSITIVE"] = "1"
+    # Simulate inherited main-process handlers, including the vision namespace.
+    configure_logging(log_dir=Path(path).parent / "inherited")
     _configure_camera_worker_logging()
     _configure_camera_worker_logging()
     token = current_task_id.set("private-camera-task")
     try:
         logging.getLogger("devices.camera_controller").error("worker-marker path=C:/private/secret.txt")
+        logging.getLogger("vision.vision.single_image_gpu").warning("worker-vision-marker")
     finally:
         current_task_id.reset(token)
     handler = next(h for h in logging.getLogger().handlers
@@ -360,6 +405,8 @@ def test_spawned_worker_has_independent_safe_log_and_rollover(log_files):
     assert worker.exitcode == 0
     rotated = next(log_files.glob("camera_worker.log.????-??-??")).read_text(encoding="utf-8")
     assert rotated.count("worker-marker") == 1
+    assert rotated.count("worker-vision-marker") == 1
+    assert all(p.read_text(encoding="utf-8") == "" for p in (log_files / "inherited").glob("*.log"))
     assert "private-camera-task" not in rotated and "secret.txt" not in rotated
     assert "worker-after-rollover" in read(log_files, "camera_worker.log")
     assert "worker-marker" not in read(log_files, "api_server.log")

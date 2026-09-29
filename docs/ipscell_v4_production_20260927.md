@@ -27,7 +27,9 @@ python vision/run_detect.py /path/to/image.bmp --backend legacy --rule-algorithm
 
 正式 mask 保留暗区排除和纹理空洞。中心点余量在最终可用纹理掩膜上重新计算，单位为原图像素。新版本补齐规则启发式 confidence，仍不应把它解释为统计准确概率。
 
-不新增依赖，使用现有 NumPy/OpenCV CPU；传 `texture_backend=cuda/auto` 仍记录请求，但执行 CPU。默认模型路由、物理标定、跨图处理和硬件参数均未修改。1.5 mm 不是整块克隆的最大直径过滤阈值。
+V4 默认 `texture_backend=auto`，用可选 CuPy/CUDA 精确加速背景闭运算，其他阶段保持 CPU。无需修改现有请求体。显式 `cpu` 禁用 GPU；显式 `cuda` 失败即报错；`auto` 失败时回退 CPU，并在日志和 `texture_processing.fallback_reason` 记录原因。自动回退保持到进程重启或 `single_image_gpu.reset_backend()`；实际后端见 `texture_processing.stage_backends.background_close`。
+
+GPU 部署需在 CUDA 12 环境安装 `python -m pip install -r requirements-vision-texture-gpu.txt`，该文件已锁定 CuPy 14.2.0。仅 CPU 环境不需要此可选依赖。保持原有 ONNX runtime 依赖配置。默认模型路由、物理标定、跨图处理和硬件参数均未修改。1.5 mm 不是整块克隆的最大直径过滤阈值。
 
 ## 实现和验收来源
 
@@ -39,6 +41,7 @@ python vision/run_detect.py /path/to/image.bmp --backend legacy --rule-algorithm
 
 ```bash
 python tools/verify_ipscell_green_acceptance.py --out /path/to/new_acceptance
+python tools/verify_ipscell_green_acceptance.py --texture-backend cuda --out /path/to/new_gpu_acceptance
 python -m pytest tests/test_accepted_single_image_rules.py tests/test_v4_production_rules.py tests/test_rule_vision_api_contract.py -q
 ```
 

@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--images',type=Path,default=ROOT/'data/ipscell')
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--fixture',type=Path,default=ROOT/'tests/fixtures/ipscell_v4_acceptance.json')
+    parser.add_argument('--texture-backend',choices=('cpu','cuda','auto'),default=None,
+                        help='V4 defaults to auto; use cuda for strict GPU acceptance')
     args=parser.parse_args()
     fixture=json.loads(args.fixture.read_text(encoding='utf8'))
     args.out.mkdir(parents=True,exist_ok=False)
@@ -34,8 +36,9 @@ def main():
             raise AssertionError(f'Input differs from the reviewed dataset: {path}')
         gray=cv2.imdecode(np.frombuffer(payload,np.uint8),0)
         fw,fh=fixture['fov_mm']
+        backend_options={} if args.texture_backend is None else {'texture_backend':args.texture_backend}
         raw=process_image(path,mm_per_pixel={'x':fw/gray.shape[1],'y':fh/gray.shape[0]},
-                          rule_algorithm=fixture.get('algorithm','single_image_rules_v2'))
+                          rule_algorithm=fixture.get('algorithm','single_image_rules_v2'),**backend_options)
         expected=case['normal_candidates'];actual=raw['components']
         assert raw['rule_config']==fixture['config'],path
         assert [c['id'] for c in actual]==[c['id'] for c in expected],path
@@ -62,7 +65,8 @@ def main():
             cv2.polylines(preview,[pts],True,(0,255,0),2)
         cv2.imencode('.jpg',preview)[1].tofile(str(args.out/(path.stem+'.jpg')))
         record={'image':case['name'],'green_count':len(actual),'review_count':raw['review_candidate_count'],
-                'exact_geometry_match':True,'input_sha256':case['sha256']}
+                'exact_geometry_match':True,'input_sha256':case['sha256'],
+                'texture_processing':raw['texture_processing']}
         records.append(record)
         print(record,flush=True)
     report={'algorithm':fixture.get('algorithm','single_image_rules_v2'),'all_passed':True,'images':records,

@@ -48,7 +48,7 @@ def _distance(mask):
     return cv2.distanceTransform(np.pad(mask.astype(np.uint8), 1), cv2.DIST_L2, 5)[1:-1, 1:-1]
 
 
-def segment_single_image(gray, *, fov_mm, config=None):
+def segment_single_image(gray, *, fov_mm, config=None, background_backend='cpu'):
     """Return proposals in input coordinates plus inspectable working-grid maps.
 
     Explicit FOV is required. Input must be a complete calibrated field; cropped
@@ -86,8 +86,10 @@ def segment_single_image(gray, *, fov_mm, config=None):
     # A local upper envelope detects compact dark deficits while preserving broad
     # edge shading. It is NOT a calibrated flat-field or confirmed well-wall mask.
     dark_win = _odd(cfg.dark_background_window_um, mpp)
-    background = cv2.morphologyEx(mean, cv2.MORPH_CLOSE,
-                                 cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dark_win, dark_win)))
+    from .single_image_gpu import background_close
+    background, background_processing = background_close(
+        mean, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dark_win, dark_win)),
+        backend=background_backend)
     deficit = np.clip((background - mean) / np.maximum(background, 25.), 0, 1)
     low_visibility = mean < cfg.low_visibility_mean
     dark = ((deficit > cfg.dark_relative_deficit) & (mean < cfg.dark_mean_limit)
@@ -230,6 +232,7 @@ def segment_single_image(gray, *, fov_mm, config=None):
                 limitations=['FOV assumed from caller; no calibrated well geometry or flat-field.',
                              'Single-frame rule classification; no cross-image processing.']), dict(
                     gray=work.astype(np.uint8), occupancy=occupancy,
+                    background_processing=background_processing,
                     support=support.astype(np.uint8)*255, seed=seed.astype(np.uint8)*255,
                     dark_mask=dark_mask.astype(np.uint8)*255,
                     low_visibility=low_visibility.astype(np.uint8)*255,

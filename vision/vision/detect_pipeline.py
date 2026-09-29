@@ -60,7 +60,7 @@ def _physical_scale(shape, mm_per_pixel, fov_mm):
 
 def detect_and_refine(
     gray, *, mm_per_pixel=None, fov_mm=None, single_image_options=None,
-    rule_algorithm=RULE_ALGORITHM, texture_backend='cpu', safe_margin_px=1.0,
+    rule_algorithm=RULE_ALGORITHM, texture_backend=None, safe_margin_px=1.0,
     max_keep=None, reject_border_touch=False, collect_outputs=True,
     collect_debug=True, **legacy_options,
 ):
@@ -71,6 +71,9 @@ def detect_and_refine(
     candidates; excluded records remain in review_candidates.
     """
     _options(legacy_options)
+    # Only V4 changes its default; explicit older algorithms retain CPU default.
+    if texture_backend is None:
+        texture_backend = 'auto' if rule_algorithm == RULE_ALGORITHM else 'cpu'
     if rule_algorithm == LEGACY_ALGORITHM:
         from .legacy_detect_pipeline import detect_and_refine as legacy_detect
         return legacy_detect(gray, texture_backend=texture_backend,
@@ -95,7 +98,9 @@ def detect_and_refine(
     if unknown:
         raise ValueError(f'Unknown single_image_options: {", ".join(sorted(unknown))}')
     fov, scale_source = _physical_scale(gray.shape, mm_per_pixel, fov_mm)
-    base, base_maps = segment_single_image(gray, fov_mm=fov, config=SingleImageConfig(**options))
+    base, base_maps = segment_single_image(
+        gray, fov_mm=fov, config=SingleImageConfig(**options),
+        background_backend=texture_backend if rule_algorithm == RULE_ALGORITHM else 'cpu')
     evidence, maps = base, base_maps
     if rule_algorithm == RULE_ALGORITHM:
         # These are frozen, image-only refinements from the accepted V4 report.
@@ -168,11 +173,15 @@ def detect_and_refine(
         else:
             reviews.append(item)
 
+    background_processing = base_maps['background_processing']
     metadata = {'algorithm':rule_algorithm, 'coarse_backend':'cpu',
                 'requested_backend':texture_backend,
-                'fallback_reason':None if texture_backend=='cpu' else 'accepted_single_image_algorithm_uses_opencv_cpu',
+                'stage_backends':{'background_close':background_processing['backend'], 'remaining_stages':'cpu'},
+                'fallback_reason':background_processing['fallback_reason'],
                 'physical_scale_source':scale_source,
                 'ignored_legacy_options':sorted(legacy_options)}
+    if rule_algorithm == PREVIOUS_ALGORITHM and texture_backend != 'cpu':
+        metadata['fallback_reason'] = 'previous_single_image_algorithm_uses_opencv_cpu'
     result_fields = dict(schema_version=2, objective_name=None, purpose='single_image_rule_detection',
                          review_candidates=reviews, review_candidate_count=len(reviews),
                          fov_mm=evidence['fov_mm'], rule_config=evidence['config'],
