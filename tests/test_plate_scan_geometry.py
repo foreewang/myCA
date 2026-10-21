@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from workflow.config_validator import load_yaml_unique
-from workflow.plate_geometry import compute_well_start, get_plate_pitch_mm, get_well_step_pulses
+from workflow.plate_geometry import all_well_names, compute_well_start, get_plate_pitch_mm, get_well_step_pulses
 from workflow.scan_planner import plan_single_well_scan
 
 
@@ -152,19 +152,25 @@ def test_scan_planner_clips_points_above_safe_y() -> None:
 
 def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
     plates = load_yaml_unique(PROJECT_ROOT / "config" / "plates.yaml")["plates"]
-    assert compute_well_start(plates["24-well"], "A6")["x"] == 6117668 + 5 * -1265563
+    assert compute_well_start(plates["24-well"], "A6") == {
+        "x": -170150,
+        "y": 7856142,
+        "row_index": 0,
+        "col_index": 5,
+        "well_name": "A6",
+    }
     assert compute_well_start(plates["24-well"], "D1") == {
-        "x": 6117668,
-        "y": 221468,
+        "x": 6148668,
+        "y": 231469,
         "row_index": 3,
         "col_index": 0,
         "well_name": "D1",
     }
-    # A6/D1 taught points round into well_step by 1 pulse; diagonal is archive-only.
-    assert plates["48-well"]["well_teach"]["diagonal"] == {"well": "F8", "x": -151997, "y": -344640}
+    # A6 rounds by 2 pulses per axis and F8 by 1 pulse in X; diagonal is archive-only.
+    assert plates["48-well"]["well_teach"]["diagonal"] == {"well": "F8", "x": -283069, "y": -312884}
     assert compute_well_start(plates["48-well"], "F8") == {
-        "x": -131853,
-        "y": -344641,
+        "x": -283070,
+        "y": -312884,
         "row_index": 5,
         "col_index": 7,
         "well_name": "F8",
@@ -177,7 +183,7 @@ def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
             "plate_type": "48-well",
         },
     )
-    assert plan["scan_config"]["scan_radius_mm"] == pytest.approx((10.28811523 - 3.22) / 2.0)
+    assert plan["scan_config"]["scan_radius_mm"] == pytest.approx((10.43 - 3.22) / 2.0)
     assert plan["scan_config"]["point_count"] > 0
     y_hi = 9500000 - 131072
     y_lo = -1000000 + 131072
@@ -195,3 +201,24 @@ def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
     assert last_row_10x["scan_config"]["clipped_point_count"] == 0
     assert all(y_lo <= p["stage_y_target"] <= y_hi for p in last_row_10x["points"])
     assert last_row_10x["stage_limit_precheck"]["violations"] == []
+
+
+@pytest.mark.parametrize("plate_type", ["6-well", "12-well", "24-well", "48-well"])
+@pytest.mark.parametrize("objective_name", ["4x", "10x"])
+def test_production_plate_scans_fit_calibrated_limits(
+    plate_type: str, objective_name: str
+) -> None:
+    plate = load_yaml_unique(PROJECT_ROOT / "config" / "plates.yaml")["plates"][plate_type]
+    objective = load_yaml_unique(PROJECT_ROOT / "config" / "objectives.yaml")["objectives"][objective_name]
+    for well_name in all_well_names(plate):
+        plan = plan_single_well_scan(
+            {"plate": plate},
+            {
+                **_scan_params(well_name=well_name),
+                "plate_type": plate_type,
+                "objective_name": objective_name,
+                "fov_mm": objective["fov_mm"],
+            },
+        )
+        assert plan["stage_limit_precheck"]["violations"] == []
+        assert plan["scan_config"]["clipped_point_count"] == 0, well_name
