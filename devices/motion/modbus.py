@@ -10,6 +10,8 @@ Modbus RTU 客户端模块，基于 pymodbus 库实现。
 
 import logging
 import time
+import threading
+from devices.motion.transaction_metrics import current as communication_metrics
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
 
@@ -118,12 +120,17 @@ class ModbusRTUClient:
         self.timeout = timeout
         self._client = None
         self._connected = False
+        self._transaction_lock = threading.RLock()
+        self._last_slave = None
+        self._last_attempt_end = None
 
     def connect(self) -> bool:
         """建立与串口的连接。"""
         if self._connected:
             logger.info("已经连接，无需重复连接")
             return True
+        self._last_slave = None
+        self._last_attempt_end = None
         self._client = ModbusSerialClient(
             port=self.port,
             baudrate=self.baudrate,
@@ -162,7 +169,75 @@ class ModbusRTUClient:
             except Exception:
                 logger.debug("serial flush %s failed", name, exc_info=True)
 
-    def _transact(self, description: str, operation):
+    def _transact(self, description: str, operation, *, slave: int, **metadata):
+        # Serialize this client's transactions; the application's existing hardware
+        # ownership guard remains responsible for different clients/processes.
+        with self._transaction_lock:
+            stats = communication_metrics()
+            gap_s = stats["slave_switch_gap_s"] if stats is not None else 0.0
+            started = time.perf_counter()
+            switched = self._last_slave is not None and self._last_slave != slave
+            waited_ms = 0.0
+            if switched:
+                remaining = gap_s - (time.perf_counter() - self._last_attempt_end)
+                if remaining > 0:
+                    wait_started = time.perf_counter()
+                    time.sleep(remaining)
+                    waited_ms = (time.perf_counter() - wait_started) * 1000
+            attempts = []
+            success = False
+
+            def measured_operation():
+                attempt_started = time.perf_counter()
+                item = {}
+                try:
+                    reply = operation()
+                    if stats is not None:
+                        is_error = reply is None or (hasattr(reply, "isError") and reply.isError())
+                        item["error"] = str(reply) if is_error else None
+                    return reply
+                except Exception as exc:
+                    item["error"] = f"{type(exc).__name__}: {exc}"
+                    raise
+                finally:
+                    self._last_slave = slave
+                    self._last_attempt_end = time.perf_counter()
+                    item["elapsed_ms"] = (self._last_attempt_end - attempt_started) * 1000
+                    attempts.append(item)
+
+            try:
+                result = self._transact_attempts(description, measured_operation)
+                success = result is not None
+                return result
+            finally:
+                if stats is not None:
+                    elapsed_ms = (time.perf_counter() - started) * 1000
+                    stats["transaction_count"] += 1
+                    stats["attempt_count"] += len(attempts)
+                    stats["retry_count"] += max(0, len(attempts) - 1)
+                    stats["failed_transaction_count"] += int(not success)
+                    stats["slave_switch_count"] += int(switched)
+                    stats["gap_wait_count"] += int(waited_ms > 0)
+                    stats["gap_wait_ms"] += waited_ms
+                    stats["transaction_total_ms"] += elapsed_ms
+                    if len(attempts) > 1:
+                        # Exclude the new proactive gap and the final successful
+                        # attempt. On final failure all attempt time is overhead.
+                        final_ms = attempts[-1]["elapsed_ms"] if success else 0.0
+                        stats["retry_overhead_ms"] += max(0.0, elapsed_ms - waited_ms - final_ms)
+                    slow = elapsed_ms >= stats["slow_threshold_ms"]
+                    stats["slow_transaction_count"] += int(slow)
+                    if slow or len(attempts) > 1 or not success:
+                        if len(stats["slow_or_retried"]) < 200:
+                            stats["slow_or_retried"].append({
+                                "description": description, "slave": slave, **metadata,
+                                "elapsed_ms": elapsed_ms, "gap_wait_ms": waited_ms,
+                                "success": success, "attempts": attempts,
+                            })
+                        else:
+                            stats["dropped_details"] += 1
+
+    def _transact_attempts(self, description: str, operation):
         """Run one Modbus call and retry transient empty/timeout replies."""
         last_error: object | None = None
         for attempt in range(1, _RTU_COMM_ATTEMPTS + 1):
@@ -212,6 +287,8 @@ class ModbusRTUClient:
             self._client.close()
             self._connected = False
             logger.info("已断开连接")
+        self._last_slave = None
+        self._last_attempt_end = None
 
     def is_connected(self) -> bool:
         """检查当前是否已连接。"""
@@ -225,6 +302,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"读保持寄存器 slave={slave} address={address} count={count}",
             lambda: self._client.read_holding_registers(address=address, count=count, slave=slave),
+            slave=slave, function="read_holding_registers", address=address, count=count,
         )
         if result is None:
             return None
@@ -250,6 +328,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"写寄存器 slave={slave} address={address} value={value}",
             lambda: self._client.write_register(address=address, value=value, slave=slave),
+            slave=slave, function="write_register", address=address, value=value,
         )
         if result is None:
             return False

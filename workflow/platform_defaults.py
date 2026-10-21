@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping
 
+from devices.motion.transaction_metrics import validate_gap
 from devices.mvs_runtime import DEFAULT_MVS_PYTHON_DIR, ensure_mvs_native_libraries
 
 DEFAULT_INSTALL_ROOT = "/opt/colony_system"
@@ -35,4 +36,6 @@ def apply_motion_profile_defaults(motion: Mapping[str, Any] | None) -> Dict[str,
         cfg["profile_acc"] = DEFAULT_PROFILE_ACC
     if cfg.get("profile_dec") is None:
         cfg["profile_dec"] = DEFAULT_PROFILE_DEC
+    if "slave_switch_gap_s" in cfg:
+        cfg["slave_switch_gap_s"] = validate_gap(cfg["slave_switch_gap_s"])
     return cfg

@@ -9,7 +9,7 @@ handoff:
     # XY 位移台 Modbus 串口配置。
     modbus:
       # 串口号，需要与 XY 位移台控制器实际连接的串口一致。
-      port: "/dev/ttyUSB0"
+      port: "COM3"
       # 串口波特率，需要与控制器参数一致。
       baudrate: 115200
 

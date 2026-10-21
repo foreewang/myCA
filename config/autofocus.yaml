@@ -14,12 +14,12 @@ trigger:
 
   # 是否每次采集前都满足自动对焦决策。批量扫描通常保持为 false。
   # 即使设为 true，scan_executor 仍会根据 scope 限制实际执行频率。
-  always_before_capture: false
+  always_before_capture: true
   # 指定始终在采集前自动对焦的物镜名称，例如 ["10x"]。
   always_before_capture_objectives: []
 
   # 实际执行范围：once_per_well（每孔一次）、once_per_task（每任务一次）、disabled（不执行）。
-  scope: once_per_well
+  scope: once_per_task
   # 自动对焦执行时机；当前 workflow 只支持移动到首个扫描点并稳定后、首次拍照前执行。
   run_at: before_first_capture_after_stage_move
 
@@ -32,9 +32,9 @@ camera:
   # 相机 IP。
   ip: "192.168.1.253"
   # 相机所在网段的本机网卡 IP，供第三方 MVS 相机适配器选择网卡。
-  net_export_ip: "192.168.1.6"
+  net_export_ip: "192.168.1.244"
   # 海康 MVS Python SDK 的导入目录。
-  mvs_python_dir: /opt/MVS/Samples/64/Python/MvImport
+  mvs_python_dir: 'C:/Program Files (x86)/MVS/Development/Samples/Python/MvImport'
 
   # 关闭自动曝光，使不同焦点位置的清晰度分数具有可比性。
   exposure_auto: false
@@ -56,7 +56,7 @@ motor:
   # 电机后端类型；当前只支持 Modbus。
   type: modbus
   # 调焦轴 Modbus 串口。
-  port: /dev/ttyUSB0
+  port: COM3
   # 调焦轴 Modbus 波特率。
   baudrate: 115200
   # 调焦细准焦电机从站号。
@@ -103,6 +103,6 @@ output:
   # 是否为每次运行创建带时间戳的输出目录。
   timestamp_folder: true
   # 最清晰图像保存路径；启用时间戳目录时会在派生目录中保存。
-  image_path: /opt/colony_system/data/autofocus/sharpest.png
+  image_path: C:/colony_system.worktrees/deploy-linux-20260902/data/autofocus/sharpest.png
   # 对焦过程日志保存路径；启用时间戳目录时会在派生目录中保存。
-  log_path: /opt/colony_system/data/autofocus/focus_log.csv
+  log_path: C:/colony_system.worktrees/deploy-linux-20260902/data/autofocus/focus_log.csv

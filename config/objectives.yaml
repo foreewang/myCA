@@ -102,7 +102,7 @@ hardware:
   # Modbus 串口配置，物镜轴和调焦轴共用该串口客户端。
   modbus:
     # 串口号，需要与物镜/调焦控制器实际连接的串口一致。
-    port: "/dev/ttyUSB0"
+    port: "COM3"
     # 串口波特率，需要与控制器参数一致。
     baudrate: 115200
 

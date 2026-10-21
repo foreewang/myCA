@@ -20,8 +20,9 @@ def test_measure_accumulates_and_preserves_exception(monkeypatch):
     assert values == {"sample": 750.0}
 
 
+@pytest.mark.parametrize("gap", [None, 0, 0.005])
 @pytest.mark.parametrize("failure", [None, "move", "capture", "cancel"])
-def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, failure):
+def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, failure, gap):
     from workflow import scan_executor as scan
     from workflow.task_control import TaskCanceled
 
@@ -29,6 +30,9 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     error = RuntimeError("hardware failed")
 
     def move(**kwargs):
+        from devices.motion.transaction_metrics import current
+        assert current()["slave_switch_gap_s"] == (0.01 if gap is None else gap)
+        current()["transaction_count"] = 7
         events.append("move")
         kwargs["timings_ms"]["wait_arrival"] = 12.0
         if failure == "move":
@@ -63,6 +67,8 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
         "view_down_mm": 0, "view_right_mm": 0, "stage_x_target": 1, "stage_y_target": 2,
     }
     plan = {"points": [point], "reference": {}, "scan_config": {}}
+    if gap is not None:
+        params["motion"] = {"slave_switch_gap_s": gap}
     if failure:
         with pytest.raises(TaskCanceled if failure == "cancel" else RuntimeError) as caught:
             scan.execute_scan_capture({"plate": {}}, params, plan)
@@ -75,6 +81,8 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     result = json.loads(path.read_text(encoding="utf-8"))
     status = "canceled" if failure == "cancel" else "failed" if failure else "success"
     record = result["point_timings"][0]
+    assert record["communication"]["transaction_count"] == 7
+    assert record["communication"]["slave_switch_gap_s"] == (0.01 if gap is None else gap)
     assert result["status"] == record["status"] == status
     assert record["motion_timings_ms"]["wait_arrival"] == 12.0
     times = record["timings_ms"]
