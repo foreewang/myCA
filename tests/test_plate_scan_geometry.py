@@ -152,6 +152,23 @@ def test_scan_planner_clips_points_above_safe_y() -> None:
 
 def test_production_plates_use_inner_diameter_and_taught_steps() -> None:
     plates = load_yaml_unique(PROJECT_ROOT / "config" / "plates.yaml")["plates"]
+    # The signed steps include the 6-well row X offset and 12-well column Y offset.
+    # The taught diagonal is archived and does not override the computed grid point.
+    assert compute_well_start(plates["6-well"], "B3") == {
+        "x": 935127,
+        "y": 1472051,
+        "row_index": 1,
+        "col_index": 2,
+        "well_name": "B3",
+    }
+    assert plates["6-well"]["well_teach"]["diagonal"] == {"well": "B3", "x": 934157, "y": 1472051}
+    assert compute_well_start(plates["12-well"], "A4") == {
+        "x": 545139,
+        "y": 7446094,
+        "row_index": 0,
+        "col_index": 3,
+        "well_name": "A4",
+    }
     assert compute_well_start(plates["24-well"], "A6") == {
         "x": -170150,
         "y": 7856142,

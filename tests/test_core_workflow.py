@@ -2283,31 +2283,31 @@ def test_project_plates_config_passes_machine_validation() -> None:
 def test_project_xy_stage_calibration_values() -> None:
     plates = load_yaml_unique("config/plates.yaml")["plates"]
     expected_a1 = {
-        "6-well": (6080350, 6594411),
+        "6-well": (6067028, 6594411),
         "12-well": (5662008, 7486000),
         "24-well": (6148740, 7867852),
         "48-well": (5724092, 8349136),
     }
     expected_farthest = {
-        "6-well": (961756, 1472091, "B3"),
-        "12-well": (545211, 620802, "C4"),
+        "6-well": (935127, 1472051, "B3"),
+        "12-well": (545211, 580896, "C4"),
         "24-well": (-170222, 219759, "D6"),
         "48-well": (-283070, -312884, "F8"),
     }
     expected_step = {
-        "6-well": {"col": {"x": -2559297, "y": 0}, "row": {"x": 0, "y": -5122320}},
-        "12-well": {"col": {"x": -1705623, "y": 0}, "row": {"x": 36, "y": -3432599}},
+        "6-well": {"col": {"x": -2563082, "y": 0}, "row": {"x": -5737, "y": -5122360}},
+        "12-well": {"col": {"x": -1705623, "y": -13302}, "row": {"x": 36, "y": -3432599}},
         "24-well": {"col": {"x": -1263778, "y": -2342}, "row": {"x": -24, "y": -2545461}},
         "48-well": {"col": {"x": -858166, "y": 0}, "row": {"x": 0, "y": -1732404}},
     }
     expected_teach = {
         "6-well": {
-            "row_end": {"well": "A3", "x": 961756, "y": 6594411},
-            "col_end": {"well": "B1", "x": 6080350, "y": 1472091},
-            "diagonal": {"well": "B3", "x": 961756, "y": 1472091},
+            "row_end": {"well": "A3", "x": 940865, "y": 6594411},
+            "col_end": {"well": "B1", "x": 6061291, "y": 1472051},
+            "diagonal": {"well": "B3", "x": 934157, "y": 1472051},
         },
         "12-well": {
-            "row_end": {"well": "A4", "x": 545139, "y": 7486000},
+            "row_end": {"well": "A4", "x": 545139, "y": 7446094},
             "col_end": {"well": "C1", "x": 5662080, "y": 620802},
             "diagonal": {"well": "C4", "x": 541995, "y": 624731},
         },
