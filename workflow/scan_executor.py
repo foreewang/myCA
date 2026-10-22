@@ -16,6 +16,7 @@ from workflow.camera_executor import (
 from workflow.file_io import atomic_write_json
 from workflow.platform_defaults import DEFAULT_MODBUS_PORT, apply_motion_profile_defaults
 from workflow.stage_executor import move_to_absolute
+from workflow.scan_motion_session import ScanMotionSession, optimization_options
 from workflow.task_control import TaskCanceled, raise_if_cancel_requested, report_progress
 
 
@@ -218,12 +219,20 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     scan_started = perf_counter()
     point_timings = []
     motion = apply_motion_profile_defaults(params.get("motion"))
+    stop_shoot = optimization_options(motion)
+    motion_session = ScanMotionSession(stop_shoot) if stop_shoot["enabled"] else None
+    cleanup_metrics = {}
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
     before_first_capture_autofocus_result = None
 
     owned_cam = False
     local_cam = cam
+
+    def release_motion_session():
+        if motion_session is not None and motion_session.client is not None:
+            with collect_communication(cleanup_metrics):
+                motion_session.close()
 
     try:
         points = list(plan["points"])
@@ -238,6 +247,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 "motion_timings_ms": {},
             }
             point_timings.append(point_timing)
+            point_timing["stop_shoot"] = dict(stop_shoot)
             with measure(timings, "point_total"):
                 raise_if_cancel_requested(params, f"before_move:point_{int(point['index'])}")
                 report_progress(
@@ -247,6 +257,13 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                     params.get("well_name"),
                     f"moving to scan point {point_index}/{total_points}",
                 )
+                # Evaluate once: once_per_task updates its existing runtime marker.
+                should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
+                release_after_move = should_autofocus or point_index == len(points)
+                session_args = {} if motion_session is None else {
+                    "session": motion_session, "release_after_move": release_after_move,
+                    "keep_enabled": stop_shoot["hold_enabled"] and not release_after_move,
+                }
                 with measure(timings, "move_total"), collect_communication(point_timing.setdefault("communication", {})):
                     motion_result = move_to_absolute(
                         timings_ms=point_timing["motion_timings_ms"],
@@ -264,6 +281,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                         poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
                         arrival_tolerance_pulse=_stage_arrival_tolerance(ctx["plate"]),
                         stage_limits=ctx["plate"].get("stage_limits"),
+                        **session_args,
                     )
 
                 with measure(timings, "motion_guard"):
@@ -278,7 +296,6 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 )
 
                 point_autofocus_result = None
-                should_autofocus, autofocus_scope_reason = _should_run_autofocus_at_this_point(params, point)
                 if should_autofocus:
                     raise_if_cancel_requested(params, f"before_autofocus:point_{int(point['index'])}")
                     report_progress(
@@ -352,6 +369,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                 raise_if_cancel_requested(params, f"after_capture:point_{int(point['index'])}")
             point_timing["status"] = "success"
 
+        release_motion_session()
         result = {
             "task_id": params["task_id"],
             "status": "success",
@@ -378,12 +396,18 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "image_count": len(captures),
             "captures": captures,
             "point_timings": point_timings,
+            "stop_shoot": stop_shoot,
+            "motion_session_cleanup": cleanup_metrics,
             "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
         }
         _write_result(scan_output_json, result)
         return result
 
     except Exception as exc:
+        try:
+            release_motion_session()
+        except Exception as cleanup_error:
+            cleanup_metrics["error"] = str(cleanup_error)
         status = "canceled" if isinstance(exc, TaskCanceled) else "failed"
         if point_timings and point_timings[-1]["status"] == "in_progress":
             point_timings[-1]["status"] = status
@@ -413,6 +437,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "completed_image_count": len(captures),
             "captures": captures,
             "point_timings": point_timings,
+            "stop_shoot": stop_shoot,
+            "motion_session_cleanup": cleanup_metrics,
             "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
             "error": str(exc),
         }
@@ -420,5 +446,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
         raise
 
     finally:
-        if owned_cam and local_cam is not None:
-            close_camera(local_cam)
+        try:
+            release_motion_session()
+        finally:
+            if owned_cam and local_cam is not None:
+                close_camera(local_cam)

@@ -121,6 +121,7 @@ class ModbusRTUClient:
         self._connected = False
         self._timing_last_slave = None
         self._timing_last_attempt_end = None
+        self.configuration_generation = {}
 
     def connect(self) -> bool:
         """建立与串口的连接。"""
@@ -188,6 +189,9 @@ class ModbusRTUClient:
                 detail["error"] = f"{type(exc).__name__}: {exc}"[:500]
                 raise
             finally:
+                if detail.get("error"):
+                    slave = metadata.get("slave")
+                    self.configuration_generation[slave] = self.configuration_generation.get(slave, 0) + 1
                 self._timing_last_slave = metadata.get("slave")
                 self._timing_last_attempt_end = time.perf_counter()
                 detail["elapsed_ms"] = (self._timing_last_attempt_end - attempt_started) * 1000
@@ -287,6 +291,10 @@ class ModbusRTUClient:
 
     def write_register(self, slave: int, address: int, value: int) -> bool:
         """写单个保持寄存器（功能码 0x06）。"""
+        # A mode change/fault reset can invalidate retained motion parameters,
+        # even when the write fails or its acknowledgement is lost.
+        if address == self.REG_MODE_SELECT or (address == self.REG_CONTROLWORD and value == self.CMD_FAULT_RESET):
+            self.configuration_generation[slave] = self.configuration_generation.get(slave, 0) + 1
         if not self.is_connected():
             logger.error("未连接，请先调用 connect()")
             return False

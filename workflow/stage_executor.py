@@ -154,15 +154,23 @@ def _write_axis_pp_target(
     profile_acc: int,
     profile_dec: int,
     axis_name: str,
+    profile_cache=None,
 ) -> None:
     client = motor.client
     slave = motor.slave
-    if not client._write_32bit(slave, client.REG_PROFILE_VEL_HIGH, profile_vel):
-        raise StageMotionError(f"{axis_name} axis failed to set profile velocity")
-    if not client._write_32bit(slave, client.REG_PROFILE_ACC_HIGH, profile_acc):
-        raise StageMotionError(f"{axis_name} axis failed to set profile acceleration")
-    if not client._write_32bit(slave, client.REG_PROFILE_DEC_HIGH, profile_dec):
-        raise StageMotionError(f"{axis_name} axis failed to set profile deceleration")
+    generation = getattr(client, "configuration_generation", {}).get(slave, 0)
+    profile = (profile_vel, profile_acc, profile_dec, generation)
+    if profile_cache is None or profile_cache.get(slave) != profile:
+        if profile_cache is not None:
+            profile_cache.pop(slave, None)
+        if not client._write_32bit(slave, client.REG_PROFILE_VEL_HIGH, profile_vel):
+            raise StageMotionError(f"{axis_name} axis failed to set profile velocity")
+        if not client._write_32bit(slave, client.REG_PROFILE_ACC_HIGH, profile_acc):
+            raise StageMotionError(f"{axis_name} axis failed to set profile acceleration")
+        if not client._write_32bit(slave, client.REG_PROFILE_DEC_HIGH, profile_dec):
+            raise StageMotionError(f"{axis_name} axis failed to set profile deceleration")
+        if profile_cache is not None:
+            profile_cache[slave] = profile
     if not client._write_32bit(slave, client.REG_TARGET_POS, target_pos):
         raise StageMotionError(f"{axis_name} axis failed to set target position")
 
@@ -245,6 +253,18 @@ def _check_axis_fault(motor: MotorManager, axis_name: str) -> None:
         raise StageMotionError(f"{axis_name} axis reported fault during move")
 
 
+def _checked_snapshot_positions(snapshot):
+    positions = {}
+    for axis in ("x", "y"):
+        positions[axis] = _require_axis_position(snapshot[axis], axis)
+        status = snapshot[axis].get("statusword")
+        if status is None:
+            raise StageMotionError(f"failed to read {axis} statusword")
+        if status & ModbusRTUClient.STAT_FAULT:
+            raise StageMotionError(f"{axis} axis reported fault during move")
+    return positions
+
+
 def _wait_xy_arrival(
     *,
     x_motor: MotorManager,
@@ -257,10 +277,16 @@ def _wait_xy_arrival(
     stage_limits: Mapping[str, Any] | None,
     stop_event: threading.Event | None = None,
     progress_callback: Callable[[Dict[str, int]], None] | None = None,
+    reuse_status: bool = False,
+    require_standstill: bool = False,
 ) -> Dict[str, Any]:
     deadline = time.monotonic() + timeout_s
     poll_s = max(0.02, float(poll_s))
-    last_pos = _snapshot_positions(x_motor, y_motor)
+    last_pos = {} if reuse_status else _snapshot_positions(x_motor, y_motor)
+    stable_since = None
+    stable_min = {}
+    stable_max = {}
+    stable_samples = 0
     while True:
         if stop_event is not None and stop_event.is_set():
             _quick_stop_xy(x_motor, y_motor)
@@ -269,18 +295,49 @@ def _wait_xy_arrival(
                 "stopped_by_request": True,
             }
 
-        current = _snapshot_positions(x_motor, y_motor)
+        snapshot = snapshot_xy(x_motor, y_motor) if reuse_status else None
+        current = _checked_snapshot_positions(snapshot) if reuse_status else _snapshot_positions(x_motor, y_motor)
         last_pos = current
         _check_current_within_hard_limits(current=current, stage_limits=stage_limits)
         if progress_callback is not None:
             progress_callback(dict(current))
-        if abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance:
+        within_tolerance = abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance
+        arrived = within_tolerance
+        if require_standstill:
+            # Experimental hold mode: require enabled + target reached and a
+            # <=10 pulse position range over >=150ms / >=3 consecutive samples.
+            mask = ModbusRTUClient.STAT_TARGET_REACHED | ModbusRTUClient.STAT_OPERATION_ENABLED
+            valid = within_tolerance and all(snapshot[a]["statusword"] & mask == mask for a in ("x", "y"))
+            now = time.monotonic()
+            if not valid:
+                stable_since = None
+                stable_samples = 0
+            else:
+                if stable_since is None:
+                    stable_since = now
+                    stable_min = dict(current)
+                    stable_max = dict(current)
+                    stable_samples = 0
+                for axis in ("x", "y"):
+                    stable_min[axis] = min(stable_min[axis], current[axis])
+                    stable_max[axis] = max(stable_max[axis], current[axis])
+                if any(stable_max[a] - stable_min[a] > 10 for a in ("x", "y")):
+                    stable_since = now
+                    stable_min = dict(current)
+                    stable_max = dict(current)
+                    stable_samples = 0
+                stable_samples += 1
+            arrived = valid and stable_samples >= 3 and now - stable_since >= 0.15
+        if arrived:
             return {
                 "current": current,
                 "stopped_by_request": False,
+                "standstill_verified": require_standstill,
+                "stable_samples": stable_samples,
             }
-        _check_axis_fault(x_motor, "x")
-        _check_axis_fault(y_motor, "y")
+        if not reuse_status:
+            _check_axis_fault(x_motor, "x")
+            _check_axis_fault(y_motor, "y")
         if time.monotonic() >= deadline:
             raise StageMotionError(
                 "xy move timed out: "
@@ -326,6 +383,9 @@ def move_to_absolute(
     stage_limits: Mapping[str, Any] | None = None,
     stop_event: threading.Event | None = None,
     progress_callback: Callable[[Dict[str, int]], None] | None = None,
+    session=None,
+    release_after_move: bool = False,
+    keep_enabled: bool = False,
 ) -> Dict[str, Any]:
     """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
     timings = timings_ms if timings_ms is not None else {}
@@ -349,6 +409,8 @@ def move_to_absolute(
         if arrival_tolerance_pulse < 0:
             raise StageMotionError("arrival_tolerance_pulse must be non-negative")
     monitor_tolerance = 50 if arrival_tolerance_pulse is None else int(arrival_tolerance_pulse)
+    if keep_enabled and (session is None or not session.options["hold_enabled"] or release_after_move):
+        raise StageMotionError("keep_enabled requires an active hold session without release")
 
     _check_target_in_stage_limits(
         x_target=x_target,
@@ -359,7 +421,10 @@ def move_to_absolute(
 
     x_motor: MotorManager | None = None
     y_motor: MotorManager | None = None
-    with ModbusRTUClient(port=port, baudrate=baudrate) as client:
+    connection = (session.connection(ModbusRTUClient, port=port, baudrate=baudrate,
+                                    x_slave=x_slave, y_slave=y_slave, release=release_after_move)
+                  if session is not None else ModbusRTUClient(port=port, baudrate=baudrate))
+    with connection as client:
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
         try:
@@ -367,6 +432,10 @@ def move_to_absolute(
                 before = snapshot_xy(x_motor, y_motor)
             _require_axis_position(before["x"], "x")
             _require_axis_position(before["y"], "y")
+            if session is not None:
+                _checked_snapshot_positions(before)
+                session.needs_stop = True
+            profile_cache = session.profiles if session is not None and session.options["reuse_profile"] else None
 
             with measure(timings, "axis_ready"):
                 _ensure_xy_ready(x_motor, y_motor)
@@ -378,6 +447,7 @@ def move_to_absolute(
                     profile_acc=profile_acc,
                     profile_dec=profile_dec,
                     axis_name="x",
+                    profile_cache=profile_cache,
                 )
             with measure(timings, "command_gap"):
                 time.sleep(_RS485_SLAVE_GAP_S)
@@ -389,6 +459,7 @@ def move_to_absolute(
                     profile_acc=profile_acc,
                     profile_dec=profile_dec,
                     axis_name="y",
+                    profile_cache=profile_cache,
                 )
             with measure(timings, "command_gap"):
                 time.sleep(0.02)
@@ -407,6 +478,8 @@ def move_to_absolute(
                     stage_limits=stage_limits,
                     stop_event=stop_event,
                     progress_callback=progress_callback,
+                    reuse_status=session is not None,
+                    require_standstill=keep_enabled,
                 )
             if wait_result.get("stopped_by_request"):
                 current = dict(wait_result.get("current") or {})
@@ -439,9 +512,19 @@ def move_to_absolute(
                     },
                 }
             with measure(timings, "finish_control"):
-                _finish_axis_pp(x_motor, axis_name="x")
+                if keep_enabled:
+                    if not client._restore_enabled_state(x_slave):
+                        raise StageMotionError("x axis failed to retain enabled state")
+                else:
+                    _finish_axis_pp(x_motor, axis_name="x")
             with measure(timings, "finish_control"):
-                _finish_axis_pp(y_motor, axis_name="y")
+                if keep_enabled:
+                    if not client._restore_enabled_state(y_slave):
+                        raise StageMotionError("y axis failed to retain enabled state")
+                else:
+                    _finish_axis_pp(y_motor, axis_name="y")
+            if session is not None:
+                session.needs_stop = keep_enabled
 
             with measure(timings, "settle"):
                 time.sleep(settle_s)
@@ -449,6 +532,12 @@ def move_to_absolute(
                 after = snapshot_xy(x_motor, y_motor)
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
+            if session is not None:
+                _checked_snapshot_positions(after)
+            if keep_enabled:
+                mask = ModbusRTUClient.STAT_TARGET_REACHED | ModbusRTUClient.STAT_OPERATION_ENABLED
+                if any(after[a]["statusword"] & mask != mask or abs(after[a]["current_pos"] - wait_result["current"][a]) > 10 for a in ("x", "y")):
+                    raise StageMotionError("position/status changed after hold standstill check")
             with measure(timings, "command_snapshot"):
                 cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
@@ -473,6 +562,9 @@ def move_to_absolute(
                 },
                 "after": after,
                 "err_to_target": err_to_target,
+                "stop_shoot": {"optimized": session is not None, "held_enabled": keep_enabled,
+                               "standstill_verified": wait_result.get("standstill_verified", False),
+                               "stable_samples": wait_result.get("stable_samples", 0)},
                 "motion_params": {
                     "port": port,
                     "baudrate": baudrate,
