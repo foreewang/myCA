@@ -6,7 +6,7 @@ import threading
 import time
 from typing import Any, Callable, Dict, Mapping
 
-from workflow.timing import measure
+from devices.motion.communication_timing import motion_measure as measure
 
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient

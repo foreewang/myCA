@@ -5,6 +5,7 @@ from pathlib import Path
 from time import perf_counter
 
 from workflow.timing import measure
+from devices.motion.communication_timing import collect as collect_communication
 from typing import Dict, List, Any
 
 from workflow.camera_executor import (
@@ -246,7 +247,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                     params.get("well_name"),
                     f"moving to scan point {point_index}/{total_points}",
                 )
-                with measure(timings, "move_total"):
+                with measure(timings, "move_total"), collect_communication(point_timing.setdefault("communication", {})):
                     motion_result = move_to_absolute(
                         timings_ms=point_timing["motion_timings_ms"],
                         port=motion.get("port", DEFAULT_MODBUS_PORT),

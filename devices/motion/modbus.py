@@ -12,6 +12,7 @@ import logging
 import time
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
+from devices.motion import communication_timing
 
 logger = logging.getLogger(__name__)
 
@@ -118,12 +119,16 @@ class ModbusRTUClient:
         self.timeout = timeout
         self._client = None
         self._connected = False
+        self._timing_last_slave = None
+        self._timing_last_attempt_end = None
 
     def connect(self) -> bool:
         """建立与串口的连接。"""
         if self._connected:
             logger.info("已经连接，无需重复连接")
             return True
+        self._timing_last_slave = None
+        self._timing_last_attempt_end = None
         self._client = ModbusSerialClient(
             port=self.port,
             baudrate=self.baudrate,
@@ -162,7 +167,44 @@ class ModbusRTUClient:
             except Exception:
                 logger.debug("serial flush %s failed", name, exc_info=True)
 
-    def _transact(self, description: str, operation):
+    def _transact(self, description: str, operation, **metadata):
+        stats = communication_timing.current()
+        if stats is None:
+            return self._transact_attempts(description, operation)
+        started = time.perf_counter()
+        previous_slave = self._timing_last_slave
+        gap_ms = None if self._timing_last_attempt_end is None else (started - self._timing_last_attempt_end) * 1000
+        attempts = []
+        success = False
+
+        def measured_operation():
+            attempt_started = time.perf_counter()
+            detail = {}
+            try:
+                result = operation()
+                detail["error"] = "empty result" if result is None else str(result)[:500] if hasattr(result, "isError") and result.isError() else None
+                return result
+            except Exception as exc:
+                detail["error"] = f"{type(exc).__name__}: {exc}"[:500]
+                raise
+            finally:
+                self._timing_last_slave = metadata.get("slave")
+                self._timing_last_attempt_end = time.perf_counter()
+                detail["elapsed_ms"] = (self._timing_last_attempt_end - attempt_started) * 1000
+                attempts.append(detail)
+
+        try:
+            result = self._transact_attempts(description, measured_operation)
+            success = result is not None
+            return result
+        finally:
+            communication_timing.record(
+                stats, metadata=metadata, attempts=attempts,
+                elapsed_ms=(time.perf_counter() - started) * 1000, success=success,
+                previous_slave=previous_slave, switch_gap_ms=gap_ms,
+            )
+
+    def _transact_attempts(self, description: str, operation):
         """Run one Modbus call and retry transient empty/timeout replies."""
         last_error: object | None = None
         for attempt in range(1, _RTU_COMM_ATTEMPTS + 1):
@@ -225,6 +267,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"读保持寄存器 slave={slave} address={address} count={count}",
             lambda: self._client.read_holding_registers(address=address, count=count, slave=slave),
+            slave=slave, function="read_holding_registers", address=address, count=count,
         )
         if result is None:
             return None
@@ -250,6 +293,7 @@ class ModbusRTUClient:
         result = self._transact(
             f"写寄存器 slave={slave} address={address} value={value}",
             lambda: self._client.write_register(address=address, value=value, slave=slave),
+            slave=slave, function="write_register", address=address, value=value,
         )
         if result is None:
             return False
@@ -285,11 +329,13 @@ class ModbusRTUClient:
         return val
 
     def __enter__(self):
-        self.connect()
+        with communication_timing.lifecycle("connect"):
+            self.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        with communication_timing.lifecycle("disconnect"):
+            self.disconnect()
 
     # -------------------- 电机通用控制逻辑 -------------------------------
     def _wait_for_status_mask(self, slave: int, mask: int, expected: int, timeout: float = 10.0) -> bool:

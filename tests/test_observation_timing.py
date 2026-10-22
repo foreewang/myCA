@@ -31,6 +31,11 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     def move(**kwargs):
         events.append("move")
         kwargs["timings_ms"]["wait_arrival"] = 12.0
+        from devices.motion import communication_timing
+        from devices.motion.modbus import ModbusRTUClient
+        assert communication_timing.current() is not None
+        # A real instrumented call through a fake transport, including failed moves.
+        ModbusRTUClient()._transact("fake read", lambda: object(), slave=1, address=897)
         if failure == "move":
             raise error
         return {"timings_ms": kwargs["timings_ms"]}
@@ -77,6 +82,10 @@ def test_scan_persists_completed_and_partial_timings(tmp_path, monkeypatch, fail
     record = result["point_timings"][0]
     assert result["status"] == record["status"] == status
     assert record["motion_timings_ms"]["wait_arrival"] == 12.0
+    assert record["communication"]["transaction_count"] == 1
+    assert record["communication"]["mode"] == "passive_linux_baseline_v1"
+    from devices.motion.communication_timing import current
+    assert current() is None
     times = record["timings_ms"]
     assert times["point_total"] >= times["move_total"] >= 0
     assert result["timings_ms"]["scan_work"] >= times["point_total"]
