@@ -18,6 +18,8 @@ def summarize(result):
         scans = []
     points = [p for scan in scans for p in scan.get("point_timings", [])]
     measured = [p["communication"] for p in points if "communication" in p]
+    guard_keys = ("switch_guard_count", "switch_guard_wait_ms", "switch_guard_requested_ms")
+    guard_measured = [c for c in measured if all(key in c for key in guard_keys)]
     steps = defaultdict(float)
     lifecycle = defaultdict(float)
     phases = {}
@@ -39,18 +41,21 @@ def summarize(result):
         "point_count": len(points), "captured_image_count": sum(s.get("image_count", 0) for s in scans),
         "move_total_ms": move_ms, "motion_steps_ms": dict(steps),
         "stop_shoot_options": [s.get("stop_shoot") for s in scans],
+        "slave_switch_gap_ms": [s.get("slave_switch_gap_ms") for s in scans],
         "session_cleanup": [s.get("motion_session_cleanup", {}) for s in scans],
         "lifecycle_counts": {key: sum(c.get("lifecycle_counts", {}).get(key, 0) for c in measured) for key in ("connect", "disconnect")} if measured else None,
         "nonfirst_move_mean_ms": sum(p["timings_ms"]["move_total"] for p in other_points) / len(other_points) if other_points else None,
         "communication_measured_points": len(measured),
         "communication_complete": bool(points) and len(points) == len(measured),
-        "communication": {key: sum(c[key] for c in measured) if measured else None for key in (
+        "switch_guard_measured_points": len(guard_measured),
+        "switch_guard_complete": bool(points) and len(points) == len(guard_measured),
+        "communication": {**{key: sum(c[key] for c in measured) if measured else None for key in (
             "transaction_count", "attempt_count", "retry_count", "failed_transaction_count",
             "transaction_total_ms", "attempt_total_ms", "retry_overhead_ms", "slow_transaction_count", "dropped_details",
-        )},
+        )}, **{key: sum(c[key] for c in guard_measured) if guard_measured else None for key in guard_keys}},
         "phase_communication": phases, "lifecycle_ms": dict(lifecycle),
         "move_unattributed_ms": move_ms - sum(steps.values()) - sum(lifecycle.values()),
-        "note": "Communication is INCLUDED in motion steps; never add these together. Missing instrumentation is unknown, not zero retries. Residual includes uninstrumented work and diagnostics overhead.",
+        "note": "Communication and switch guards are INCLUDED in motion steps; never add these to move_total. Transaction/retry totals EXCLUDE the separately reported switch guard waits. Missing instrumentation is unknown, not zero retries/waits. Residual includes uninstrumented work and diagnostics overhead.",
     }
 
 

@@ -9,6 +9,8 @@ Modbus RTU 客户端模块，基于 pymodbus 库实现。
 """
 
 import logging
+import math
+import threading
 import time
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
@@ -37,6 +39,14 @@ _TRANSIENT_MODBUS_MARKERS = (
 def _is_transient_modbus_failure(error: object) -> bool:
     text = str(error).lower()
     return any(marker in text for marker in _TRANSIENT_MODBUS_MARKERS)
+
+
+def validate_slave_switch_gap_ms(value) -> float:
+    """A bounded, explicit application-level guard; zero preserves old timing."""
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not 0 <= value <= 20 or not math.isfinite(value)):
+        raise ValueError("slave_switch_gap_ms must be a finite number from 0 to 20 milliseconds")
+    return float(value)
 
 
 class ModbusRTUClient:
@@ -100,6 +110,7 @@ class ModbusRTUClient:
         parity="N",
         stopbits=1,
         timeout=_RTU_TIMEOUT_S,
+        slave_switch_gap_ms=0.0,
     ):
         """
         初始化 Modbus RTU 客户端。
@@ -110,6 +121,7 @@ class ModbusRTUClient:
         :param parity:   校验位，"N" 无校验，"E" 偶校验，"O" 奇校验
         :param stopbits: 停止位，1 或 2
         :param timeout:  串口通信超时时间（秒）
+        :param slave_switch_gap_ms: 切换从站时，从上一事务结束起的最小调用间隔（毫秒）；默认 0。
         """
         self.port = port
         self.baudrate = baudrate
@@ -117,10 +129,14 @@ class ModbusRTUClient:
         self.parity = parity
         self.stopbits = stopbits
         self.timeout = timeout
+        self.slave_switch_gap_ms = validate_slave_switch_gap_ms(slave_switch_gap_ms)
+        self._transaction_lock = threading.RLock()
         self._client = None
         self._connected = False
         self._timing_last_slave = None
         self._timing_last_attempt_end = None
+        self._last_transaction_slave = None
+        self._last_transaction_end = None
         self.configuration_generation = {}
 
     def connect(self) -> bool:
@@ -130,6 +146,8 @@ class ModbusRTUClient:
             return True
         self._timing_last_slave = None
         self._timing_last_attempt_end = None
+        self._last_transaction_slave = None
+        self._last_transaction_end = None
         self._client = ModbusSerialClient(
             port=self.port,
             baudrate=self.baudrate,
@@ -169,10 +187,31 @@ class ModbusRTUClient:
                 logger.debug("serial flush %s failed", name, exc_info=True)
 
     def _transact(self, description: str, operation, **metadata):
+        # Keep the guard and the complete read/write transaction in one critical
+        # section. The scan owns this client; this is not a cross-process lock.
+        with self._transaction_lock:
+            return self._transact_locked(description, operation, **metadata)
+
+    def _transact_locked(self, description: str, operation, **metadata):
         stats = communication_timing.current()
-        started = time.perf_counter()
+        entered = time.perf_counter()
         previous_slave = self._timing_last_slave
-        gap_ms = None if self._timing_last_attempt_end is None else (started - self._timing_last_attempt_end) * 1000
+        gap_ms = None if self._timing_last_attempt_end is None else (entered - self._timing_last_attempt_end) * 1000
+        slave = metadata.get("slave")
+        guard_requested_ms = guard_wait_ms = 0.0
+        if (self.slave_switch_gap_ms > 0 and slave is not None
+                and self._last_transaction_slave is not None
+                and slave != self._last_transaction_slave and self._last_transaction_end is not None):
+            remaining = self.slave_switch_gap_ms / 1000 - (entered - self._last_transaction_end)
+            if remaining > 0:
+                guard_requested_ms = remaining * 1000
+                guard_started = time.perf_counter()
+                time.sleep(remaining)
+                guard_wait_ms = (time.perf_counter() - guard_started) * 1000
+        # Guard time is reported separately, not counted as a transaction or a
+        # retry cost. Outer motion/step wall-clock measurements still include it.
+        started = time.perf_counter()
+        after_guard_gap_ms = None if self._timing_last_attempt_end is None else (started - self._timing_last_attempt_end) * 1000
         attempts = []
         success = False
 
@@ -188,9 +227,9 @@ class ModbusRTUClient:
                 raise
             finally:
                 if detail.get("error"):
-                    slave = metadata.get("slave")
                     self.configuration_generation[slave] = self.configuration_generation.get(slave, 0) + 1
-                self._timing_last_slave = metadata.get("slave")
+                # Connection/cache correctness must not depend on diagnostics.
+                self._timing_last_slave = slave
                 self._timing_last_attempt_end = time.perf_counter()
                 if stats is not None:
                     detail["elapsed_ms"] = (self._timing_last_attempt_end - attempt_started) * 1000
@@ -201,12 +240,21 @@ class ModbusRTUClient:
             success = result is not None
             return result
         finally:
-            if stats is not None:
-                communication_timing.record(
-                    stats, metadata=metadata, attempts=attempts,
-                    elapsed_ms=(time.perf_counter() - started) * 1000, success=success,
-                    previous_slave=previous_slave, switch_gap_ms=gap_ms,
-                )
+            try:
+                if stats is not None:
+                    communication_timing.record(
+                        stats, metadata=metadata, attempts=attempts,
+                        elapsed_ms=(time.perf_counter() - started) * 1000, success=success,
+                        previous_slave=previous_slave, switch_gap_ms=gap_ms,
+                        slave_switch_gap_ms=self.slave_switch_gap_ms,
+                        switch_guard_requested_ms=guard_requested_ms,
+                        switch_guard_wait_ms=guard_wait_ms, after_guard_gap_ms=after_guard_gap_ms,
+                    )
+            finally:
+                # Preserve the boundary on success, exhausted retries and raised
+                # exceptions, including calls outside a timing.collect context.
+                self._last_transaction_slave = slave
+                self._last_transaction_end = time.perf_counter()
 
     def _transact_attempts(self, description: str, operation):
         """Run one Modbus call and retry transient empty/timeout replies."""
@@ -254,10 +302,16 @@ class ModbusRTUClient:
 
     def disconnect(self):
         """关闭串口连接。"""
-        if self._client and self._connected:
-            self._client.close()
-            self._connected = False
-            logger.info("已断开连接")
+        try:
+            if self._client and self._connected:
+                self._client.close()
+                self._connected = False
+                logger.info("已断开连接")
+        finally:
+            self._timing_last_slave = None
+            self._timing_last_attempt_end = None
+            self._last_transaction_slave = None
+            self._last_transaction_end = None
 
     def is_connected(self) -> bool:
         """检查当前是否已连接。"""

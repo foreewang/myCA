@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Mapping
 from devices.motion.communication_timing import motion_measure as measure
 
 from devices.motion.MotorManager import MotorManager
-from devices.motion.modbus import ModbusRTUClient
+from devices.motion.modbus import ModbusRTUClient, validate_slave_switch_gap_ms
 
 logger = logging.getLogger(__name__)
 
@@ -386,9 +386,11 @@ def move_to_absolute(
     session=None,
     release_after_move: bool = False,
     keep_enabled: bool = False,
+    slave_switch_gap_ms: float = 0.0,
 ) -> Dict[str, Any]:
     """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
     timings = timings_ms if timings_ms is not None else {}
+    slave_switch_gap_ms = validate_slave_switch_gap_ms(slave_switch_gap_ms)
     port = str(port or "").strip()
     if not port:
         raise StageMotionError("port must not be empty")
@@ -421,9 +423,11 @@ def move_to_absolute(
 
     x_motor: MotorManager | None = None
     y_motor: MotorManager | None = None
+    gap_options = {"slave_switch_gap_ms": slave_switch_gap_ms} if slave_switch_gap_ms else {}
     connection = (session.connection(ModbusRTUClient, port=port, baudrate=baudrate,
-                                    x_slave=x_slave, y_slave=y_slave, release=release_after_move)
-                  if session is not None else ModbusRTUClient(port=port, baudrate=baudrate))
+                                    x_slave=x_slave, y_slave=y_slave, release=release_after_move,
+                                    slave_switch_gap_ms=slave_switch_gap_ms)
+                  if session is not None else ModbusRTUClient(port=port, baudrate=baudrate, **gap_options))
     with connection as client:
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
@@ -499,6 +503,7 @@ def move_to_absolute(
                     "motion_params": {
                         "port": port,
                         "baudrate": baudrate,
+                        "slave_switch_gap_ms": slave_switch_gap_ms,
                         "x_slave": x_slave,
                         "y_slave": y_slave,
                         "profile_vel": profile_vel,
@@ -568,6 +573,7 @@ def move_to_absolute(
                 "motion_params": {
                     "port": port,
                     "baudrate": baudrate,
+                    "slave_switch_gap_ms": slave_switch_gap_ms,
                     "x_slave": x_slave,
                     "y_slave": y_slave,
                     "profile_vel": profile_vel,

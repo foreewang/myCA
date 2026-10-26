@@ -6,6 +6,7 @@ from time import perf_counter
 
 from workflow.timing import measure
 from devices.motion.communication_timing import collect as collect_communication
+from devices.motion.modbus import validate_slave_switch_gap_ms
 from typing import Dict, List, Any
 
 from workflow.camera_executor import (
@@ -219,6 +220,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     scan_started = perf_counter()
     point_timings = []
     motion = apply_motion_profile_defaults(params.get("motion"))
+    slave_switch_gap_ms = validate_slave_switch_gap_ms(motion.get("slave_switch_gap_ms", 0.0))
     stop_shoot = optimization_options(motion)
     motion_session = ScanMotionSession(stop_shoot) if stop_shoot["enabled"] else None
     cleanup_metrics = {}
@@ -248,6 +250,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             }
             point_timings.append(point_timing)
             point_timing["stop_shoot"] = dict(stop_shoot)
+            point_timing["slave_switch_gap_ms"] = slave_switch_gap_ms
             with measure(timings, "point_total"):
                 raise_if_cancel_requested(params, f"before_move:point_{int(point['index'])}")
                 report_progress(
@@ -276,6 +279,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                         x_slave=int(motion.get("x_slave", 1)),
                         y_slave=int(motion.get("y_slave", 2)),
                         baudrate=int(motion.get("baudrate", 115200)),
+                        slave_switch_gap_ms=slave_switch_gap_ms,
                         settle_s=float(params["settle_s"]),
                         timeout_s=float(motion.get("timeout_s", 120.0)),
                         poll_s=float(motion.get("poll_s", 0.05)), #监控频率，每poll_s读取一次X/Y轴位置，判断是否到位或超时
@@ -397,6 +401,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "captures": captures,
             "point_timings": point_timings,
             "stop_shoot": stop_shoot,
+            "slave_switch_gap_ms": slave_switch_gap_ms,
             "motion_session_cleanup": cleanup_metrics,
             "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
         }
@@ -438,6 +443,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "captures": captures,
             "point_timings": point_timings,
             "stop_shoot": stop_shoot,
+            "slave_switch_gap_ms": slave_switch_gap_ms,
             "motion_session_cleanup": cleanup_metrics,
             "timings_ms": {"scan_work": (perf_counter() - scan_started) * 1000.0},
             "error": str(exc),

@@ -30,6 +30,9 @@ def collect(result):
         "transaction_count": 0, "attempt_count": 0, "retry_count": 0,
         "failed_transaction_count": 0, "transaction_total_ms": 0.0,
         "attempt_total_ms": 0.0, "retry_overhead_ms": 0.0,
+        "switch_guard_count": 0, "switch_guard_wait_ms": 0.0,
+        "switch_guard_requested_ms": 0.0,
+        "configured_slave_switch_gaps_ms": [],
         "slave_switch_count": 0, "switched_retry_count": 0,
         "same_slave_retry_count": 0, "initial_retry_count": 0,
         "slow_threshold_ms": 100.0, "slow_transaction_count": 0,
@@ -70,7 +73,9 @@ def lifecycle(name):
         stats["lifecycle_counts"][name] = stats["lifecycle_counts"].get(name, 0) + 1
 
 
-def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, switch_gap_ms):
+def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, switch_gap_ms,
+           slave_switch_gap_ms=0.0, switch_guard_requested_ms=0.0,
+           switch_guard_wait_ms=0.0, after_guard_gap_ms=None):
     slave = metadata.get("slave")
     switched = previous_slave is not None and previous_slave != slave
     retries = max(0, len(attempts) - 1)
@@ -87,6 +92,11 @@ def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, sw
     stats["transaction_total_ms"] += elapsed_ms
     stats["attempt_total_ms"] += attempt_ms
     stats["retry_overhead_ms"] += retry_ms
+    stats["switch_guard_count"] += int(switch_guard_requested_ms > 0)
+    stats["switch_guard_requested_ms"] += switch_guard_requested_ms
+    stats["switch_guard_wait_ms"] += switch_guard_wait_ms
+    if slave_switch_gap_ms not in stats["configured_slave_switch_gaps_ms"]:
+        stats["configured_slave_switch_gaps_ms"].append(slave_switch_gap_ms)
     stats["slave_switch_count"] += int(switched)
     retry_key = "initial_retry_count" if previous_slave is None else "switched_retry_count" if switched else "same_slave_retry_count"
     stats[retry_key] += retries
@@ -98,6 +108,8 @@ def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, sw
         "address": metadata.get("address"), "transaction_count": 0,
         "attempt_count": 0, "retry_count": 0, "failed_transaction_count": 0,
         "total_ms": 0.0, "attempt_total_ms": 0.0, "retry_overhead_ms": 0.0,
+        "switch_guard_count": 0, "switch_guard_wait_ms": 0.0,
+        "switch_guard_requested_ms": 0.0,
         "min_ms": elapsed_ms, "max_ms": 0.0,
     })
     group["transaction_count"] += 1
@@ -107,6 +119,9 @@ def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, sw
     group["total_ms"] += elapsed_ms
     group["attempt_total_ms"] += attempt_ms
     group["retry_overhead_ms"] += retry_ms
+    group["switch_guard_count"] += int(switch_guard_requested_ms > 0)
+    group["switch_guard_requested_ms"] += switch_guard_requested_ms
+    group["switch_guard_wait_ms"] += switch_guard_wait_ms
     group["min_ms"] = min(group["min_ms"], elapsed_ms)
     group["max_ms"] = max(group["max_ms"], elapsed_ms)
     if slow or retries or not success:
@@ -114,6 +129,10 @@ def record(stats, *, metadata, attempts, elapsed_ms, success, previous_slave, sw
             stats["slow_or_retried"].append({
                 **metadata, "phase": phase, "previous_slave": previous_slave,
                 "slave_switched": switched, "since_previous_attempt_ms": switch_gap_ms,
+                "after_guard_gap_ms": after_guard_gap_ms,
+                "slave_switch_gap_ms": slave_switch_gap_ms,
+                "switch_guard_requested_ms": switch_guard_requested_ms,
+                "switch_guard_wait_ms": switch_guard_wait_ms,
                 "elapsed_ms": elapsed_ms, "success": success, "attempts": attempts,
             })
         else:
