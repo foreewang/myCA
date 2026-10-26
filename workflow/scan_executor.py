@@ -220,7 +220,8 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     scan_started = perf_counter()
     point_timings = []
     motion = apply_motion_profile_defaults(params.get("motion"))
-    slave_switch_gap_ms = validate_slave_switch_gap_ms(motion.get("slave_switch_gap_ms", 0.0))
+    # Default the XY scan only; autofocus and other direct clients keep their defaults.
+    slave_switch_gap_ms = validate_slave_switch_gap_ms(motion.get("slave_switch_gap_ms", 2.0))
     stop_shoot = optimization_options(motion)
     motion_session = ScanMotionSession(stop_shoot) if stop_shoot["enabled"] else None
     cleanup_metrics = {}

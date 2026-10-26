@@ -1,5 +1,7 @@
 # 切站最小间隔：修改、部署和实机验证
 
+2026-10-26 更新：当前源码的观察扫描入口在省略 `task.motion.slave_switch_gap_ms` 时默认使用 **2 ms**；显式填 `0` 可关闭，填其他合法数字可覆盖。仅修改扫描入口的缺省值，底层通用客户端、直接调用的运动函数和对焦流程仍保留原默认值。下面列出的 2026-10-23 ZIP 是历史发布包，**不包含这次默认值修改**；须部署更新后的 `workflow/scan_executor.py` 并重启服务后才生效。测试请求省略此字段后，应检查结果 `capture_result.slave_switch_gap_ms` 为 `2.0`。
+
 现场后续检查仅发现 `tests/test_stage_diagnostics_summary.py` 基线不符；这不说明该文件一定缺失，也不影响运行模块的已通过校验。为避免部署依赖现场测试目录，已从原包派生 `rtu-switch-gap-2267472-20261023-runtime.zip`：只含6个运行/汇总代码文件，所有这6个文件的旧版哈希、新版哈希和目标内容与原包完全一致，保留完整基线检查。测试及说明文档不在此包的部署范围，现场对应文件不改动。此工控机后续请使用 `runtime` 包，并将下文 `PACKAGE` 文件名相应替换；同样先 `check` 成功才 `apply`，无需改部署工具或任务 JSON。原包的这次 `check` 未写入文件，不需要先回退。
 
 本轮基线为逐点停稳拍照提交 `2267472e2644f781784854b59fe39f642d649a4a`。2026-10-22 的静止测试报告中，`modbus.py` 和 `communication_timing.py` 哈希与该基线相符；其他包内文件仍须由现场 `check` 逐个确认。包是明确选文件的未提交工作区快照，`target_commit=null`，使用 `target_snapshot` 和 ZIP SHA-256 标识内容。没有切换本地分支或提交之前的未提交工作。
@@ -20,12 +22,12 @@
 }
 ```
 
-若原来已经有 `motion` 对象，把新字段合并进去，保留原串口、速度、加减速度等参数。不要创建第二个同名对象，也不要把该数字放进 `stop_shoot`。省略或填 `0` 时不增加切站等待；接受有限数字 `0..20`，拒绝字符串、布尔值、null、负数和非有限值。
+若原来已经有 `motion` 对象，把新字段合并进去，保留原串口、速度、加减速度等参数。不要创建第二个同名对象，也不要把该数字放进 `stop_shoot`。当前扫描入口省略时默认 `2`，显式填 `0` 时不增加切站等待；接受有限数字 `0..20`，拒绝字符串、布尔值、null、负数和非有限值。
 
 - `devices/motion/modbus.py`：读和写共用的 `_transact` 入口按上一事务结束时间计算；仅从站改变时补足不足的间隔。同站、首次请求、已有足够等待时不补等。客户端内锁覆盖等待和事务，扫描会话仍独占串口。
 - 原有50ms重试等待、业务层50ms/20ms等待及超时设置保留。新等待不依赖是否开启取证；同时保证通信异常引起的参数缓存失效也不依赖取证。
 - `scan_executor` → `stage_executor` → `ScanMotionSession`/独立客户端均透传配置。它与 `stop_shoot.enabled` 独立，同一会话内不允许改变间隔。
-- 默认0ms，对焦和物镜流程没有启用新间隔。保持逐点到位、停稳后拍照，未改速度、标定、到位判定或相机参数。
+- 观察扫描默认2ms，通过参数传给运动函数和客户端；通用客户端默认仍为0ms，对焦和物镜流程没有启用新间隔。保持逐点到位、停稳后拍照，未改速度、标定、到位判定或相机参数。
 - `communication` 新增 `switch_guard_count`、`switch_guard_requested_ms`、`switch_guard_wait_ms` 和 `configured_slave_switch_gaps_ms`。事务与重试耗时不包含新补等待，`move_total`及各运动步骤的墙钟耗时包含它，不要重复相加。
 - 结果中的 `capture_result.slave_switch_gap_ms`、各 `point_timings[].slave_switch_gap_ms`、各 `motion_result.motion_params.slave_switch_gap_ms` 可核对生效值。失败结果也保留扫描配置。
 

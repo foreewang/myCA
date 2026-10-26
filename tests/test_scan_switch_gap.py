@@ -33,7 +33,14 @@ def test_invalid_gap_rejected_before_stage_connection(hardware):
 
 
 @pytest.mark.parametrize('enabled', [False, True])
-def test_scan_records_gap_and_yields_connection_to_autofocus(tmp_path, monkeypatch, hardware, enabled):
+@pytest.mark.parametrize('gap_options, expected_gap', [
+    ({}, 2),
+    ({'slave_switch_gap_ms': 0}, 0),
+    ({'slave_switch_gap_ms': 2}, 2),
+    ({'slave_switch_gap_ms': 5}, 5),
+])
+def test_scan_records_gap_and_yields_connection_to_autofocus(
+        tmp_path, monkeypatch, hardware, enabled, gap_options, expected_gap):
     from workflow import scan_executor as scan, stage_executor as stage
     from devices.motion.modbus import ModbusRTUClient
     monkeypatch.setattr(scan, 'move_to_absolute', stage.move_to_absolute)
@@ -51,10 +58,13 @@ def test_scan_records_gap_and_yields_connection_to_autofocus(tmp_path, monkeypat
                   filename_pattern='{index}.bmp', device_index=0,
                   autofocus_decision={'should_run': True},
                   autofocus_cfg={'trigger': {'scope': 'once_per_task'}},
-                  motion={'port': 'fake', 'slave_switch_gap_ms': 2, 'stop_shoot': {'enabled': enabled}})
+                  motion={'port': 'fake', 'stop_shoot': {'enabled': enabled}, **gap_options})
     points = [dict(index=i, row_index=0, col_index=i, stage_x_target=i*100,
                    stage_y_target=i*100, view_down_mm=0, view_right_mm=i) for i in (1, 2)]
     result = scan.execute_scan_capture({'plate': {}}, params, dict(points=points, reference={}, scan_config={}))
-    assert result['slave_switch_gap_ms'] == 2
-    assert all(p['slave_switch_gap_ms'] == 2 for p in result['point_timings'])
-    assert all(c.slave_switch_gap_ms == 2 and not c.is_connected() for c in FakeClient.instances)
+    assert result['slave_switch_gap_ms'] == expected_gap
+    assert all(p['slave_switch_gap_ms'] == expected_gap for p in result['point_timings'])
+    assert all(p['motion_result']['motion_params']['slave_switch_gap_ms'] == expected_gap
+               for p in result['captures'])
+    assert all(c.slave_switch_gap_ms == expected_gap and not c.is_connected()
+               for c in FakeClient.instances)
