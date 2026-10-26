@@ -170,8 +170,6 @@ class ModbusRTUClient:
 
     def _transact(self, description: str, operation, **metadata):
         stats = communication_timing.current()
-        if stats is None:
-            return self._transact_attempts(description, operation)
         started = time.perf_counter()
         previous_slave = self._timing_last_slave
         gap_ms = None if self._timing_last_attempt_end is None else (started - self._timing_last_attempt_end) * 1000
@@ -185,7 +183,7 @@ class ModbusRTUClient:
                 result = operation()
                 detail["error"] = "empty result" if result is None else str(result)[:500] if hasattr(result, "isError") and result.isError() else None
                 return result
-            except Exception as exc:
+            except BaseException as exc:
                 detail["error"] = f"{type(exc).__name__}: {exc}"[:500]
                 raise
             finally:
@@ -194,19 +192,21 @@ class ModbusRTUClient:
                     self.configuration_generation[slave] = self.configuration_generation.get(slave, 0) + 1
                 self._timing_last_slave = metadata.get("slave")
                 self._timing_last_attempt_end = time.perf_counter()
-                detail["elapsed_ms"] = (self._timing_last_attempt_end - attempt_started) * 1000
-                attempts.append(detail)
+                if stats is not None:
+                    detail["elapsed_ms"] = (self._timing_last_attempt_end - attempt_started) * 1000
+                    attempts.append(detail)
 
         try:
             result = self._transact_attempts(description, measured_operation)
             success = result is not None
             return result
         finally:
-            communication_timing.record(
-                stats, metadata=metadata, attempts=attempts,
-                elapsed_ms=(time.perf_counter() - started) * 1000, success=success,
-                previous_slave=previous_slave, switch_gap_ms=gap_ms,
-            )
+            if stats is not None:
+                communication_timing.record(
+                    stats, metadata=metadata, attempts=attempts,
+                    elapsed_ms=(time.perf_counter() - started) * 1000, success=success,
+                    previous_slave=previous_slave, switch_gap_ms=gap_ms,
+                )
 
     def _transact_attempts(self, description: str, operation):
         """Run one Modbus call and retry transient empty/timeout replies."""
