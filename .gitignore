@@ -6,6 +6,7 @@ __pycache__/
 data/*
 !data/__init__.py
 logs/
+.code-updates/
 outputs/
 outputs_*/
 third_party/XWJJJ260511/output/
