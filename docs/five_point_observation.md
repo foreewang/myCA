@@ -1,5 +1,7 @@
 # 4× 五点固定观察与验收
 
+> 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
+
 `capture` / `pipeline` 的 4× 观察默认每孔拍摄五张，顺序为中心、左上、右上、左下、右下；10× 默认继续使用原全孔扫描。五点是抽样观察，去重后的计数也只代表采样区域，不能直接当作全孔总量。
 
 ## 调用方式与兼容性
@@ -65,7 +67,7 @@ d         = min(d_nominal, d_limit)
 
 `scan_result.json` 的 `scan_config.mode` 记录实际模式；五点结果另有 `scan_config.has_overlapping_views`，记录实际视野是否重叠。五点的 `captures[].point_name` 依次为 `center`、`upper_left`、`upper_right`、`lower_left`、`lower_right`，`index` 从 1 开始；检测结果 `images[].point_name` 保留点位名。原索引和坐标字段保留，`view_right_mm/view_down_mm` 仍相对原示教起点，不改为相对孔心。文件名模板可使用 `{point_name}`；已有 `{index}`、`{row}`、`{col}` 模板仍可使用。
 
-当前 24、48 孔板的中心图与四角图存在重叠。包含检测的任务必须按实际重叠情况检查 `detect.deduplication.calibrated=true` 和显式正数 `registration_tolerance_mm`，未标定时在硬件动作前拒绝；把 `scan.overlap` 设成 0 或省略不能绕过检查。仅拍照无需去重标定。已有有效标定可复核后复用，不能仅为通过预检把 `calibrated` 改为 true。
+当前 24、48 孔板的中心图与四角图存在重叠。默认关闭跨图去重，不要求去重标定，仍导出全部照片及逐图可选候选。仅当 `detect.deduplication.enabled=true` 时，按实际重叠情况检查 `calibrated=true` 和显式正数 `registration_tolerance_mm`，未标定时在硬件动作前拒绝；此时把 `scan.overlap` 设成 0 或省略不能绕过检查。已有有效标定可复核后复用，不能仅为通过预检把 `calibrated` 改为 true。
 
 新结果的实际重叠标记优先于请求中的 `overlap`；历史结果没有新字段时继续按原 `overlap` 判断，支持读取旧结果。
 

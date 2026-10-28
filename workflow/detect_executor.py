@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from workflow.clone_dedupe import dedupe_well_clones
+from workflow.clone_dedupe import dedupe_well_clones, deduplication_enabled
 from workflow.detect_api import run_detect_on_image, rule_texture_kwargs
 from workflow.file_io import atomic_write_json
 from workflow.overlay_preview import save_overlay_preview
@@ -214,6 +214,7 @@ def _render_overlay_image(
 def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], scan_result: Dict[str, Any]) -> Dict[str, Any]:
     pickable_path = pickable_output_path(params)
     detect_cfg = ctx["task"].get("detect", {}) or {}
+    dedupe_enabled = deduplication_enabled(detect_cfg)
     entrypoint = detect_cfg.get("entrypoint")
     save_debug = detect_cfg.get("save_debug", False)
     if not isinstance(save_debug, bool):
@@ -401,7 +402,20 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
     total_image_clones = sum(len(x["clones"]) for x in images)
     total_review_candidates = sum(len(x["review_candidates"]) for x in images)
     dedupe_cfg = detect_cfg.get("deduplication") or {}
-    if total_image_clones == 0:
+    if not dedupe_enabled:
+        for image in images:
+            for clone in image["clones"]:
+                clone["global_clone_id"] = None
+                clone["source_detection_id"] = f"I{image['index']}:{clone['clone_id']}"
+        deduped = {
+            "unique_clones": None,
+            "metadata": {
+                "enabled": False, "status": "not_performed",
+                "input_observation_count": total_image_clones,
+                "merged_observation_count": None,
+            },
+        }
+    elif total_image_clones == 0:
         deduped = {
             "unique_clones": [],
             "metadata": {
@@ -425,10 +439,12 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
             registration_tolerance_mm=float(dedupe_cfg.get("registration_tolerance_mm", 0.10)),
         )
     unique_clones = deduped["unique_clones"]
+    if dedupe_enabled:
+        deduped["metadata"].update(enabled=True, status="completed")
     report_progress(params, "detect", 100, params.get("well_name"), "detect completed")
 
     result = {
-        "schema_version": 2,
+        "schema_version": 2 if dedupe_enabled else 3,
         "task_id": params["task_id"],
         "status": "success",
         "task_type": "single_well_scan_and_detect",
@@ -442,8 +458,8 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
         "image_count": len(images),
         "total_image_clone_count": total_image_clones,
         "review_candidate_count": total_review_candidates,
-        "unique_clone_count": len(unique_clones),
-        "total_clone_count": len(unique_clones),
+        "unique_clone_count": len(unique_clones) if dedupe_enabled else None,
+        "total_clone_count": len(unique_clones) if dedupe_enabled else None,
         "unique_clones": unique_clones,
         "deduplication": deduped["metadata"],
         "quality_assessment": {

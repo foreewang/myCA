@@ -1,5 +1,7 @@
 # 任务与命令行
 
+> 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
+
 任务文件顶层必须有 `task`。CLI 读 JSON 或 YAML；HTTP 请求体使用同一结构。
 
 ## 任务类型与范围
@@ -150,7 +152,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 检测入口、`is_pickable` 与 10x 对中见 [视觉检测](vision.md)。含 `detect` 的 HTTP 示意见 [HTTP API](http-api.md)。
 
-五点观察为抽样，计数只代表采样区域。当前 24/48 孔板的中心视野与四角视野重叠；包含检测时，必须有有效去重标定和显式 `registration_tolerance_mm`，否则在硬件动作前失败。是否重叠由实际五点视野判断，不能通过省略或设为 `scan.overlap=0` 绕过；仅拍照不需要去重标定。
+五点观察为抽样，计数只代表采样区域。默认关闭去重，逐图数量可能重复。当前 24/48 孔板的中心视野与四角视野重叠；仅在 `detect.deduplication.enabled=true` 时要求有效去重标定和显式 `registration_tolerance_mm`，否则在硬件动作前失败。启用去重时，不能通过省略或设为 `scan.overlap=0` 绕过实际重叠检查。
 
 ## 观察步骤计时
 
@@ -237,6 +239,8 @@ for name, values in sorted(samples.items()):
 ## 补偿
 
 ### 可挑取且去重的候选文件
+
+默认 `detect.deduplication.enabled=false` 时也生成此文件：版本为 4，保留全部照片及逐图可选候选，`global_clone_id=null`，`total_clone_count` 表示候选条目数而非唯一克隆数。使用原 `image_index + clone_id` 选择和补偿。详见 [可选去重与字段迁移](optional_deduplication.md)。下述版本 3、分组校验和代表选择仅适用于启用去重或历史去重文件。
 
 观察识别完成后额外生成 `pickable_detect_result.json`，保留原始检测结果。
 新文件依据原结果的 `unique_clones[].source_detections` 分组，在每组内严格筛选
@@ -374,7 +378,7 @@ python -m workflow.pickable_result --input data/task/B2/detect_result.json
 - 中心、面积、边框、相对图像中心偏移
 - `confidence`、`is_valid_for_compensation`、`is_pickable`
 - `mm_per_pixel`
-- `unique_clones` / `total_clone_count`（去重后唯一数）
+- `unique_clones` / `total_clone_count`（开启去重时为分组列表及唯一数；默认关闭时均为 `null`，逐图数量见 `total_image_clone_count`）
 - `overlay_image_path`
 
 五点来源图片的 `images[].point_name` 保留对应观察位置。新扫描结果按 `has_overlapping_views` 判断去重标定要求，历史结果缺少新字段时仍按原 `overlap` 逻辑读取。

@@ -1,5 +1,7 @@
 # 常见问题与维护
 
+> 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
+
 ## 改了代码，测试结果没变
 
 若 `uvicorn` 已在跑，改 `.py` 后必须重启服务。只改 JSON/YAML 或请求体通常不用重启。
@@ -69,7 +71,7 @@
 
 含 `detect` 的任务会在运动前做重叠去重预检；默认 4x 模型还会额外检查相机和权重：
 
-- 所有检测入口：`scan.overlap > 0`（缺省 `0`）时必须 `deduplication.calibrated=true`，并显式给出 `registration_tolerance_mm`
+- 所有检测入口：默认关闭去重；仅在 `deduplication.enabled=true` 且视野重叠时要求 `calibrated=true` 及显式 `registration_tolerance_mm`。五点按实际视野判断重叠。
 - 默认 4x 模型：`objective_name` 必须是 `4x`
 - 默认 4x 模型：分辨率 5120×5120，且 `allow_downscale=false`
 - 默认 4x 模型：`detect.model_dir` 必填

@@ -532,7 +532,7 @@ def test_detect_executor_emits_unique_and_review_counts(tmp_path: Path, monkeypa
                     "draw_image_center": False,
                     "model_dir": "C:/models/release",
                     "provider": "cpu",
-                    "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.10},
+                    "deduplication": {"enabled": True, "calibrated": True, "registration_tolerance_mm": 0.10},
                 }
             },
             "plate": {
@@ -628,7 +628,7 @@ def test_detection_preflight_rejects_uncalibrated_overlap_for_rule_entrypoint() 
 
     with pytest.raises(ValueError, match="deduplication.calibrated"):
         preflight_detection_backend(
-            {"task": {"detect": {"entrypoint": "vision.vision.detect_pipeline:process_image"}}},
+            {"task": {"detect": {"deduplication": {"enabled": True}, "entrypoint": "vision.vision.detect_pipeline:process_image"}}},
             {
                 "stages": ["capture", "detect"],
                 "objective_name": "4x",
@@ -645,7 +645,7 @@ def test_detection_preflight_allows_calibrated_rule_entrypoint_without_model() -
             "task": {
                 "detect": {
                     "entrypoint": "vision.vision.detect_pipeline:process_image",
-                    "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.10},
+                    "deduplication": {"enabled": True, "calibrated": True, "registration_tolerance_mm": 0.10},
                 }
             }
         },
@@ -662,7 +662,7 @@ def test_detection_preflight_rejects_uncalibrated_overlap_before_model_load() ->
 
     with pytest.raises(ValueError, match="deduplication.calibrated"):
         preflight_detection_backend(
-            {"task": {"detect": {"model_dir": "C:/not-loaded-because-calibration-fails"}}, "camera": {"resolution": {"width": 5120, "height": 5120, "allow_downscale": False}}},
+            {"task": {"detect": {"deduplication": {"enabled": True}, "model_dir": "C:/not-loaded-because-calibration-fails"}}, "camera": {"resolution": {"width": 5120, "height": 5120, "allow_downscale": False}}},
             {
                 "stages": ["capture", "detect"],
                 "objective_name": "4x",
@@ -682,7 +682,7 @@ def test_detection_preflight_rejects_uncalibrated_explicit_overlap_from_task() -
             "plate_type": "24-well",
             "objective_name": "4x",
             "scan": {"overlap": 0.1},
-            "detect": {"model_dir": "C:/not-loaded-because-calibration-fails"},
+            "detect": {"deduplication": {"enabled": True}, "model_dir": "C:/not-loaded-because-calibration-fails"},
         },
         "objective": {"fov_mm": {"width": 3.22, "height": 3.22}},
         "camera": {"resolution": {"width": 5120, "height": 5120, "allow_downscale": False}},

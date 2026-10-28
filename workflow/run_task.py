@@ -586,6 +586,10 @@ def preflight_five_point_scans(ctx: Dict[str, Any], params: Dict[str, Any]) -> N
 
 def _preflight_overlap_deduplication(detect_cfg: Dict[str, Any], params: Dict[str, Any]) -> None:
     """Reject uncalibrated overlapping scans before capture or inference."""
+    from workflow.clone_dedupe import deduplication_enabled
+
+    if not deduplication_enabled(detect_cfg):
+        return
     if has_overlapping_views(params) and not bool(
         (detect_cfg.get("deduplication") or {}).get("calibrated", False)
     ):

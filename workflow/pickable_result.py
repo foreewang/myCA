@@ -1,4 +1,4 @@
-"""Export all photos and a minimal index of deduplicated pickable clones."""
+"""Export all photos and selectable clones, with explicit deduplication semantics."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -31,7 +31,9 @@ def _rank(ref):
 
 
 def build_pickable_detect_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Require an existing deduplicated result; never treat missing IDs as unique."""
+    """Export explicit per-image mode or validated existing deduplication groups."""
+    if (result.get("deduplication") or {}).get("enabled") is False:
+        return _build_per_image_candidates(result)
     refs = {}
     for image in result.get("images", []):
         for clone in image.get("clones", []):
@@ -93,12 +95,57 @@ def build_pickable_detect_result(result: dict[str, Any]) -> dict[str, Any]:
     return output
 
 
+def _build_per_image_candidates(result: dict[str, Any]) -> dict[str, Any]:
+    """Preserve source coordinates for manual image-and-clone selection."""
+    images = []
+    seen_images = set()
+    count = 0
+    for original in result.get("images", []):
+        index = original["index"]
+        if index in seen_images:
+            raise ValueError(f"duplicate image index: {index}")
+        seen_images.add(index)
+        clones = []
+        seen_clones = set()
+        for clone in original.get("clones", []):
+            cid = clone["clone_id"]
+            if cid in seen_clones:
+                raise ValueError(f"duplicate clone_id in image {index}: {cid}")
+            seen_clones.add(cid)
+            if clone.get("is_pickable") is not True:
+                continue
+            clones.append({
+                "clone_id": cid, "global_clone_id": None,
+                "source_detection_id": f"I{index}:{cid}", "is_pickable": True,
+                "center_px": deepcopy(clone.get("center_px")),
+                "offset_from_image_center_px": deepcopy(clone.get("offset_from_image_center_px")),
+            })
+        image = {key: deepcopy(original[key]) for key in (
+            "index", "image_path", "overlay_image_path", "overlay_preview_path",
+            "stage_x_actual", "stage_y_actual", "stage_x_target", "stage_y_target",
+            "mm_per_pixel", "point_name",
+        ) if key in original}
+        image.update(is_pickable=bool(clones), clones=clones)
+        images.append(image)
+        count += len(clones)
+    output = {key: deepcopy(result[key]) for key in (
+        "task_id", "status", "plate_type", "well_name", "objective_name",
+    ) if key in result}
+    output.update(
+        schema_version=4, images=images, image_count=len(images),
+        total_clone_count=count, candidate_count=count, unique_clone_count=None,
+        count_semantics="per_image_candidates",
+        deduplication={"enabled": False, "status": "not_performed"},
+    )
+    return output
+
+
 def main() -> None:
     import argparse
     from workflow.file_io import atomic_write_json, read_json_with_retry
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, help="Existing deduplicated detect_result.json")
+    parser.add_argument("--input", required=True, help="Existing detect_result.json with explicit per-image mode or deduplication groups")
     parser.add_argument("--output", help="Defaults to pickable_detect_result.json beside input")
     args = parser.parse_args()
     path = pickable_output_path({"detect_output_json": args.input, "pickable_output_json": args.output})

@@ -1,5 +1,7 @@
 # 视觉检测
 
+> 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
+
 workflow 经 `workflow.detect_api` 调用 vision，结果归一化为 `detect_result.json`。默认 overlay 是 vision 的 `06_overlay.bmp`，路径写在每张图的 `overlay_image_path`。
 
 业务结果中的 `clones` 和 `review_candidates` 不输出 `contour_points`，
@@ -27,7 +29,7 @@ vision.vision.instance_pipeline:process_image
 vision.vision.detect_pipeline:process_image
 ```
 
-默认入口只允许 `objective_name=4x`。10x 检测必须显式写 legacy 入口。使用内置模型入口的 `detect` 任务会在切镜和拍照前预检模型目录与 provider；显式规则入口不执行该模型预检，但仍会检查重叠去重是否已标定。
+默认入口只允许 `objective_name=4x`。10x 检测必须显式写 legacy 入口。使用内置模型入口的 `detect` 任务会在切镜和拍照前预检模型目录与 provider；显式规则入口不执行该模型预检。所有入口仅在显式开启去重时检查重叠去重标定。
 
 ## 规则算法的输出控制
 
@@ -135,11 +137,12 @@ workflow 归一化时将明确 `is_valid_for_compensation=false` 的规则候选
 
 ## 重叠去重
 
-`scan.overlap > 0` 时必须：
+仅在 `detect.deduplication.enabled=true` 且视野重叠时必须（五点按实际视野判断）：
 
 ```json
 "detect": {
   "deduplication": {
+    "enabled": true,
     "calibrated": true,
     "registration_tolerance_mm": 0.10,
     "intersection_over_min_threshold": 0.50

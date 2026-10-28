@@ -14,6 +14,48 @@ ROOT = Path(__file__).resolve().parents[1]
 POINT_NAMES = ["center", "upper_left", "upper_right", "lower_left", "lower_right"]
 
 
+@pytest.mark.parametrize("plate_type", ["24-well", "48-well"])
+@pytest.mark.parametrize("config", [None, {"enabled": False}, {"calibrated": True}])
+def test_default_per_image_pipeline_exports_selectable_candidates(tmp_path, monkeypatch, plate_type, config):
+    import json
+    from workflow import detect_executor
+    from workflow.compensate_executor import select_clone_for_compensation, _calc_compensate_target
+    ctx = _context(tmp_path, plate_type=plate_type, task_type="pipeline")
+    detect = {"entrypoint": "custom_detector:process_image", "save_overlay": False}
+    if config is not None:
+        detect["deduplication"] = config
+    ctx["task"].update(stages=["capture", "detect"], detect=detect)
+    events = []
+    _mock_request_environment(monkeypatch, tmp_path, ctx, events)
+    monkeypatch.setattr(detect_executor, "_image_size", lambda path: (100, 100))
+    monkeypatch.setattr(detect_executor, "dedupe_well_clones", lambda *a, **k: pytest.fail("merging disabled"))
+    monkeypatch.setattr(detect_executor, "run_detect_on_image", lambda *a, **k: {"clones": [
+        {"clone_id": "C01", "bbox": [40, 40, 20, 20], "center_px": [55, 45], "is_pickable": True},
+        {"clone_id": "C02", "bbox": [10, 10, 10, 10], "center_px": [15, 15], "is_pickable": False},
+    ]})
+    result = run_task.execute_task_request({"task": ctx["task"]}, persist_result=False)
+    detected = result["detect_result"]
+    assert detected["total_image_clone_count"] == 10
+    assert detected["unique_clone_count"] is None and detected["total_clone_count"] is None
+    assert detected["unique_clones"] is None
+    exported = json.loads(Path(detected["pickable_result_json"]).read_text(encoding="utf-8"))
+    assert exported["schema_version"] == 4
+    assert exported["deduplication"] == {"enabled": False, "status": "not_performed"}
+    assert exported["image_count"] == 5 and exported["candidate_count"] == exported["total_clone_count"] == 5
+    assert [i["point_name"] for i in exported["images"]] == POINT_NAMES
+    for source in detected["images"]:
+        image, clone = select_clone_for_compensation(exported, {"mode": "image_and_clone", "image_index": source["index"], "clone_id": "C01"})
+        assert clone["global_clone_id"] is None
+        assert clone["center_px"] == source["clones"][0]["center_px"]
+        assert _calc_compensate_target(ctx=ctx, params={}, image_item=image, clone_item=clone) == _calc_compensate_target(ctx=ctx, params={}, image_item=source, clone_item=source["clones"][0])
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "false", "true", [], {}])
+def test_enabled_requires_json_boolean(value):
+    with pytest.raises(ValueError, match="enabled"):
+        run_task._preflight_overlap_deduplication({"deduplication": {"enabled": value}}, {"has_overlapping_views": True})
+
+
 def _context(tmp_path, *, objective="4x", plate_type="24-well", task_type="capture"):
     plates = yaml.safe_load((ROOT / "config/plates.yaml").read_text(encoding="utf-8"))["plates"]
     plate = copy.deepcopy(plates[plate_type])
@@ -144,7 +186,7 @@ def test_actual_five_point_overlap_requires_calibration_before_hardware(
     tmp_path, monkeypatch, plate_type
 ):
     ctx = _context(tmp_path, plate_type=plate_type, task_type="pipeline")
-    ctx["task"].update(stages=["capture", "detect"], scan={"overlap": 0, "has_overlapping_views": False})
+    ctx["task"].update(stages=["capture", "detect"], scan={"overlap": 0, "has_overlapping_views": False}, detect={"deduplication": {"enabled": True}})
     events = []
     _mock_request_environment(monkeypatch, tmp_path, ctx, events)
     with pytest.raises(ValueError, match="deduplication.calibrated"):
@@ -161,7 +203,7 @@ def test_calibrated_five_point_detect_preserves_all_point_names(tmp_path, monkey
         detect={
             "entrypoint": "custom_detector:process_image",
             "save_overlay": False,
-            "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.10},
+            "deduplication": {"enabled": True, "calibrated": True, "registration_tolerance_mm": 0.10},
         },
     )
     events = []
@@ -247,8 +289,8 @@ def test_dedupe_uses_geometric_overlap_flag_even_with_zero_grid_overlap():
 
 def test_old_dedupe_result_without_overlap_flag_keeps_legacy_guard():
     with pytest.raises(ValueError, match="deduplication.calibrated"):
-        run_task._preflight_overlap_deduplication({}, {"overlap": 0.1})
-    run_task._preflight_overlap_deduplication({}, {"overlap": 0})
+        run_task._preflight_overlap_deduplication({"deduplication": {"enabled": True}}, {"overlap": 0.1})
+    run_task._preflight_overlap_deduplication({"deduplication": {"enabled": True}}, {"overlap": 0})
 
 
 @pytest.mark.parametrize("tolerance", [None, True, 0, -0.1, float("nan"), float("inf"), "0.1"])
@@ -256,7 +298,7 @@ def test_invalid_registration_tolerance_rejected_before_hardware(tmp_path, monke
     ctx = _context(tmp_path, task_type="pipeline")
     ctx["task"].update(stages=["capture", "detect"], detect={
         "entrypoint": "custom_detector:process_image",
-        "deduplication": {"calibrated": True, "registration_tolerance_mm": tolerance},
+        "deduplication": {"enabled": True, "calibrated": True, "registration_tolerance_mm": tolerance},
     })
     events = []
     _mock_request_environment(monkeypatch, tmp_path, ctx, events)
@@ -307,7 +349,7 @@ def test_five_image_detection_merges_shared_targets_without_merging_neighbors(tm
     ctx = _context(tmp_path, task_type="pipeline")
     ctx["task"].update(stages=["capture", "detect"], detect={
         "entrypoint": "custom_detector:process_image", "save_overlay": False,
-        "deduplication": {"calibrated": True, "registration_tolerance_mm": 0.1},
+        "deduplication": {"enabled": True, "calibrated": True, "registration_tolerance_mm": 0.1},
     })
     plan = scan_planner.plan_single_well_scan(ctx, run_task.build_pipeline_params(ctx))
     center = plan["reference"]["well_center"]

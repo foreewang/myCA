@@ -60,10 +60,13 @@ def test_all_photos_with_minimal_pickable_representatives():
 
 @pytest.mark.parametrize("inline", [False, True])
 @pytest.mark.parametrize("actual", [False, True])
-def test_export_as_compensation_input(tmp_path, monkeypatch, inline, actual):
+@pytest.mark.parametrize("dedupe", [False, True])
+def test_export_as_compensation_input(tmp_path, monkeypatch, inline, actual, dedupe):
     from workflow import compensate_executor
     from workflow.run_task import run_compensate_task
     source = source_result()
+    if not dedupe:
+        source.update(deduplication={"enabled": False}, unique_clones=None)
     for im in source["images"]:
         im.update(stage_x_target=1000, stage_y_target=2000)
         if not actual:
@@ -109,8 +112,11 @@ def test_empty_and_missing_or_inconsistent_deduplication():
 
 
 @pytest.mark.parametrize("flag", [False, None, "true", 1])
-def test_backend_falls_back_to_all_photos_without_explicit_pickable_clones(flag):
+@pytest.mark.parametrize("dedupe", [False, True])
+def test_backend_falls_back_to_all_photos_without_explicit_pickable_clones(flag, dedupe):
     source = source_result()
+    if not dedupe:
+        source.update(deduplication={"enabled": False}, unique_clones=None)
     for image in source["images"]:
         image["clones"][0]["is_pickable"] = flag
     # A review-only photo is retained but never promoted to a pickable clone.
@@ -141,13 +147,17 @@ def test_paths_and_multiwell(tmp_path):
         assert pickable_output_path(params) == tmp_path / well / "pickable_detect_result.json"
 
 
-def test_download_and_read_endpoint(tmp_path, monkeypatch):
+@pytest.mark.parametrize("dedupe", [False, True])
+def test_download_and_read_endpoint(tmp_path, monkeypatch, dedupe):
     import asyncio
     from workflow import api_server, path_guard
     from workflow.task_store import build_well_artifacts_from_result
     monkeypatch.setattr(path_guard, "DATA_ROOT", tmp_path)
     path = tmp_path / "pickable_detect_result.json"
-    payload = build_pickable_detect_result(source_result())
+    source = source_result()
+    if not dedupe:
+        source.update(deduplication={"enabled": False}, unique_clones=None)
+    payload = build_pickable_detect_result(source)
     path.write_text(json.dumps(payload), encoding="utf-8")
     result = {"well_name": "B2", "detect_result": {"pickable_result_json": str(path)}}
     wells = build_well_artifacts_from_result(result, {})
@@ -190,7 +200,7 @@ def test_detection_integration_with_real_deduplication(tmp_path, monkeypatch, va
     candidate_path = tmp_path / ("custom.json" if custom else "pickable_detect_result.json")
     if custom:
         params["pickable_output_json"] = str(candidate_path)
-    result = detect_executor.execute_detect_on_scan_result({"task": {"detect": {"save_overlay": False}},
+    result = detect_executor.execute_detect_on_scan_result({"task": {"detect": {"save_overlay": False, "deduplication": {"enabled": True}}},
         "plate": {"pulses_per_mm": 100, "x_stage_sign_for_view_right": -1, "y_stage_sign_for_view_down": -1}},
         params, {"scan_config": {"fov_mm": {"width": 1, "height": 1}},
         "captures": [{"index": i, "row_index": 0, "col_index": i,

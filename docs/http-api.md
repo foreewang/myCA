@@ -1,5 +1,7 @@
 # HTTP API 后端联调契约与请求示例
 
+> 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
+
 > 核对基线：2026-09-01，当前工作区源码，FastAPI 应用版本 `0.4.0`。
 >
 > 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 14 个；FastAPI 自动文档路由另列在文末。真实硬件必须按 [硬件与安全](hardware.md) 分阶段验收。
@@ -564,7 +566,7 @@ Host: 127.0.0.1:8000
 
 `model_dir` 是环境占位路径。仓库当前只有 manifest 示例，没有可直接验收的生产权重；必须替换为已验证的真实模型发布目录后再发送。
 
-本例显式选择全孔扫描。改成 `five_point` 或省略 `mode` 可对所选孔各拍五张；24 孔板五点存在实际视野重叠，仍需要有效去重标定。
+本例显式选择全孔扫描。改成 `five_point` 或省略 `mode` 可对所选孔各拍五张；24 孔板五点存在实际视野重叠，显式开启去重时需要有效去重标定。
 
 ```json
 {
@@ -611,6 +613,7 @@ Host: 127.0.0.1:8000
       "provider": "cuda",
       "allow_cpu_fallback": false,
       "deduplication": {
+        "enabled": true,
         "calibrated": true,
         "registration_tolerance_mm": 0.1,
         "intersection_over_min_threshold": 0.5
@@ -654,6 +657,7 @@ Host: 127.0.0.1:8000
     "save_overlay": true,
     "overlay_source": "vision",
     "deduplication": {
+      "enabled": true,
       "calibrated": true,
       "registration_tolerance_mm": 0.10,
       "intersection_over_min_threshold": 0.50
@@ -662,7 +666,7 @@ Host: 127.0.0.1:8000
 }
 ```
 
-规则入口同样走跨视野唯一计数。全孔扫描 `scan.overlap > 0` 或五点实际视野重叠时，必须带上 `deduplication.calibrated=true` 和显式正数 `registration_tolerance_mm`，否则在切镜及 XY 运动前失败。当前 24/48 孔板五点的中心视野与四角视野有重叠，即使省略 `scan.overlap` 或设为 `0` 也需要标定；仅拍照无需去重标定。新扫描结果以 `scan_config.has_overlapping_views` 为准，旧结果缺少该字段时继续按原 `overlap` 判断。
+所有检测入口默认关闭跨图去重，保留逐图候选。仅在 `deduplication.enabled=true` 时检查去重标定：全孔扫描 `scan.overlap > 0` 或五点实际视野重叠时，必须带上 `deduplication.calibrated=true` 和显式正数 `registration_tolerance_mm`，否则在切镜及 XY 运动前失败。当前 24/48 孔板五点的中心视野与四角视野有重叠；启用去重时不能通过将 `scan.overlap` 设为 `0` 绕过标定。新扫描结果以 `scan_config.has_overlapping_views` 为准，旧结果缺少该字段时继续按原 `overlap` 判断。
 
 workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_image` 别名转发 `save_debug`，不会注入模型或第三方入口，也不会新增其他规则算法参数的转发。有规则输出目录时，默认保留 `05_contour_mask.bmp`、`06_overlay.bmp`、`07_result.json`，识别结果与 05/06 像素保持原行为；设 `save_debug=true` 恢复全部 01–07 文件。5120×5120 的 BMP 总量约由 200 MiB 降至 100 MiB。
 
@@ -717,7 +721,7 @@ workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_
 
 ### 7.7 独立补偿完整示例
 
-观察识别任务会额外导出包含全部照片和去重可挑取克隆索引的精简文件，原始检测结果保留。
+观察识别任务会额外导出包含全部照片和可选候选的精简文件，原始检测结果保留。默认关闭去重时使用版本 4，保留逐图候选，`global_clone_id=null`，数量表示候选条目数；详情见 [可选去重](optional_deduplication.md)。以下版本 3 的代表选择规则仅适用于显式开启去重。
 单孔可通过 `task.detect.pickable_output_json` 指定路径（仅允许 `data/` 或 `outputs/`），
 默认与检测 JSON 同目录；没有检测输出路径时使用 `capture.save_dir`。
 多孔固定逐孔生成 `pickable_detect_result.json`。每个原去重组只选一条可挑取观察，

@@ -13,6 +13,19 @@ class CloneDedupeError(ValueError):
     """Scan geometry is insufficient or inconsistent for reliable deduplication."""
 
 
+def deduplication_enabled(detect_cfg: Dict[str, Any]) -> bool:
+    """New requests opt in explicitly; calibration alone does not enable merging."""
+    config = detect_cfg.get("deduplication")
+    if config is None:
+        return False
+    if not isinstance(config, dict):
+        raise ValueError("detect.deduplication 必须为对象")
+    enabled = config.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise ValueError("detect.deduplication.enabled 必须为布尔值")
+    return enabled
+
+
 def _number(value: Any, name: str) -> float:
     try:
         number = float(value)

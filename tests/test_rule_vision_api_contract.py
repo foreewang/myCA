@@ -115,7 +115,8 @@ def test_rule_workflow_routes_debug_option_through_real_alias(
     assert "seed_thresh" not in captured["api_kwargs"]
     assert "model_dir" in captured["api_kwargs"]
     assert "model_dir" not in captured["rule_kwargs"]
-    assert result["total_clone_count"] == 0
+    assert result["total_clone_count"] is None
+    assert result["total_image_clone_count"] == 0
 
 
 @pytest.mark.parametrize("entrypoint", RULE_ENTRYPOINTS)
