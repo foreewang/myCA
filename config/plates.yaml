@@ -4,8 +4,9 @@
 # workflow/plate_geometry.py 和 workflow/scan_planner.py 会用这些参数把孔位名转换成位移台坐标。
 #
 # 几何拆分：
-# - well_diameter_mm：培养面内径，只用于孔内扫描圆
+# - well_diameter_mm：培养面内径，用于孔心恢复和孔内视野规划
 # - a1_start / well_teach：示教点（4x，画面右侧刚贴内径内壁）
+# - a1_start.reference_fov_mm：示教时视野；five_point：五点径向比例和完整视野留边
 # - well_step：由 A1、行末端、列末端均分得到的换孔脉冲步长；对角点只记录，不参与换孔
 # well_gap_mm 只作备注，不参与换孔。
 
@@ -20,6 +21,11 @@ plates:
 
     # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
+      # 原示教时的固定视野，不随当前物镜或 ROI 改变。
+      reference_objective: "4x"
+      reference_fov_mm:
+        width: 3.22
+        height: 3.22
       # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
       x: 6067028
       # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
@@ -44,6 +50,10 @@ plates:
 
     # 培养面内径，单位：mm。扫描圆半径 = 内径/2 − 当前物镜半视野。
     well_diameter_mm: 34.28
+    # 非中心点距孔心的半径比例，以及完整视野距孔壁的最小余量（mm）。
+    five_point:
+      radial_fraction: 0.5
+      edge_margin_mm: 0.5
     # 历史外沿间隙，单位：mm。不参与换孔计算。
     well_gap_mm: 4
     # 示教换孔步长，单位：pulse。由 A1 与行末端/列末端均分，已含现场方向。
@@ -102,6 +112,11 @@ plates:
 
     # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
+      # 原示教时的固定视野，不随当前物镜或 ROI 改变。
+      reference_objective: "4x"
+      reference_fov_mm:
+        width: 3.22
+        height: 3.22
       # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
       x: 5662008
       # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
@@ -126,6 +141,10 @@ plates:
 
     # 培养面内径，单位：mm。扫描圆半径 = 内径/2 − 当前物镜半视野。
     well_diameter_mm: 22
+    # 非中心点距孔心的半径比例，以及完整视野距孔壁的最小余量（mm）。
+    five_point:
+      radial_fraction: 0.5
+      edge_margin_mm: 0.5
     # 历史外沿间隙，单位：mm。不参与换孔计算。
     well_gap_mm: 3.6
     # 示教换孔步长，单位：pulse。由 A1 与行末端/列末端均分，已含现场方向。
@@ -184,6 +203,11 @@ plates:
 
     # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
+      # 原示教时的固定视野，不随当前物镜或 ROI 改变。
+      reference_objective: "4x"
+      reference_fov_mm:
+        width: 3.22
+        height: 3.22
       # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
       x: 6148740
       # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
@@ -208,6 +232,10 @@ plates:
 
     # 培养面内径，单位：mm。扫描圆半径 = 内径/2 − 当前物镜半视野。
     well_diameter_mm: 15.28
+    # 非中心点距孔心的半径比例，以及完整视野距孔壁的最小余量（mm）。
+    five_point:
+      radial_fraction: 0.5
+      edge_margin_mm: 0.5
     # 历史外沿间隙，单位：mm。不参与换孔计算。
     well_gap_mm: 3.5
     # 示教换孔步长，单位：pulse。由 A1 与行末端/列末端均分，已含现场方向。
@@ -265,6 +293,11 @@ plates:
 
     # A1 孔观测起始点，是整块板坐标推算的基准点。
     a1_start:
+      # 原示教时的固定视野，不随当前物镜或 ROI 改变。
+      reference_objective: "4x"
+      reference_fov_mm:
+        width: 3.22
+        height: 3.22
       # A1 孔左侧观测起始点的 X 轴绝对坐标，单位：pulse。
       x: 5724092
       # A1 孔左侧观测起始点的 Y 轴绝对坐标，单位：pulse。
@@ -289,6 +322,10 @@ plates:
 
     # 培养面内径，单位：mm。扫描圆半径 = 内径/2 − 当前物镜半视野。
     well_diameter_mm: 10.43
+    # 非中心点距孔心的半径比例，以及完整视野距孔壁的最小余量（mm）。
+    five_point:
+      radial_fraction: 0.5
+      edge_margin_mm: 0.5
     # 历史外沿间隙，单位：mm。不参与换孔计算。
     well_gap_mm: 2.4
     # 示教换孔步长，单位：pulse。由 A1 与行末端/列末端均分，已含现场方向。

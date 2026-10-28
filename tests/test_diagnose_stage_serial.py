@@ -1,6 +1,7 @@
 """Offline checks: never open a serial port, invoke systemd or access hardware."""
 from pathlib import Path
 import json
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,18 @@ from pymodbus.register_write_message import WriteSingleRegisterRequest
 
 from devices.motion import communication_timing, modbus
 from tools import diagnose_stage_serial as diagnostic
+
+
+@pytest.fixture(autouse=True)
+def restore_diagnostic_logger_levels():
+    """The CLI quiets driver logs; do not leak that process state to other tests."""
+    loggers = [logging.getLogger(name) for name in ("devices.motion.modbus", "pymodbus")]
+    levels = [logger.level for logger in loggers]
+    try:
+        yield
+    finally:
+        for logger, level in zip(loggers, levels):
+            logger.setLevel(level)
 
 
 class SimulatedSerial:

@@ -20,6 +20,7 @@ def _scan_params(well_name: str = "A1", fov: float = 3.22, overlap: float = 0.1)
         "plate_type": "24-well",
         "well_name": well_name,
         "objective_name": "4x",
+        "scan_mode": "full_coverage",
         "fov_mm": {"width": fov, "height": fov},
         "overlap": overlap,
     }

@@ -23,11 +23,13 @@
 
 多孔任务时，每个孔的 `scan_result.json` / `detect_result.json` / `compensate_result.json` 会写到 `<capture.save_dir>/<well_name>/`。不要把单个 `detect.output_json` 当成多孔最终路径。总结果仍走 `output.result_json`。
 
+`capture` / `pipeline` 的 `task.scan.mode` 可选 `five_point` 或 `full_coverage`。省略时 **4× 默认五点，10× 默认原全孔扫描**；10× 显式请求五点会在硬件动作前失败。五点顺序为中心、左上、右上、左下、右下，`full_plate` 表示所有孔各拍五点，并不表示孔内全覆盖。需要全孔覆盖的 4× 旧调用方请显式传 `full_coverage`。几何参数、配置兼容及现场验收见 [4× 五点固定观察](five_point_observation.md)。
+
 ## CLI
 
 示例中的速度、坐标和从站来自当前设备。新电机必须先低速单轴测试并重新标定，不能把这些数直接用于首次运动。
 
-采集任务，例如 `data/task_capture_single_well.json`：
+4× 单孔五点采集任务示例；下面省略 `scan.mode`，使用五点默认值：
 
 ```json
 {
@@ -53,7 +55,7 @@
       "timeout_s": 120.0
     },
     "scan": {
-      "overlap": 0.1,
+      "overlap": 0.0,
       "use_objective_fov": true,
       "settle_s": 0.8,
       "output_json": "/opt/colony_system/data/local_tasks/capture_A1_local_001/scan_result.json"
@@ -122,7 +124,8 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 | `motion.x_slave` / `y_slave`                         | 默认 1 / 2                                             |
 | `motion.profile_vel` / `profile_acc` / `profile_dec` | 采集和补偿必填                                              |
 | `motion.timeout_s`                                   | 单次 XY 超时，默认 120 秒                                    |
-| `scan.overlap`                                       | `0 <= overlap < 1`                                   |
+| `scan.mode`                                          | `five_point` / `full_coverage`；4× 默认五点，10× 默认全孔 |
+| `scan.overlap`                                       | `0 <= overlap < 1`；全孔模式控制扫描步长，五点模式不用于排布 |
 | `scan.use_objective_fov`                             | 是否用当前物镜视野算步长                                         |
 | `scan.output_json`                                   | 单孔 `scan_result.json`                                |
 | `detect.entrypoint`                                  | `模块路径:函数名`；省略则用 4x 模型入口                              |
@@ -147,6 +150,8 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 检测入口、`is_pickable` 与 10x 对中见 [视觉检测](vision.md)。含 `detect` 的 HTTP 示意见 [HTTP API](http-api.md)。
 
+五点观察为抽样，计数只代表采样区域。当前 24/48 孔板的中心视野与四角视野重叠；包含检测时，必须有有效去重标定和显式 `registration_tolerance_mm`，否则在硬件动作前失败。是否重叠由实际五点视野判断，不能通过省略或设为 `scan.overlap=0` 绕过；仅拍照不需要去重标定。
+
 ## 观察步骤计时
 
 观察任务默认记录耗时，无需增加请求参数。所有 `timings_ms` 数值单位均为毫秒，
@@ -156,7 +161,7 @@ python workflow/run_task.py --task data/task_handoff_load_in.json --handoff conf
 
 | 位置 | 内容 |
 | --- | --- |
-| 任务结果 `timings_ms` | 配置加载、识别预检、物镜准备、对焦策略加载、观察流程及 `task_work` |
+| 任务结果 `timings_ms` | 配置加载、五点路径预检 `scan_preflight`、识别预检、物镜准备、对焦策略加载、观察流程及 `task_work` |
 | 单孔结果 `timings_ms` | `capture`、可选 `detect` / `compensate`、`well_total`；多孔时位于 `wells[].result` |
 | `scan_result.json` 的 `timings_ms.scan_work` | 扫描执行开始到构建扫描结果的耗时 |
 | `captures[].timings_ms` | 每个已完成采集点的移动、检查、对焦、相机打开、取图保存及点总耗时 |
@@ -359,6 +364,8 @@ python -m workflow.pickable_result --input data/task/B2/detect_result.json
 - 自动对焦决策，以及首次拍照前的对焦结果
 - 运动安全检查
 
+新增 `scan_config.mode` 记录实际扫描模式；五点结果另有 `scan_config.has_overlapping_views`，记录实际视野是否重叠。五点的 `captures[].point_name` 为 `center`、`upper_left`、`upper_right`、`lower_left`、`lower_right`，按此顺序对应 `index=1..5`；首拍在孔心。`view_right_mm/view_down_mm` 仍以原左侧示教起点为原点。五点几何参数在 `scan_config.five_point` 中记录，含实际每轴偏移、是否内收和最小角点余量，便于验收复核。
+
 
 
 ### 检测 `detect_result.json`
@@ -369,6 +376,8 @@ python -m workflow.pickable_result --input data/task/B2/detect_result.json
 - `mm_per_pixel`
 - `unique_clones` / `total_clone_count`（去重后唯一数）
 - `overlay_image_path`
+
+五点来源图片的 `images[].point_name` 保留对应观察位置。新扫描结果按 `has_overlapping_views` 判断去重标定要求，历史结果缺少新字段时仍按原 `overlap` 逻辑读取。
 
 轮廓细化诊断（`refine_method` 等）不在 workflow 归一化结果里，在 vision 目录的 `07_result.json`。默认 overlay 是 vision 的 `06_overlay.bmp`。
 

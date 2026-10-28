@@ -8,6 +8,7 @@ import copy
 import json
 import sys
 import tempfile
+from math import isfinite
 from time import perf_counter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
@@ -26,6 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from workflow.config_validator import resolve_mvs_python_dir, validate_autofocus_file
 from workflow.platform_defaults import DEFAULT_SCAN_OVERLAP, DEFAULT_SCAN_SETTLE_S, apply_motion_profile_defaults
+from workflow.scan_modes import has_overlapping_views, resolve_scan_mode
 
 
 def load_structured_file(path: str | Path) -> Dict[str, Any]:
@@ -218,6 +220,12 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
     objective_name = task_objective_name(task)
     if not objective_name:
         raise KeyError("task.objective_name 不能为空")
+    task_type = str(task.get("task_type") or "pipeline").strip().lower()
+    scan_mode = (
+        resolve_scan_mode(objective_name, scan_cfg.get("mode"))
+        if task_type in {"capture", "pipeline"}
+        else "full_coverage"
+    )
 
     if scan_cfg.get("use_objective_fov", True):
         fov_w = objective["fov_mm"]["width"]
@@ -268,6 +276,7 @@ def build_pipeline_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "save_dir": capture_cfg.get("save_dir"),
         "filename_pattern": capture_cfg.get("filename_pattern"),
+        "scan_mode": scan_mode,
         "overlap": overlap,
         "settle_s": settle_s,
         "scan_output_json": scan_cfg.get("output_json"),
@@ -295,7 +304,9 @@ def run_single_well_capture(ctx: Dict[str, Any], params: Dict[str, Any], cam=Non
     from workflow.scan_planner import plan_single_well_scan
     from workflow.scan_executor import execute_scan_capture
 
-    plan = plan_single_well_scan(ctx, params)
+    plan = (params.get("_scan_plans_by_well") or {}).get(params["well_name"])
+    if plan is None:
+        plan = plan_single_well_scan(ctx, params)
     return execute_scan_capture(ctx, params, plan, cam=cam)
 
 
@@ -532,9 +543,50 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
+def preflight_five_point_scans(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
+    """Validate every requested five-point well before any hardware operation.
+
+    Cache the exact plans used for the precheck so execution cannot silently
+    select a different layout after an earlier well has already been captured.
+    The overlap flag is derived here, never copied from the submitted task.
+    """
+    if params.get("scan_mode") != "five_point" or "capture" not in params.get("stages", []):
+        return
+
+    from workflow.plate_geometry import all_well_names
+    from workflow.scan_planner import plan_single_well_scan
+
+    scope = str(params.get("observe_scope") or "").lower()
+    if scope == "single_well":
+        if not params.get("well_name"):
+            raise ValueError("single_well 任务要求指定 well_name")
+        wells = [params["well_name"]]
+    elif scope == "well_list":
+        wells = params.get("well_list") or []
+        if not wells:
+            raise ValueError("observe_scope=well_list 时，target.well_list 不能为空")
+    elif scope == "full_plate":
+        wells = all_well_names(ctx["plate"])
+    else:
+        raise ValueError(f"不支持的 observe_scope: {scope}")
+
+    plans = {}
+    for well_name in wells:
+        raise_if_cancel_requested(params, f"before_scan_preflight:{well_name}")
+        well_params = dict(params, well_name=well_name)
+        if scope != "single_well":
+            well_params["task_id"] = f"{params['task_id']}_{well_name}"
+        plans[well_name] = plan_single_well_scan(ctx, well_params)
+
+    params["_scan_plans_by_well"] = plans
+    params["has_overlapping_views"] = any(
+        has_overlapping_views(plan["scan_config"]) for plan in plans.values()
+    )
+
+
 def _preflight_overlap_deduplication(detect_cfg: Dict[str, Any], params: Dict[str, Any]) -> None:
     """Reject uncalibrated overlapping scans before capture or inference."""
-    if float(params.get("overlap") or 0.0) > 0.0 and not bool(
+    if has_overlapping_views(params) and not bool(
         (detect_cfg.get("deduplication") or {}).get("calibrated", False)
     ):
         raise ValueError(
@@ -546,6 +598,15 @@ def _preflight_overlap_deduplication(detect_cfg: Dict[str, Any], params: Dict[st
         raise ValueError(
             "detect.deduplication.calibrated=true 时必须显式配置 registration_tolerance_mm"
         )
+    if bool(dedupe_cfg.get("calibrated", False)):
+        tolerance = dedupe_cfg["registration_tolerance_mm"]
+        if (
+            isinstance(tolerance, bool)
+            or not isinstance(tolerance, (int, float))
+            or not isfinite(tolerance)
+            or tolerance <= 0
+        ):
+            raise ValueError("detect.deduplication.registration_tolerance_mm 必须为有限正数")
 
 
 def preflight_detection_backend(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
@@ -683,6 +744,8 @@ def execute_task_request(
     params["_dump_json"] = dump_json
     params["_cancel_check"] = cancel_check
     params["_progress_callback"] = progress_callback
+    with measure(task_timings, "scan_preflight"):
+        preflight_five_point_scans(ctx, params)
     # Validate model files/provider before objective, autofocus, stage, or camera
     # hardware is moved.
     with measure(task_timings, "detect_preflight"):

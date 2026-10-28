@@ -368,6 +368,7 @@ def execute_detect_on_scan_result(ctx: Dict[str, Any], params: Dict[str, Any], s
                 "index": int(capture["index"]),
                 "row_index": int(capture["row_index"]),
                 "col_index": int(capture["col_index"]),
+                **({"point_name": capture["point_name"]} if "point_name" in capture else {}),
                 "image_path": image_path,
                 "overlay_image_path": overlay_image_path,
                 "overlay_preview_path": overlay_preview_path,

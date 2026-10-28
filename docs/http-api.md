@@ -500,7 +500,8 @@ Host: 127.0.0.1:8000
 | `motion.poll_s` | 0.05 | 位置轮询间隔，必须大于 0 |
 | `motion.settle_s` | 主要用于 handoff | 普通采集和补偿当前都使用 `scan.settle_s`（默认 0.8） |
 | `motion.arrival_tolerance_pulse` | handoff 可覆盖 | 非负 pulse；普通扫描到位保护主要读取板型 `runtime_guard` |
-| `scan.overlap` | 采集时必填，`0 <= value < 1` | 扫描视野重叠率 |
+| `scan.mode` | 可选 `five_point` / `full_coverage` | 4× 省略时五点；10× 省略时原全孔扫描，显式五点报错 |
+| `scan.overlap` | `0 <= value < 1` | 全孔模式的扫描重叠率；五点模式不用于决定点位 |
 | `scan.use_objective_fov` | true | 从物镜配置读取 FOV |
 | `scan.fov_override_mm` | 无 | `use_objective_fov=false` 时必填，可为数值或 `{width,height}` |
 | `scan.settle_s` | 0.8 | 到点后稳定时间 |
@@ -508,9 +509,15 @@ Host: 127.0.0.1:8000
 
 正常后端请求不需要传 `task.autofocus`，服务读取本机 `config/autofocus.yaml`。源码仍接受该字段作为本地调试/兼容覆盖，常用键为 `enabled`、`force` 和 `trigger`；生产端应把自动对焦策略留在本机受控配置中。
 
+4× `capture` / `pipeline` 默认每孔按 **中心 → 左上 → 右上 → 左下 → 右下** 拍摄五张。`observe_scope=full_plate` 仍是每孔五点；要求孔内全覆盖时必须显式传 `scan.mode=full_coverage`。10× 请求只传 `objective_name="10x"` 时继续原扫描方式；若显式传 `five_point`，任务会在硬件动作前失败，沿用普通任务 202 入队后异步报告业务错误的方式。本次不增加 HTTP 路由。
+
+例如，在已有 4× 采集请求中使用 `"scan": {"mode": "five_point", "use_objective_fov": true, "settle_s": 0.8}`；也可省略 `mode` 使用同一默认行为。五点抽样计数不能当作全孔总量。配置、坐标公式和现场标定验收见 [4× 五点固定观察](five_point_observation.md)。
+
+扫描产物新增 `scan_config.mode`；五点产物另有 `scan_config.has_overlapping_views` 和 `captures[].point_name`。点位名依次为 `center`、`upper_left`、`upper_right`、`lower_left`、`lower_right`，检测结果 `images[].point_name` 保留名称。既有索引、坐标和图片接口保留，`view_right_mm/view_down_mm` 仍相对原示教起点。
+
 ### 7.4 单孔采集完整示例
 
-该请求会扫描完整培养孔，不是只拍一张图，并且可能触发物镜切换和自动对焦。
+本例主动选择 `full_coverage` 扫描完整培养孔，并且可能触发物镜切换和自动对焦；删除 `mode` 后，4× 将使用默认五点。
 
 ```json
 {
@@ -539,6 +546,7 @@ Host: 127.0.0.1:8000
       "poll_s": 0.05
     },
     "scan": {
+      "mode": "full_coverage",
       "overlap": 0.1,
       "use_objective_fov": true,
       "settle_s": 0.8,
@@ -555,6 +563,8 @@ Host: 127.0.0.1:8000
 ### 7.5 多孔采集加检测完整示例
 
 `model_dir` 是环境占位路径。仓库当前只有 manifest 示例，没有可直接验收的生产权重；必须替换为已验证的真实模型发布目录后再发送。
+
+本例显式选择全孔扫描。改成 `five_point` 或省略 `mode` 可对所选孔各拍五张；24 孔板五点存在实际视野重叠，仍需要有效去重标定。
 
 ```json
 {
@@ -590,6 +600,7 @@ Host: 127.0.0.1:8000
       "poll_s": 0.05
     },
     "scan": {
+      "mode": "full_coverage",
       "overlap": 0.1,
       "use_objective_fov": true,
       "settle_s": 0.8
@@ -622,7 +633,7 @@ Host: 127.0.0.1:8000
 - 只允许 `objective_name="4x"`。
 - 相机必须固定为 5120×5120，且 `camera.resolution.allow_downscale=false`。
 - `detect.model_dir` 必填。
-- `scan.overlap > 0` 时，必须设置 `deduplication.calibrated=true`。
+- 全孔扫描 `scan.overlap > 0` 或五点实际视野重叠时，必须设置 `deduplication.calibrated=true`。
 - `calibrated=true` 时必须显式传正数 `registration_tolerance_mm`。
 - `intersection_over_min_threshold` 必须在 `(0, 1]`。
 - `provider` 常用 `cuda`、`cpu`、`auto`；实际支持性由模型运行时检查。生产默认用 `cuda`，`allow_cpu_fallback` 默认 false。
@@ -651,7 +662,7 @@ Host: 127.0.0.1:8000
 }
 ```
 
-规则入口同样走跨视野唯一计数。`scan.overlap > 0`（缺省为 `0`）时必须带上 `deduplication.calibrated=true` 和显式 `registration_tolerance_mm`，否则会在预检阶段失败，避免拍完整孔后再去重报错。省略 `scan.overlap` 时不会触发这条预检；任务里若显式写成 `0.1` 且未标定，仍会在切镜前失败。
+规则入口同样走跨视野唯一计数。全孔扫描 `scan.overlap > 0` 或五点实际视野重叠时，必须带上 `deduplication.calibrated=true` 和显式正数 `registration_tolerance_mm`，否则在切镜及 XY 运动前失败。当前 24/48 孔板五点的中心视野与四角视野有重叠，即使省略 `scan.overlap` 或设为 `0` 也需要标定；仅拍照无需去重标定。新扫描结果以 `scan_config.has_overlapping_views` 为准，旧结果缺少该字段时继续按原 `overlap` 判断。
 
 workflow 仅向上述规则 `process_image` 及 `vision.detect_pipeline:process_image` 别名转发 `save_debug`，不会注入模型或第三方入口，也不会新增其他规则算法参数的转发。有规则输出目录时，默认保留 `05_contour_mask.bmp`、`06_overlay.bmp`、`07_result.json`，识别结果与 05/06 像素保持原行为；设 `save_debug=true` 恢复全部 01–07 文件。5120×5120 的 BMP 总量约由 200 MiB 降至 100 MiB。
 

@@ -1045,6 +1045,7 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
         _require_int(a1_start, "x", f"{base}.a1_start.x", issues)
         _require_int(a1_start, "y", f"{base}.a1_start.y", issues)
 
+    _validate_five_point_config(base, plate, issues)
     _require_number(plate, "well_diameter_mm", f"{base}.well_diameter_mm", issues, minimum=0, exclusive_min=True)
     if "well_gap_mm" in plate:
         _require_number(plate, "well_gap_mm", f"{base}.well_gap_mm", issues, minimum=0, exclusive_min=False)
@@ -1071,6 +1072,48 @@ def _validate_plate(plate_type: str, plate: Mapping[str, Any], issues: list[Conf
         _validate_runtime_guard(f"{base}.runtime_guard", runtime_guard, issues)
 
     _validate_plate_reference_points_within_safe_limits(base, plate, issues)
+
+
+def _validate_five_point_config(
+    base: str,
+    plate: Mapping[str, Any],
+    issues: list[ConfigIssue],
+) -> None:
+    """Allow legacy full-coverage plates, but reject partially configured five-point plates."""
+    a1 = plate.get("a1_start")
+    a1 = a1 if isinstance(a1, Mapping) else {}
+    if not any(key in a1 for key in ("reference_objective", "reference_fov_mm")) and "five_point" not in plate:
+        return
+
+    if a1.get("reference_objective") != "4x":
+        issues.append(ConfigIssue(f"{base}.a1_start.reference_objective", 'must be "4x"'))
+    reference_fov = a1.get("reference_fov_mm")
+    fov_path = f"{base}.a1_start.reference_fov_mm"
+    if not isinstance(reference_fov, Mapping):
+        issues.append(ConfigIssue(fov_path, "required mapping is missing"))
+    else:
+        for key in ("width", "height"):
+            _require_number(reference_fov, key, f"{fov_path}.{key}", issues, minimum=0, exclusive_min=True)
+        for key in reference_fov:
+            if key not in {"width", "height"}:
+                issues.append(ConfigIssue(f"{fov_path}.{key}", "unexpected field; expected only width and height"))
+
+    five_point = plate.get("five_point")
+    five_path = f"{base}.five_point"
+    if not isinstance(five_point, Mapping):
+        issues.append(ConfigIssue(five_path, "required mapping is missing"))
+        return
+    ratio = _require_number(
+        five_point, "radial_fraction", f"{five_path}.radial_fraction", issues, minimum=0, exclusive_min=True,
+    )
+    if ratio is not None and ratio >= 1:
+        issues.append(ConfigIssue(f"{five_path}.radial_fraction", "must be < 1"))
+    _require_number(
+        five_point, "edge_margin_mm", f"{five_path}.edge_margin_mm", issues, minimum=0, exclusive_min=True,
+    )
+    for key in five_point:
+        if key not in {"radial_fraction", "edge_margin_mm"}:
+            issues.append(ConfigIssue(f"{five_path}.{key}", "unexpected field; expected only radial_fraction and edge_margin_mm"))
 
 
 def _validate_well_step(

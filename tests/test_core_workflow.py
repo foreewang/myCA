@@ -1926,6 +1926,7 @@ def test_scan_planner_maps_view_right_to_x_and_view_down_to_y() -> None:
     params = {
         "task_id": "axis-standard",
         "task_type": "capture",
+        "scan_mode": "full_coverage",
         "plate_type": "test-plate",
         "well_name": "A1",
         "objective_name": "4x",

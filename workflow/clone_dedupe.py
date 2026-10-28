@@ -6,6 +6,7 @@ from math import hypot
 from typing import Any, Dict, Iterable, Sequence
 
 from workflow.plate_geometry import get_axis_pulses_per_mm, get_view_signs
+from workflow.scan_modes import has_overlapping_views
 
 
 class CloneDedupeError(ValueError):
@@ -186,7 +187,7 @@ def dedupe_well_clones(
     registration_tolerance_mm: float = 0.10,
 ) -> Dict[str, Any]:
     """Deduplicate formal clones while retaining every source observation."""
-    overlap = float((scan_config or {}).get("overlap") or 0.0)
+    overlapping_views = has_overlapping_views(scan_config or {})
     well_start = (reference or {}).get("well_start")
     formal_count = sum(len(image.get("clones") or []) for image in images)
     if formal_count == 0:
@@ -200,7 +201,7 @@ def dedupe_well_clones(
             },
         }
     if not isinstance(well_start, dict):
-        if len(images) == 1 or overlap <= 0.0:
+        if len(images) == 1 or not overlapping_views:
             # A single/non-overlapping view cannot contain cross-view duplicates;
             # use a local origin while keeping the result contract deterministic.
             first = images[0]
@@ -213,7 +214,7 @@ def dedupe_well_clones(
         raise CloneDedupeError("iom_threshold must be in (0,1]")
     if not 0.0 < float(registration_tolerance_mm):
         raise CloneDedupeError("registration_tolerance_mm must be positive")
-    if overlap > 0.0 and not bool((scan_config or {}).get("dedupe_registration_calibrated", False)):
+    if overlapping_views and not bool((scan_config or {}).get("dedupe_registration_calibrated", False)):
         raise CloneDedupeError(
             "overlapping-view deduplication requires a calibrated registration threshold"
         )

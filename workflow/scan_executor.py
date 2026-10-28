@@ -52,6 +52,7 @@ def _format_kwargs(params: Dict[str,Any], point: Dict[str,Any]) -> Dict[str,Any]
         "index": int(point["index"]),
         "row": int(point["row_index"]),
         "col": int(point["col_index"]),
+        "point_name": str(point.get("point_name") or f"point_{int(point['index']):03d}"),
         "vdown": float(point["view_down_mm"]),
         "vright": float(point["view_right_mm"]),
         "x": int(point["stage_x_target"]),
