@@ -15,6 +15,7 @@ from workflow.camera_executor import (
     capture_with_opened_camera,
 )
 from workflow.file_io import atomic_write_json
+from workflow.overlay_preview import save_jpeg_preview
 from workflow.platform_defaults import DEFAULT_MODBUS_PORT, apply_motion_profile_defaults
 from workflow.stage_executor import move_to_absolute
 from workflow.scan_motion_session import ScanMotionSession, optimization_options
@@ -228,6 +229,11 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
     cleanup_metrics = {}
     captures: List[Dict[str,Any]] = []
     scan_output_json = params.get("scan_output_json")
+    jpg_dir = (
+        Path(params["save_dir"]).parent / "images_jpg"
+        if params["task_type"] == "capture" and params.get("save_dir") else None
+    )
+    jpg_fields = {"jpg_dir": str(jpg_dir)} if jpg_dir is not None else {}
     before_first_capture_autofocus_result = None
 
     owned_cam = False
@@ -365,6 +371,12 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
                     capture_item["autofocus_result"] = point_autofocus_result
 
                 captures.append(capture_item)
+                if jpg_dir is not None:
+                    source = Path(capture_result["saved_path"])
+                    with measure(timings, "jpg_preview"):
+                        capture_result["jpg_path"] = save_jpeg_preview(
+                            source, jpg_dir / source.with_suffix(".jpg").name
+                        )
                 report_progress(
                     params,
                     "capture",
@@ -400,6 +412,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "autofocus_decision": params.get("autofocus_decision"),
             "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "image_count": len(captures),
+            **jpg_fields,
             "captures": captures,
             "point_timings": point_timings,
             "stop_shoot": stop_shoot,
@@ -442,6 +455,7 @@ def execute_scan_capture(ctx: Dict[str,Any], params: Dict[str,Any], plan: Dict[s
             "autofocus_decision": params.get("autofocus_decision"),
             "before_first_capture_autofocus_result": before_first_capture_autofocus_result,
             "completed_image_count": len(captures),
+            **jpg_fields,
             "captures": captures,
             "point_timings": point_timings,
             "stop_shoot": stop_shoot,

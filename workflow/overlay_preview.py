@@ -19,10 +19,24 @@ def save_overlay_preview(overlay_path: str | Path) -> str | None:
     """
     source = Path(overlay_path)
     destination = source.with_name(f"{source.stem}_preview.jpg")
+    return save_jpeg_preview(source, destination)
+
+
+def save_jpeg_preview(source_path: str | Path, destination_path: str | Path) -> str | None:
+    """Atomically save a full-resolution JPEG copy; return None on failure.
+
+    Only a successfully regenerated file is returned, never a stale preview.
+    The source must not be overwritten, even with a custom capture directory.
+    """
+    source = Path(source_path)
+    destination = Path(destination_path)
     temporary = None
     try:
+        if source.resolve() == destination.resolve():
+            raise ValueError("JPEG preview destination must differ from source")
+        destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
-            dir=source.parent, prefix=f".{destination.name}.", suffix=".part", delete=False
+            dir=destination.parent, prefix=f".{destination.name}.", suffix=".part", delete=False
         ) as stream:
             temporary = Path(stream.name)
             with Image.open(source) as original:
@@ -33,7 +47,7 @@ def save_overlay_preview(overlay_path: str | Path) -> str | None:
         os.replace(temporary, destination)
         return str(destination)
     except (OSError, ValueError):
-        logger.warning("Overlay preview generation failed; use original overlay: %s", source, exc_info=True)
+        logger.warning("JPEG preview generation failed; use original image: %s", source, exc_info=True)
         return None
     finally:
         if temporary is not None:
