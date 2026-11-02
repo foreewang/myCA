@@ -1,6 +1,7 @@
 """根据检测到的克隆位置计算位移补偿目标，并执行拍照复核的闭环补偿流程。"""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
@@ -202,6 +203,14 @@ def _move_to_compensate_target(
         arrival_tolerance_pulse=arrival_tolerance,
         stage_limits=plate.get("stage_limits"),
         approach_cfg=params.get("compensate_approach") or {},
+        # Successful compensation must hold position instead of entering the
+        # shutdown state that produced the observed X displacement.
+        keep_enabled=True,
+        cancel_check=lambda: raise_if_cancel_requested(params, "during_compensate_move"),
+        # Temporary field diagnosis, limited to compensation moves. Disable in
+        # the service environment after collecting a reproduction.
+        finish_diagnostics=os.environ.get("COLONY_COMPENSATE_FINISH_DIAGNOSTICS", "1").strip().lower()
+        in {"1", "true", "yes", "on"},
     )
     raise_if_cancel_requested(params, "after_compensate_move")
     return result

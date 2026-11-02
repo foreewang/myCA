@@ -1,6 +1,7 @@
 """封装 XY 位移台绝对运动、接近运动、限位检查和到位校验。"""
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -203,13 +204,64 @@ def _trigger_xy_pp(x_motor: MotorManager, y_motor: MotorManager) -> None:
     _write_axis_controlword(y_motor, trigger, axis_name="y", action="trigger PP move")
 
 
-def _finish_axis_pp(motor: MotorManager, *, axis_name: str) -> None:
+def _log_finish_probe(
+    motor: MotorManager, *, axis_name: str, phase: str,
+    move_id: str, target: int, started: float,
+) -> None:
+    """Diagnostic reads only; failures must not prevent the original stop path.
+
+    Fields are read sequentially, not atomically. Existing RTU retry behavior
+    applies and can delay subsequent controls; per-field times expose that cost.
+    """
+    client = motor.client
+    slave = motor.slave
+    sample: Dict[str, Any] = {
+        "move_id": move_id, "phase": phase, "axis": axis_name,
+        "slave": slave, "requested_target": target,
+        "start_ms": round((time.monotonic() - started) * 1000, 3),
+        "read_windows_ms": {}, "errors": {},
+    }
+    reads = (
+        ("current_pos", lambda: client._read_32bit(slave, client.REG_CURRENT_POS)),
+        ("statusword", lambda: client._read_statusword(slave)),
+        ("cmd_pos", lambda: client._read_32bit(slave, client.REG_CMD_POS)),
+        ("target_register", lambda: client._read_32bit(slave, client.REG_TARGET_POS)),
+        ("controlword", lambda: (client.read_holding_registers(slave, client.REG_CONTROLWORD, 1) or [None])[0]),
+    )
+    for field, read in reads:
+        read_start = time.monotonic()
+        try:
+            sample[field] = read()
+            if sample[field] is None:
+                sample["errors"][field] = "no value returned"
+        except Exception as exc:
+            sample[field] = None
+            sample["errors"][field] = f"{type(exc).__name__}: {exc}"
+        sample["read_windows_ms"][field] = [
+            round((read_start - started) * 1000, 3),
+            round((time.monotonic() - started) * 1000, 3),
+        ]
+        if sample["errors"]:
+            # Do not spend more diagnostic transactions before a pending stop.
+            break
+    sample["end_ms"] = round((time.monotonic() - started) * 1000, 3)
+    logger.warning("event=stage_finish_probe data=%s", json.dumps(sample, ensure_ascii=True))
+
+
+def _finish_axis_pp(
+    motor: MotorManager, *, axis_name: str,
+    diagnostic_probe: Callable[[MotorManager, str, str], None] | None = None,
+) -> None:
     client = motor.client
     slave = motor.slave
     if not client._restore_enabled_state(slave):
         raise StageMotionError(f"{axis_name} axis failed to restore enabled state")
+    if diagnostic_probe is not None:
+        diagnostic_probe(motor, axis_name, "after_restore_before_stop")
     if not client.quick_stop(slave):
         raise StageMotionError(f"{axis_name} axis failed to quick stop after arrival")
+    if diagnostic_probe is not None:
+        diagnostic_probe(motor, axis_name, "after_stop_return")
 
 
 def _snapshot_positions(x_motor: MotorManager, y_motor: MotorManager) -> Dict[str, int]:
@@ -279,7 +331,9 @@ def _wait_xy_arrival(
     progress_callback: Callable[[Dict[str, int]], None] | None = None,
     reuse_status: bool = False,
     require_standstill: bool = False,
+    cancel_check: Callable[[], None] | None = None,
 ) -> Dict[str, Any]:
+    reuse_status = reuse_status or require_standstill
     deadline = time.monotonic() + timeout_s
     poll_s = max(0.02, float(poll_s))
     last_pos = {} if reuse_status else _snapshot_positions(x_motor, y_motor)
@@ -288,6 +342,8 @@ def _wait_xy_arrival(
     stable_max = {}
     stable_samples = 0
     while True:
+        if cancel_check is not None:
+            cancel_check()
         if stop_event is not None and stop_event.is_set():
             _quick_stop_xy(x_motor, y_motor)
             return {
@@ -304,7 +360,7 @@ def _wait_xy_arrival(
         within_tolerance = abs(current["x"] - x_target) <= monitor_tolerance and abs(current["y"] - y_target) <= monitor_tolerance
         arrived = within_tolerance
         if require_standstill:
-            # Experimental hold mode: require enabled + target reached and a
+            # Hold mode: require enabled + target reached and a
             # <=10 pulse position range over >=150ms / >=3 consecutive samples.
             mask = ModbusRTUClient.STAT_TARGET_REACHED | ModbusRTUClient.STAT_OPERATION_ENABLED
             valid = within_tolerance and all(snapshot[a]["statusword"] & mask == mask for a in ("x", "y"))
@@ -329,6 +385,14 @@ def _wait_xy_arrival(
                 stable_samples += 1
             arrived = valid and stable_samples >= 3 and now - stable_since >= 0.15
         if arrived:
+            logger.warning(
+                "event=stage_arrival_decision "
+                "target=(%s,%s) current=(%s,%s) "
+                "tolerance=%s require_standstill=%s",
+                x_target, y_target,
+                current["x"], current["y"],
+                monitor_tolerance, require_standstill,
+            )
             return {
                 "current": current,
                 "stopped_by_request": False,
@@ -387,8 +451,12 @@ def move_to_absolute(
     release_after_move: bool = False,
     keep_enabled: bool = False,
     slave_switch_gap_ms: float = 0.0,
+    finish_diagnostics: bool = False,
+    cancel_check: Callable[[], None] | None = None,
 ) -> Dict[str, Any]:
-    """Move the XY stage to absolute pulse coordinates and return a motion snapshot."""
+    """Move to absolute coordinates; standalone keep_enabled retains motor hold
+    after closing the serial connection. Failures still stop both axes.
+    """
     timings = timings_ms if timings_ms is not None else {}
     slave_switch_gap_ms = validate_slave_switch_gap_ms(slave_switch_gap_ms)
     port = str(port or "").strip()
@@ -411,8 +479,8 @@ def move_to_absolute(
         if arrival_tolerance_pulse < 0:
             raise StageMotionError("arrival_tolerance_pulse must be non-negative")
     monitor_tolerance = 50 if arrival_tolerance_pulse is None else int(arrival_tolerance_pulse)
-    if keep_enabled and (session is None or not session.options["hold_enabled"] or release_after_move):
-        raise StageMotionError("keep_enabled requires an active hold session without release")
+    if keep_enabled and (release_after_move or (session is not None and not session.options["hold_enabled"])):
+        raise StageMotionError("keep_enabled requires no release and, when supplied, a hold-enabled session")
 
     _check_target_in_stage_limits(
         x_target=x_target,
@@ -432,6 +500,8 @@ def move_to_absolute(
         x_motor = MotorManager(client, slave=x_slave)
         y_motor = MotorManager(client, slave=y_slave)
         try:
+            if cancel_check is not None:
+                cancel_check()
             with measure(timings, "position_snapshot"):
                 before = snapshot_xy(x_motor, y_motor)
             _require_axis_position(before["x"], "x")
@@ -484,6 +554,7 @@ def move_to_absolute(
                     progress_callback=progress_callback,
                     reuse_status=session is not None,
                     require_standstill=keep_enabled,
+                    cancel_check=cancel_check,
                 )
             if wait_result.get("stopped_by_request"):
                 current = dict(wait_result.get("current") or {})
@@ -516,28 +587,59 @@ def move_to_absolute(
                         "move_mode": "simultaneous_pp",
                     },
                 }
+            diagnostic_probe = None
+            if finish_diagnostics:
+                probe_started = time.monotonic()
+                move_id = str(time.monotonic_ns())
+
+                def diagnostic_probe(motor, axis_name, phase):
+                    _log_finish_probe(
+                        motor, axis_name=axis_name, phase=phase,
+                        move_id=move_id,
+                        target=x_target if axis_name == "x" else y_target,
+                        started=probe_started,
+                    )
+
+                logger.warning(
+                    "event=stage_finish_probe_start move_id=%s target=(%s,%s) "
+                    "arrival=%s profile_vel=%s profile_acc=%s profile_dec=%s "
+                    "settle_s=%s keep_enabled=%s extra_reads=True",
+                    move_id, x_target, y_target, wait_result.get("current"),
+                    profile_vel, profile_acc, profile_dec, settle_s, keep_enabled,
+                )
+                diagnostic_probe(x_motor, "x", "arrival_before_restore")
+                diagnostic_probe(y_motor, "y", "arrival_before_restore")
             with measure(timings, "finish_control"):
                 if keep_enabled:
                     if not client._restore_enabled_state(x_slave):
                         raise StageMotionError("x axis failed to retain enabled state")
+                    if diagnostic_probe is not None:
+                        diagnostic_probe(x_motor, "x", "after_restore_hold_enabled")
                 else:
-                    _finish_axis_pp(x_motor, axis_name="x")
+                    _finish_axis_pp(x_motor, axis_name="x", diagnostic_probe=diagnostic_probe)
             with measure(timings, "finish_control"):
                 if keep_enabled:
                     if not client._restore_enabled_state(y_slave):
                         raise StageMotionError("y axis failed to retain enabled state")
+                    if diagnostic_probe is not None:
+                        diagnostic_probe(y_motor, "y", "after_restore_hold_enabled")
                 else:
-                    _finish_axis_pp(y_motor, axis_name="y")
+                    _finish_axis_pp(y_motor, axis_name="y", diagnostic_probe=diagnostic_probe)
             if session is not None:
                 session.needs_stop = keep_enabled
 
             with measure(timings, "settle"):
                 time.sleep(settle_s)
+            if cancel_check is not None:
+                cancel_check()
             with measure(timings, "position_snapshot"):
                 after = snapshot_xy(x_motor, y_motor)
+            if diagnostic_probe is not None:
+                diagnostic_probe(x_motor, "x", "after_settle")
+                diagnostic_probe(y_motor, "y", "after_settle")
             after_x = _require_axis_position(after["x"], "x")
             after_y = _require_axis_position(after["y"], "y")
-            if session is not None:
+            if session is not None or keep_enabled:
                 _checked_snapshot_positions(after)
             if keep_enabled:
                 mask = ModbusRTUClient.STAT_TARGET_REACHED | ModbusRTUClient.STAT_OPERATION_ENABLED
@@ -550,10 +652,28 @@ def move_to_absolute(
                 "x": after_x - x_target,
                 "y": after_y - y_target,
             }
+            logger.warning(
+                "event=stage_after_finish "
+                "target=(%s,%s) before=%s arrival=%s "
+                "after=%s cmd_pos=%s err=%s",
+                x_target, y_target,
+                before, wait_result.get("current"),
+                after, cmd_pos, err_to_target,
+            )
             with measure(timings, "arrival_check"):
                 _check_arrival_tolerance(
                     err_to_target=err_to_target,
                     arrival_tolerance_pulse=arrival_tolerance_pulse,
+                )
+
+            if cancel_check is not None:
+                cancel_check()
+            if keep_enabled:
+                logger.info(
+                    "event=stage_hold_complete target=(%s,%s) current=(%s,%s) "
+                    "standstill_verified=%s stable_samples=%s",
+                    x_target, y_target, after_x, after_y,
+                    wait_result.get("standstill_verified"), wait_result.get("stable_samples"),
                 )
 
             return {
@@ -610,6 +730,9 @@ def move_to_absolute_with_approach(
     stop_event: threading.Event | None = None,
     progress_callback: Callable[[Dict[str, int]], None] | None = None,
     approach_cfg: Dict[str, Any] | None = None,
+    finish_diagnostics: bool = False,
+    keep_enabled: bool = False,
+    cancel_check: Callable[[], None] | None = None,
 ) -> Dict[str, Any]:
     """Move to a target using an optional fixed-direction final approach."""
     cfg = approach_cfg or {}
@@ -631,6 +754,9 @@ def move_to_absolute_with_approach(
             stage_limits=stage_limits,
             stop_event=stop_event,
             progress_callback=progress_callback,
+            finish_diagnostics=finish_diagnostics,
+            keep_enabled=keep_enabled,
+            cancel_check=cancel_check,
         )
 
     x_direction = int(cfg.get("x_direction", cfg.get("direction", 1)))
@@ -676,6 +802,9 @@ def move_to_absolute_with_approach(
         stage_limits=stage_limits,
         stop_event=stop_event,
         progress_callback=progress_callback,
+        finish_diagnostics=finish_diagnostics,
+        keep_enabled=keep_enabled,
+        cancel_check=cancel_check,
     )
     if pre_move.get("stopped_by_request"):
         return {
@@ -708,6 +837,9 @@ def move_to_absolute_with_approach(
         stage_limits=stage_limits,
         stop_event=stop_event,
         progress_callback=progress_callback,
+        finish_diagnostics=finish_diagnostics,
+        keep_enabled=keep_enabled,
+        cancel_check=cancel_check,
     )
 
     return {
