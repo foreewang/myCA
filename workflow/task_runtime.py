@@ -19,6 +19,9 @@ from workflow.path_guard import normalize_execute_task_values
 from workflow.run_task import execute_task_request as default_execute_task_request
 from workflow.task_artifacts import count_images
 from workflow.task_control import TaskCanceled
+from workflow.alarm_service import alarm_context, report_alarm
+from workflow.alarm_task_hooks import execution_id_for_record, observe_task_record
+from uuid import uuid4
 from workflow.task_store import (
     TASK_RECORD_IO_LOCK,
     TASK_TERMINAL_STATUSES,
@@ -295,6 +298,7 @@ class QueuedTask:
     cancel_event: threading.Event
     task_executor: TaskExecutor
     request_id: str = "-"
+    execution_id: str = ""
 
 
 @with_task_logging("task")
@@ -305,69 +309,85 @@ def run_task_async(
     *,
     task_executor: TaskExecutor = default_execute_task_request,
     request_id: str | None = None,
+    execution_id: str | None = None,
 ) -> None:
     task_id = str(task.get("task_id") or "").strip()
-    started = perf_counter()
-    logger.info("event=task_started")
-    stop_event = threading.Event()
-    monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event),
-                               kwargs={"request_id": current_request_id.get()}, daemon=False)
-    monitor_started = False
-    try:
-        update_task_record(
-            task_id,
-            {"status": "running", "started_at": utc_now(), "message": "task started", "progress": 1},
-        )
-        monitor.start()
-        monitor_started = True
-        result = task_executor(
-            raw_task_cfg={"task": task},
-            camera_path=req.camera_path or os.getenv("CAMERA_CONFIG_PATH"),
-            objectives_path=req.objectives_path or os.getenv("OBJECTIVES_CONFIG_PATH"),
-            plates_path=req.plates_path or os.getenv("PLATES_CONFIG_PATH"),
-            dump_json=req.dump_json,
-            persist_result=req.persist_result,
-            cancel_check=lambda: cancel_event.is_set() or is_task_cancel_requested(task_id),
-            progress_callback=make_task_progress_callback(task_id),
-        )
-        stop_monitor_thread(monitor, stop_event, monitor_started)
+    if not execution_id:
+        try:
+            execution_id = execution_id_for_record(read_task_record(task_id))
+        except Exception:
+            execution_id = uuid4().hex
+    with alarm_context(task_id, execution_id):
+        started = perf_counter()
+        logger.info("event=task_started")
+        stop_event = threading.Event()
+        monitor = threading.Thread(target=monitor_running_task, args=(task_id, stop_event),
+                                   kwargs={"request_id": current_request_id.get()}, daemon=False)
         monitor_started = False
         try:
-            existing_record = read_task_record(task_id)
-        except Exception:
-            existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
-        record = finalize_success_record(existing_record, task, result, req.dump_json, req.persist_result)
-        write_task_record(record)
-        logger.info("event=task_completed elapsed_ms=%.1f", (perf_counter() - started) * 1000)
-    except TaskCanceled as exc:
-        logger.info("event=task_canceled elapsed_ms=%.1f", (perf_counter() - started) * 1000)
-        stop_monitor_thread(monitor, stop_event, monitor_started)
-        monitor_started = False
-        try:
-            record = read_task_record(task_id)
-        except Exception:
-            record = build_accepted_record(task, req.dump_json, req.persist_result)
-        write_task_record(mark_record_canceled(record, str(exc)))
-    except Exception:
-        logger.exception("event=task_failed error_code=TASK_EXECUTION_FAILED elapsed_ms=%.1f", (perf_counter() - started) * 1000)
-        stop_monitor_thread(monitor, stop_event, monitor_started)
-        monitor_started = False
-        try:
-            existing_record = read_task_record(task_id)
-        except Exception:
-            existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
-        record = finalize_failed_record(
-            existing_record,
-            task,
-            "任务执行失败，请查看本地日志或联系维护人员",
-            req.dump_json,
-            req.persist_result,
-        )
-        write_task_record(record)
-    finally:
-        stop_monitor_thread(monitor, stop_event, monitor_started)
-        unregister_task_cancel_event(task_id)
-        release_hardware_operation("task", task_id)
+            update_task_record(
+                task_id,
+                {"status": "running", "started_at": utc_now(), "message": "task started", "progress": 1},
+            )
+            monitor.start()
+            monitor_started = True
+            result = task_executor(
+                raw_task_cfg={"task": task},
+                camera_path=req.camera_path or os.getenv("CAMERA_CONFIG_PATH"),
+                objectives_path=req.objectives_path or os.getenv("OBJECTIVES_CONFIG_PATH"),
+                plates_path=req.plates_path or os.getenv("PLATES_CONFIG_PATH"),
+                dump_json=req.dump_json,
+                persist_result=req.persist_result,
+                cancel_check=lambda: cancel_event.is_set() or is_task_cancel_requested(task_id),
+                progress_callback=make_task_progress_callback(task_id),
+            )
+            stop_monitor_thread(monitor, stop_event, monitor_started)
+            monitor_started = False
+            try:
+                existing_record = read_task_record(task_id)
+            except Exception:
+                existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
+                existing_record["execution_id"] = execution_id
+            record = finalize_success_record(existing_record, task, result, req.dump_json, req.persist_result)
+            write_task_record(record)
+            logger.info("event=task_completed elapsed_ms=%.1f", (perf_counter() - started) * 1000)
+        except TaskCanceled as exc:
+            logger.info("event=task_canceled elapsed_ms=%.1f", (perf_counter() - started) * 1000)
+            stop_monitor_thread(monitor, stop_event, monitor_started)
+            monitor_started = False
+            try:
+                record = read_task_record(task_id)
+            except Exception:
+                record = build_accepted_record(task, req.dump_json, req.persist_result)
+            record["execution_id"] = execution_id
+            write_task_record(mark_record_canceled(record, str(exc)))
+        except Exception as exc:
+            # Emit the immutable failure even if persisting the terminal JSON fails.
+            observe_task_record({"task_id": task_id, "execution_id": execution_id, "status": "failed"})
+            if (not getattr(exc, "_colony_alarm_reported", False)
+                    and any(cls.__name__ == "ConfigValidationError" for cls in type(exc).__mro__)):
+                report_alarm("CONFIG_EXECUTION_BLOCKED", component="configuration", fact=True,
+                             occurrence_key=f"{execution_id}:configuration")
+            logger.exception("event=task_failed error_code=TASK_EXECUTION_FAILED elapsed_ms=%.1f", (perf_counter() - started) * 1000)
+            stop_monitor_thread(monitor, stop_event, monitor_started)
+            monitor_started = False
+            try:
+                existing_record = read_task_record(task_id)
+            except Exception:
+                existing_record = build_accepted_record(task, req.dump_json, req.persist_result)
+                existing_record["execution_id"] = execution_id
+            record = finalize_failed_record(
+                existing_record,
+                task,
+                "任务执行失败，请查看本地日志或联系维护人员",
+                req.dump_json,
+                req.persist_result,
+            )
+            write_task_record(record)
+        finally:
+            stop_monitor_thread(monitor, stop_event, monitor_started)
+            unregister_task_cancel_event(task_id)
+            release_hardware_operation("task", task_id)
 
 
 class TaskRuntimeManager:
@@ -458,6 +478,7 @@ class TaskRuntimeManager:
                         cancel_event=cancel_event,
                         task_executor=task_executor,
                         request_id=current_request_id.get(),
+                        execution_id=record["execution_id"],
                     )
                 )
                 logger.info("event=task_queued queue_size=%s", self._queue.qsize(), extra={"task_id": task_id})
@@ -475,6 +496,7 @@ class TaskRuntimeManager:
 
         return {
             "task_id": task_id,
+            "execution_id": record["execution_id"],
             "status": "accepted",
             "task_type": task.get("task_type"),
             "observe_scope": task.get("observe_scope"),
@@ -498,6 +520,9 @@ class TaskRuntimeManager:
                     self._mark_queued_task_canceled(item, "operator canceled before task started")
                     continue
                 self._execute_queued_task(item)
+            except BaseException:
+                report_alarm("TASK_WORKER_UNAVAILABLE", component="task_runtime")
+                raise
             finally:
                 self._queue.task_done()
 
@@ -527,7 +552,8 @@ class TaskRuntimeManager:
             self._mark_queued_task_failed(item, "硬件正在执行其他任务，请稍后重试", "HARDWARE_BUSY")
             unregister_task_cancel_event(task_id)
             return
-        run_task_async(item.task, item.req, item.cancel_event, task_executor=item.task_executor, request_id=item.request_id)
+        run_task_async(item.task, item.req, item.cancel_event, task_executor=item.task_executor,
+                       request_id=item.request_id, execution_id=item.execution_id)
 
     @with_task_logging("item")
     def _mark_queued_task_canceled(self, item: QueuedTask, reason: str) -> None:
@@ -536,6 +562,8 @@ class TaskRuntimeManager:
             record = read_task_record(task_id)
         except Exception:
             record = build_accepted_record(item.task, item.req.dump_json, item.req.persist_result)
+        if item.execution_id:
+            record["execution_id"] = item.execution_id
         write_task_record(mark_record_canceled(record, reason))
         logger.info("event=task_canceled reason=before_start", extra={"task_id": task_id, "request_id": item.request_id})
         unregister_task_cancel_event(task_id)
@@ -547,6 +575,8 @@ class TaskRuntimeManager:
             existing_record = read_task_record(task_id)
         except Exception:
             existing_record = build_accepted_record(item.task, item.req.dump_json, item.req.persist_result)
+        if item.execution_id:
+            existing_record["execution_id"] = item.execution_id
         record = finalize_failed_record(
             existing_record,
             item.task,
@@ -581,3 +611,18 @@ def submit_task_request(
 ) -> Dict[str, Any]:
     runtime_manager = manager or DEFAULT_TASK_RUNTIME_MANAGER
     return runtime_manager.submit(req, task_executor=task_executor, access_logger=access_logger)
+
+
+def get_task_runtime_health() -> Dict[str, Any]:
+    """Thread state only; this accessor never probes devices or task artifacts."""
+    manager = DEFAULT_TASK_RUNTIME_MANAGER
+    with manager._lock:
+        alive = manager._worker is not None and manager._worker.is_alive()
+        expected = manager._accepting and not manager._stop_event.is_set()
+        return {
+            "status": "healthy" if alive and expected else "failed" if expected else "stopped",
+            "worker_alive": alive,
+            "accepting": manager._accepting,
+            "queue_size": manager._queue.qsize(),
+            "sampled_at": utc_now(),
+        }

@@ -286,7 +286,10 @@ def test_runtime_threads_devices_stages_and_redaction(log_files, monkeypatch):
     monkeypatch.setenv("COLONY_LOG_REDACT_SENSITIVE", "1")
     records = {}
     monkeypatch.setattr(runtime, "create_accepted_task_record_if_allowed",
-                        lambda task, *a: records.setdefault(task["task_id"], {"task_id": task["task_id"]}))
+                        lambda task, *a: records.setdefault(task["task_id"], {
+                            "task_id": task["task_id"],
+                            "execution_id": "execution-" + task["task_id"],
+                        }))
     monkeypatch.setattr(runtime, "read_task_record", lambda task_id: records[task_id])
     monkeypatch.setattr(runtime, "update_task_record", lambda *a: None)
     monkeypatch.setattr(runtime, "write_task_record", lambda *a: None)

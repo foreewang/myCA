@@ -1,16 +1,18 @@
 # HTTP API 后端联调契约与请求示例
 
+> 2026-11-03: 新增只读 [`GET /api/alarms` 单一报警查询接口](alarm-api.md)，统一同步所有类型的故障、恢复事件及监测摘要；该接口需要只读 Bearer 凭证。
+
 > 2026-10-28: [Optional deduplication / schema migration](optional_deduplication.md). `detect.deduplication.enabled` defaults to `false`; calibration requirements below apply only when explicitly enabled.
 
 > 核对基线：2026-09-01，当前工作区源码，FastAPI 应用版本 `0.4.0`。
 >
-> 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 14 个；FastAPI 自动文档路由另列在文末。真实硬件必须按 [硬件与安全](hardware.md) 分阶段验收。
+> 本文直接以 `workflow/api_server.py`、`workflow/api_models.py` 和实际执行器为准，不从旧 Markdown 示例反推字段。项目自定义路由共 16 个；FastAPI 自动文档路由另列在文末。真实硬件必须按 [硬件与安全](hardware.md) 分阶段验收。
 
 ## 1. 联调前必须确认
 
 - 基础地址示例：`http://127.0.0.1:8000`。
 - JSON 接口使用 `Content-Type: application/json`。
-- 当前源码没有认证、授权、TLS 或 CORS 中间件。只能部署在受控内网；跨域浏览器调用需要由网关配置 CORS，公网暴露前必须补认证和 TLS。
+- 报警接口使用专用只读 Bearer 凭证；其他接口没有统一认证、授权、TLS 或 CORS 中间件。只能部署在受控内网；生产报警轮询通过 HTTPS 网关访问，跨域浏览器调用需要由网关配置 CORS，其他接口对外暴露前必须补认证和 TLS。
 - API 服务只能启动一个 worker。MVS SDK 与相机句柄只存在于该 API worker 管理的独立相机子进程中；原生调用超时后会终止并重建子进程，不需要重启 API。
 - `POST /api/tasks/execute` 的 `202` 只表示入队成功，不代表业务字段、模型、配置或硬件检查通过。调用方必须轮询任务到终态。
 - 录像 `start`/`stop` 同样返回 `202`，只表示启停请求已受理；必须轮询录像状态。`cancel`、录像 `stop` 和往复 `stop` 都不是硬件急停；运动设备旁仍需可用的物理急停。
@@ -41,6 +43,8 @@ uvicorn workflow.api_server:app --host 0.0.0.0 --port 8000 --workers 1
 | 12 | `GET` | `/api/tasks/{task_id}/result` | 无 | 200 | 查询运行摘要或终态结果 |
 | 13 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/images` | 无；有查询参数 | 200 | 分页列出孔位图片 |
 | 14 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/images/{filename}` | 无 | 200 | 下载孔位目录内文件 |
+| 15 | `GET` | `/api/tasks/{task_id}/wells/{well_name}/pickable-result` | 无；可选 `download` | 200 | 查询或下载可挑取结果 |
+| 16 | `GET` | `/api/alarms` | 无；`mode`、`cursor`、`limit` | 200 | [统一报警事件/当前故障快照及监测摘要](alarm-api.md) |
 
 “无请求体”表示不要发送 JSON；路径参数和查询参数仍按下面各节传递。
 

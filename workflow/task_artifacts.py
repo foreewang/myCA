@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable
 
 from workflow.file_io import read_json_with_retry
+from workflow.alarm_service import report_alarm, recover_alarm
+from workflow.alarm_task_hooks import storage_resource
 from workflow.path_guard import resolve_output_path, safe_str_path
 
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
@@ -142,6 +144,8 @@ def build_task_result_response(
             try:
                 result = json_reader(path)
             except Exception as exc:
+                report_alarm("RESULT_READ_FAILED", component="task_artifacts", resource=storage_resource(path),
+                             task_id=task_id, execution_id=record.get("execution_id"))
                 raise TaskArtifactError(
                     503,
                     "RESULT_JSON_TEMPORARILY_UNREADABLE",
@@ -150,12 +154,15 @@ def build_task_result_response(
                     cause=exc,
                 ) from exc
             if not isinstance(result, dict):
+                report_alarm("RESULT_READ_FAILED", component="task_artifacts", resource=storage_resource(path),
+                             task_id=task_id, execution_id=record.get("execution_id"))
                 raise TaskArtifactError(
                     500,
                     "RESULT_JSON_INVALID",
                     "结果文件格式异常，请查看本地日志",
                     log_detail=f"task_id={task_id} path={path}",
                 )
+            recover_alarm("RESULT_READ_FAILED", component="task_artifacts", resource=storage_resource(path))
             return result
 
     result = record.get("result")

@@ -13,8 +13,14 @@ the camera runtime is broken or absent.
 from __future__ import annotations
 
 from workflow.task_logging import current_task_id, current_request_id
+from workflow.alarm_service import (
+    alarm_context, get_alarm_context,
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
+from workflow.alarm_device_codes import DEVICE_ALARM_CODES
 
 import copy
+import contextvars
 import logging
 import math
 import multiprocessing
@@ -25,6 +31,7 @@ import time
 import traceback
 import uuid
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Mapping
@@ -105,6 +112,78 @@ class CameraWorkerError(CameraProcessError):
 
 class CameraStateError(CameraProcessError):
     """The requested operation is invalid for the current supervisor state."""
+
+
+@dataclass(frozen=True)
+class _CameraAlarmCorrelation:
+    task_id: str | None
+    execution_id: str | None
+    log_task_id: str
+    request_id: str
+
+    @classmethod
+    def capture(cls) -> "_CameraAlarmCorrelation":
+        return cls(*get_alarm_context(), current_task_id.get(), current_request_id.get())
+
+    def run(self, call, *args, **kwargs):
+        task_token = current_task_id.set(self.log_task_id)
+        request_token = current_request_id.set(self.request_id)
+        try:
+            with alarm_context(self.task_id, self.execution_id):
+                return call(*args, **kwargs)
+        finally:
+            current_request_id.reset(request_token)
+            current_task_id.reset(task_token)
+
+
+def _with_session_alarm_correlation(call):
+    """Monitoring has no caller context; use the session's originating run."""
+    @wraps(call)
+    def wrapped(self, *args, **kwargs):
+        with self._state_lock:
+            correlation = self._session_alarm_correlation
+        if correlation is not None and get_alarm_context() == (None, None):
+            return correlation.run(call, self, *args, **kwargs)
+        return call(self, *args, **kwargs)
+    return wrapped
+
+
+def _with_operation_alarm_correlation(call):
+    @wraps(call)
+    def wrapped(self, context, *args, **kwargs):
+        if context.alarm_correlation is not None:
+            return context.alarm_correlation.run(call, self, context, *args, **kwargs)
+        return call(self, context, *args, **kwargs)
+    return wrapped
+
+
+def _report_camera_failure(error: BaseException | str, code: str | None = None) -> None:
+    # One underlying failure can cross several supervisor cleanup boundaries.
+    # The public catalog supplies all text; SDK messages remain in local logs.
+    if isinstance(error, CameraStateError):
+        return
+    code = code or (error.error_type if isinstance(error, CameraWorkerError) else None)
+    if code not in DEVICE_ALARM_CODES:
+        code = ("CAMERA_COMMAND_TIMEOUT" if isinstance(error, CameraProcessTimeout)
+                else "CAMERA_SDK_ERROR" if isinstance(error, CameraWorkerError)
+                else "CAMERA_WORKER_FAILED")
+    reported_codes = getattr(error, "_camera_alarm_reported_codes", frozenset())
+    if code in reported_codes:
+        return
+    fact = code.startswith("CAMERA_RECORD_") or code.startswith("CAMERA_SHUTDOWN_")
+    report_alarm(code, component="camera", fact=fact)
+    if isinstance(error, BaseException):
+        error._camera_alarm_reported_codes = reported_codes | {code}
+
+
+def _recover_camera_acquisition(*, recording: bool = False) -> None:
+    # A PID or successful open/close does not prove frame acquisition works.
+    for code in ("CAMERA_COMMAND_TIMEOUT", "CAMERA_SDK_ERROR", "CAMERA_WORKER_FAILED",
+                 "CAMERA_WORKER_RESTART_FAILED"):
+        recover_alarm(code, component="camera")
+    if recording:
+        for code in ("CAMERA_RECORDING_UNHEALTHY", "CAMERA_RECORDING_STALLED"):
+            recover_alarm(code, component="camera")
 
 
 def _camera_error_code(error: BaseException | str) -> str:
@@ -191,6 +270,7 @@ class _RecordingOperationContext:
     settings: Mapping[str, Any]
     command_payload: Mapping[str, Any]
     done_event: threading.Event
+    alarm_correlation: _CameraAlarmCorrelation | None = None
 
 
 def _object_payload(value: Any, fields: tuple[str, ...]) -> Dict[str, Any]:
@@ -718,6 +798,8 @@ class CameraProcessSupervisor:
         self._state = "idle"
         self._operation_id: str | None = None
         self._session_id: str | None = None
+        self._session_alarm_correlation: _CameraAlarmCorrelation | None = None
+        self._alarm_generation = 0
         self._settings: Dict[str, Any] = {}
         self._latest_status: Dict[str, Any] = {}
         self._last_video: Dict[str, Any] = {}
@@ -734,6 +816,14 @@ class CameraProcessSupervisor:
         self._last_frame_progress_monotonic: float | None = None
         self._last_frame_progress_at: float | None = None
 
+    def _report_failure(self, error: BaseException | str, code: str | None = None) -> None:
+        # Recovery and failure publication share the state lock. A response
+        # obtained before a newer failure must never clear that failure.
+        with self._state_lock:
+            if not isinstance(error, CameraStateError):
+                self._alarm_generation += 1
+            _report_camera_failure(error, code)
+
     def _transition(
         self,
         state: str,
@@ -745,6 +835,8 @@ class CameraProcessSupervisor:
         error_code: str | None = None,
     ) -> None:
         with self._state_lock:
+            if state in {"opening", "starting"} and session_id != self._session_id:
+                self._session_alarm_correlation = _CameraAlarmCorrelation.capture()
             self._state = str(state)
             self._operation_id = operation_id
             self._session_id = session_id
@@ -753,6 +845,7 @@ class CameraProcessSupervisor:
             if error is not None:
                 self._last_error = str(error)
                 self._last_error_code = str(error_code or type(error).__name__)
+                self._report_failure(error, error_code)
             if state == "recording":
                 self._last_observed_frame_count = int(self._latest_status.get("frame_count") or 0)
                 self._last_frame_progress_monotonic = time.monotonic()
@@ -764,6 +857,7 @@ class CameraProcessSupervisor:
             self._state = str(state)
             self._operation_id = None
             self._session_id = None
+            self._session_alarm_correlation = None
             self._settings = {}
             self._latest_status = {}
             self._last_observed_frame_count = 0
@@ -873,6 +967,7 @@ class CameraProcessSupervisor:
             with self._state_lock:
                 state = self._state
                 shutting_down = self._shutdown_requested
+                alarm_generation = self._alarm_generation
             if shutting_down or state not in {"open", "recording"}:
                 continue
             if not self._command_lock.acquire(blocking=False):
@@ -889,7 +984,7 @@ class CameraProcessSupervisor:
                     # A stop/close request may reserve its transition while
                     # this fast status command owns the command lock.  Never
                     # apply the old state's response to the new state.
-                    if self._state != state:
+                    if self._state != state or self._alarm_generation != alarm_generation:
                         continue
                     if state == "recording" and (
                         not bool(result_status.get("recording"))
@@ -908,6 +1003,7 @@ class CameraProcessSupervisor:
                             self._last_observed_frame_count = frame_count
                             self._last_frame_progress_monotonic = now_monotonic
                             self._last_frame_progress_at = time.time()
+                            _recover_camera_acquisition(recording=True)
                         last_progress = self._last_frame_progress_monotonic or now_monotonic
                         fps = max(
                             float(
@@ -972,12 +1068,15 @@ class CameraProcessSupervisor:
                     f"camera worker did not start within {WORKER_STARTUP_TIMEOUT_S:.1f}s"
                 )
             ready = parent_connection.recv()
-        except CameraProcessError:
+        except CameraProcessError as exc:
+            self._report_failure(exc)
             self._terminate_process(process, parent_connection)
             raise
         except BaseException as exc:
             self._terminate_process(process, parent_connection)
-            raise CameraProcessError(f"camera worker failed during startup: {exc}") from exc
+            failure = CameraProcessError(f"camera worker failed during startup: {exc}")
+            self._report_failure(failure)
+            raise failure from exc
         finally:
             if child_connection is not None:
                 try:
@@ -986,7 +1085,9 @@ class CameraProcessSupervisor:
                     pass
         if not isinstance(ready, dict) or ready.get("kind") != "ready":
             self._terminate_process(process, parent_connection)
-            raise CameraProcessError(f"camera worker returned invalid startup handshake: {ready!r}")
+            failure = CameraProcessError(f"camera worker returned invalid startup handshake: {ready!r}")
+            self._report_failure(failure)
+            raise failure
         self._process = process
         self._connection = parent_connection
         self._worker_pid = int(ready.get("pid") or process.pid or 0)
@@ -1044,6 +1145,7 @@ class CameraProcessSupervisor:
         except Exception:
             pass
 
+    @_with_session_alarm_correlation
     def _discard_worker_locked(self, reason: BaseException | str, *, restart: bool) -> None:
         process = self._process
         connection = self._connection
@@ -1078,6 +1180,7 @@ class CameraProcessSupervisor:
                 self._clear_session(keep_error=True)
                 self._abandon_operation_locked()
 
+    @_with_session_alarm_correlation
     def _request_locked(self, command: str, payload: Mapping[str, Any], timeout_s: float) -> Any:
         if self._shutdown_requested and command not in {"shutdown", "stop_recording", "close"}:
             raise CameraStateError("camera supervisor is shutting down")
@@ -1163,6 +1266,8 @@ class CameraProcessSupervisor:
             )
             if bool(response.get("fatal")):
                 self._discard_worker_locked(remote, restart=True)
+            else:
+                self._report_failure(remote)
             raise remote
 
     def _request(self, command: str, payload: Mapping[str, Any], timeout_s: float) -> Any:
@@ -1264,6 +1369,7 @@ class CameraProcessSupervisor:
                         self._clear_session(keep_error=True)
                         self._last_error = str(exc)
                         self._last_error_code = _camera_error_code(exc)
+                        self._report_failure(exc)
                 raise
             with self._state_lock:
                 commit_allowed = (
@@ -1290,6 +1396,7 @@ class CameraProcessSupervisor:
                     if cleanup_error is not None:
                         self._last_error = str(cleanup_error)
                         self._last_error_code = _camera_error_code(cleanup_error)
+                        self._report_failure(cleanup_error)
                 raise CameraStateError("camera open completed after shutdown or was superseded")
             with self._state_lock:
                 self._latest_status = dict((result or {}).get("status") or {})
@@ -1331,6 +1438,7 @@ class CameraProcessSupervisor:
                     self._clear_session(keep_error=True)
                     self._last_error = str(exc)
                     self._last_error_code = _camera_error_code(exc)
+                    self._report_failure(exc)
             raise
         with self._state_lock:
             if (
@@ -1356,6 +1464,7 @@ class CameraProcessSupervisor:
             settings=self._immutable_operation_mapping(settings),
             command_payload=self._immutable_operation_mapping(command_payload),
             done_event=threading.Event(),
+            alarm_correlation=_CameraAlarmCorrelation.capture(),
         )
         with self._state_lock:
             if self._shutdown_requested:
@@ -1375,6 +1484,7 @@ class CameraProcessSupervisor:
             )
         return context
 
+    @_with_operation_alarm_correlation
     def _complete_recording_start(
         self,
         context: _RecordingOperationContext,
@@ -1409,6 +1519,7 @@ class CameraProcessSupervisor:
                             self._clear_session(keep_error=True)
                         self._last_error = str(exc)
                         self._last_error_code = _camera_error_code(exc)
+                        self._report_failure(exc)
                         self._cancel_operation_locked(context, requesting)
                 raise
             with self._state_lock:
@@ -1452,7 +1563,8 @@ class CameraProcessSupervisor:
                     if self._operation_thread is threading.current_thread():
                         self._operation_thread = None
 
-        thread = threading.Thread(target=run, name="camera-record-start", daemon=True)
+        thread_context = contextvars.copy_context()
+        thread = threading.Thread(target=lambda: thread_context.run(run), name="camera-record-start", daemon=True)
         with self._state_lock:
             if (
                 self._recording_operation is not context
@@ -1472,6 +1584,7 @@ class CameraProcessSupervisor:
                         self._clear_session(keep_error=True)
                     self._last_error = str(exc)
                     self._last_error_code = _camera_error_code(exc)
+                    self._report_failure(exc)
                     self._cancel_operation_locked(context, reserved)
             raise
         return self.status()
@@ -1499,6 +1612,7 @@ class CameraProcessSupervisor:
                 settings=self._immutable_operation_mapping(settings),
                 command_payload=self._immutable_operation_mapping({"session_id": session_id}),
                 done_event=threading.Event(),
+                alarm_correlation=self._session_alarm_correlation or _CameraAlarmCorrelation.capture(),
             )
             self._recording_operation = context
             self._recording_operation_phase = _RecordingOperationPhase("reserved")
@@ -1586,6 +1700,7 @@ class CameraProcessSupervisor:
             "timestamp_finished": info.timestamp_finished,
         }
 
+    @_with_operation_alarm_correlation
     def _complete_recording_stop(
         self,
         context: _RecordingOperationContext,
@@ -1605,6 +1720,7 @@ class CameraProcessSupervisor:
                     if context.done_event.is_set() and self._last_video:
                         return RemoteVideoInfo.from_payload(self._last_video)
                     raise CameraStateError("camera recording stop was superseded")
+                alarm_generation = self._alarm_generation
             command_process = None
             try:
                 self._spawn_worker_locked()
@@ -1635,6 +1751,7 @@ class CameraProcessSupervisor:
                             self._clear_session(keep_error=True)
                         self._last_error = str(exc)
                         self._last_error_code = _camera_error_code(exc)
+                        self._report_failure(exc)
                         self._cancel_operation_locked(context, requesting)
                 raise
             with self._state_lock:
@@ -1649,6 +1766,7 @@ class CameraProcessSupervisor:
         try:
             info = self._finalize_recording_video(result, context.settings)
         except BaseException as exc:
+            self._report_failure(exc, exc.error_type if isinstance(exc, CameraWorkerError) else "CAMERA_RECORD_PROMOTE_FAILED")
             with self._state_lock:
                 if self._recording_operation is context and self._recording_operation_phase == finalizing:
                     if self._session_id == context.session_id:
@@ -1671,9 +1789,15 @@ class CameraProcessSupervisor:
             ):
                 raise CameraStateError("camera recording finalization was superseded")
             self._last_video = self._video_status_payload(info)
+            if self._alarm_generation == alarm_generation:
+                # Finalization verified nonempty frames and the saved file,
+                # even if this recording ended before the monitor sampled it.
+                _recover_camera_acquisition(recording=True)
             self._clear_session(keep_error=False)
             if not self._finish_operation_locked(context, committing):
                 raise CameraStateError("camera recording stop commit lost ownership")
+        report_alarm("CAMERA_RECORDING_STOPPED", component="camera", fact=True,
+                     occurrence_key=context.operation_id)
         return info
 
     def stop_recording(self, *, join_timeout_s: float = 5.0) -> RemoteVideoInfo:
@@ -1695,7 +1819,8 @@ class CameraProcessSupervisor:
                     if self._operation_thread is threading.current_thread():
                         self._operation_thread = None
 
-        thread = threading.Thread(target=run, name="camera-record-stop", daemon=True)
+        thread_context = contextvars.copy_context()
+        thread = threading.Thread(target=lambda: thread_context.run(run), name="camera-record-stop", daemon=True)
         with self._state_lock:
             if (
                 self._recording_operation is not context
@@ -1732,6 +1857,7 @@ class CameraProcessSupervisor:
         with self._state_lock:
             if self._session_id != str(session_id) or self._state not in {"open", "recording"}:
                 raise CameraStateError(f"camera session is not usable: state={self._state}")
+            alarm_generation = self._alarm_generation
         frame_timeout_ms = int(timeout_ms if timeout_ms is not None else 15_000)
         command_timeout = max(frame_timeout_ms / 1000.0 + CAPTURE_COMMAND_SLACK_S, CAPTURE_COMMAND_SLACK_S)
         result = self._request(
@@ -1739,13 +1865,17 @@ class CameraProcessSupervisor:
             {"session_id": session_id, "save_path": str(save_path), "timeout_ms": timeout_ms},
             command_timeout,
         )
+        frame = RemoteFrameInfo.from_payload(dict((result or {}).get("frame") or {}))
         with self._state_lock:
             # A completed native response may race API lifespan shutdown after
             # ``_request`` releases the command lock.  Only the still-current
             # session may publish that response into parent-process state.
             if self._session_id == str(session_id) and self._state in {"open", "recording"}:
                 self._latest_status = dict((result or {}).get("status") or self._latest_status)
-        return RemoteFrameInfo.from_payload(dict((result or {}).get("frame") or {}))
+                if (self._alarm_generation == alarm_generation
+                        and frame.width > 0 and frame.height > 0 and frame.frame_len > 0):
+                    _recover_camera_acquisition()
+        return frame
 
     def set_exposure(self, session_id: str, value: float) -> None:
         if not self.session_is_usable(session_id):
@@ -1784,8 +1914,10 @@ class CameraProcessSupervisor:
         bitrate_kbps: int,
         timeout_ms: int | None,
     ) -> RemoteVideoInfo:
-        if not self.session_is_usable(session_id):
-            raise CameraStateError("camera session is not usable")
+        with self._state_lock:
+            if not self.session_is_usable(session_id):
+                raise CameraStateError("camera session is not usable")
+            alarm_generation = self._alarm_generation
         command_timeout = max(float(duration_s) + STOP_COMMAND_TIMEOUT_S, STOP_COMMAND_TIMEOUT_S)
         result = self._request(
             "record_video",
@@ -1799,7 +1931,12 @@ class CameraProcessSupervisor:
             },
             command_timeout,
         )
-        return RemoteVideoInfo.from_payload(dict((result or {}).get("video") or {}))
+        video = RemoteVideoInfo.from_payload(dict((result or {}).get("video") or {}))
+        with self._state_lock:
+            if (self._session_id == str(session_id) and self._state in {"open", "recording"}
+                    and self._alarm_generation == alarm_generation and video.frame_count > 0):
+                _recover_camera_acquisition(recording=True)
+        return video
 
     def shutdown(self, *, timeout_s: float = 10.0) -> None:
         budget_s = max(float(timeout_s), 0.1)
@@ -1922,6 +2059,7 @@ class CameraProcessSupervisor:
                                 self._last_video = self._video_status_payload(info)
                         process.join(timeout=min(1.0, max(deadline - time.monotonic(), 0.0)))
                     except BaseException as exc:
+                        self._report_failure(exc)
                         with self._state_lock:
                             self._last_error = str(exc)
                             self._last_error_code = (
@@ -2014,6 +2152,7 @@ class CameraProcessSupervisor:
                     # of leaving the final file and metadata inconsistent.
                     self._last_error = "camera video finalization continued past API shutdown budget"
                     self._last_error_code = "CAMERA_SHUTDOWN_FINALIZING"
+                    report_alarm("CAMERA_SHUTDOWN_FINALIZING", component="camera", fact=True)
                     logger.error(
                         "camera video finalization is still running after shutdown budget operation_id=%s",
                         unfinished_context.operation_id,
@@ -2022,6 +2161,7 @@ class CameraProcessSupervisor:
                 if self._last_error is None:
                     self._last_error = "camera operation did not complete before API shutdown"
                     self._last_error_code = "CAMERA_SHUTDOWN_INCOMPLETE"
+                    report_alarm("CAMERA_SHUTDOWN_INCOMPLETE", component="camera", fact=True)
                 self._abandon_operation_locked(unfinished_context)
             self._clear_session(keep_error=True)
 

@@ -6,6 +6,7 @@ import inspect
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Sequence
+from workflow.alarm_task_hooks import report_vision_failure, observe_vision_result, vision_resource
 
 
 _CANDIDATE_CALLABLES = (
@@ -367,11 +368,17 @@ def run_detect_on_image(
     detect_kwargs: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     image_path = str(Path(image_path))
-    fn = _resolve_callable(entrypoint)
     try:
-        raw_result = _call_detect_entrypoint(fn, image_path, detect_kwargs or {})
-    except TypeError as exc:
-        raise DetectAPIError(
-            f"视觉入口函数调用失败：{exc}。请检查 detect.entrypoint 与对应参数。"
-        ) from exc
-    return normalize_detect_result(raw_result)
+        fn = _resolve_callable(entrypoint)
+        try:
+            raw_result = _call_detect_entrypoint(fn, image_path, detect_kwargs or {})
+        except TypeError as exc:
+            raise DetectAPIError(
+                f"视觉入口函数调用失败：{exc}。请检查 detect.entrypoint 与对应参数。"
+            ) from exc
+        result = normalize_detect_result(raw_result)
+    except Exception as exc:
+        report_vision_failure(exc, resource=vision_resource(entrypoint))
+        raise
+    observe_vision_result(raw_result, resource=vision_resource(entrypoint))
+    return result

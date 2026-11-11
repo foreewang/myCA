@@ -8,6 +8,9 @@ from devices.motion.modbus import ModbusRTUClient
 from devices.motion.MotorManager import MotorManager
 from workflow.file_io import atomic_write_json, read_json_with_retry
 from workflow.task_store import task_objective_name
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -42,14 +45,24 @@ def _save_state(state_file: Path, payload: Dict[str, Any]) -> None:
 
 
 def _move_axis(motor: MotorManager, target: int, vel: int, acc: int, dec: int) -> Dict[str, Any]:
-    err = motor.pp_absolute_move(
-        target_pos=int(target),
-        profile_vel=int(vel),
-        profile_acc=int(acc),
-        profile_dec=int(dec),
-    )
+    resource = f"slave:{motor.slave}"
+    try:
+        err = motor.pp_absolute_move(
+            target_pos=int(target),
+            profile_vel=int(vel),
+            profile_acc=int(acc),
+            profile_dec=int(dec),
+        )
+    except Exception:
+        report_alarm("OBJECTIVE_SWITCH_FAILED", component="objective", resource=resource)
+        raise
     if err is None:
+        report_alarm("OBJECTIVE_SWITCH_FAILED", component="objective", resource=resource)
         raise ObjectiveSwitchError(f"电机移动失败，target={target}")
+    if abs(int(err)) > 50:
+        report_alarm("OBJECTIVE_SWITCH_FAILED", component="objective", resource=resource)
+        raise ObjectiveSwitchError(f"电机到位误差超出允许范围，target={target}, error={err}, tolerance=50")
+    recover_alarm("OBJECTIVE_SWITCH_FAILED", component="objective", resource=resource)
     return {
         "target": int(target),
         "err_to_target_pulse": int(err),
@@ -165,21 +178,27 @@ def ensure_objective_for_task(
         try:
             focus_position_before_switch = focus_motor.get_current_position()
         except Exception as exc:
+            report_alarm("MOTION_POSITION_UNAVAILABLE", component="objective", resource=f"slave:{focus_slave}")
             raise ObjectiveSwitchError("切换物镜前读取电机3当前位置失败") from exc
 
         if focus_position_before_switch is None:
+            report_alarm("MOTION_POSITION_UNAVAILABLE", component="objective", resource=f"slave:{focus_slave}")
             raise ObjectiveSwitchError("切换物镜前读取电机3当前位置失败：未返回有效位置")
         if isinstance(focus_position_before_switch, bool) or not isinstance(
             focus_position_before_switch, int
         ):
+            report_alarm("MOTION_POSITION_UNAVAILABLE", component="objective", resource=f"slave:{focus_slave}")
             raise ObjectiveSwitchError(
                 "切换物镜前读取电机3当前位置失败：返回值不是整数脉冲位置"
             )
+        recover_alarm("MOTION_POSITION_UNAVAILABLE", component="objective", resource=f"slave:{focus_slave}")
         if focus_position_before_switch < objective_switch_collision_limit:
+            report_alarm("OBJECTIVE_SWITCH_UNSAFE_POSITION", component="objective", resource=f"slave:{focus_slave}")
             raise ObjectiveSwitchError(
                 f"切换物镜前电机3当前位置 {focus_position_before_switch} 小于物镜切换碰撞安全限位 "
                 f"{objective_switch_collision_limit}"
             )
+        recover_alarm("OBJECTIVE_SWITCH_UNSAFE_POSITION", component="objective", resource=f"slave:{focus_slave}")
 
         objective_move = _move_axis(
             motor=objective_motor,

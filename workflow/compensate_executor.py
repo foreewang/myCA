@@ -1,5 +1,8 @@
 """根据检测到的克隆位置计算位移补偿目标，并执行拍照复核的闭环补偿流程。"""
 from __future__ import annotations
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
 
 import os
 from pathlib import Path
@@ -408,6 +411,10 @@ def _run_closed_loop(
         iterations.append(item)
 
     final = iterations[-1] if iterations else {}
+    if bool(final.get("in_tolerance", False)):
+        recover_alarm("COMPENSATION_OUT_OF_TOLERANCE", component="compensate")
+    else:
+        report_alarm("COMPENSATION_OUT_OF_TOLERANCE", component="compensate")
     return {
         "enabled": True,
         "max_iterations": max_iterations,

@@ -8,6 +8,10 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
+from functools import wraps
+
+from workflow.alarm_service import report_alarm, recover_alarm
+from workflow.alarm_task_hooks import storage_resource
 
 from workflow.log_sanitizer import sanitize_log_detail
 
@@ -80,6 +84,20 @@ def _path_lock(path: Path) -> threading.RLock:
         return lock
 
 
+def _observe_write(fn):
+    @wraps(fn)
+    def wrapped(path, *args, **kwargs):
+        try:
+            result = fn(path, *args, **kwargs)
+        except OSError:
+            report_alarm("STORAGE_WRITE_FAILED", component="file_io", resource=storage_resource(path))
+            raise
+        recover_alarm("STORAGE_WRITE_FAILED", component="file_io", resource=storage_resource(path))
+        return result
+    return wrapped
+
+
+@_observe_write
 def atomic_write_text(
     path: str | Path,
     text: str,

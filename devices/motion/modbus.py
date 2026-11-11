@@ -8,6 +8,7 @@ Modbus RTU 客户端模块，基于 pymodbus 库实现。
     pymodbus == 3.6.9
 """
 
+import hashlib
 import logging
 import math
 import threading
@@ -15,6 +16,9 @@ import time
 from pymodbus.client import ModbusSerialClient
 from pymodbus.exceptions import ModbusException
 from devices.motion import communication_timing
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +143,11 @@ class ModbusRTUClient:
         self._last_transaction_end = None
         self.configuration_generation = {}
 
+    def _alarm_resource(self, slave=None) -> str:
+        # Do not expose deployment-specific serial paths in public alarms.
+        bus = hashlib.sha256(str(getattr(self, "port", "unknown")).encode("utf-8")).hexdigest()[:12]
+        return f"bus:{bus}" if slave is None else f"bus:{bus}:slave:{slave}"
+
     def connect(self) -> bool:
         """建立与串口的连接。"""
         if self._connected:
@@ -166,10 +175,12 @@ class ModbusRTUClient:
                 time.sleep(_RTU_RETRY_DELAY_S)
             else:
                 logger.error(f"连接失败，请检查串口 {self.port}")
+                report_alarm("SERIAL_CONNECTION_FAILED", component="motion_bus", resource=self._alarm_resource())
             return self._connected
         except Exception as e:
             logger.error(f"连接时发生异常: {e}")
             self._connected = False
+            report_alarm("SERIAL_CONNECTION_FAILED", component="motion_bus", resource=self._alarm_resource())
             return False
 
     def _flush_serial(self) -> None:
@@ -238,8 +249,15 @@ class ModbusRTUClient:
         try:
             result = self._transact_attempts(description, measured_operation)
             success = result is not None
+            if success:
+                recover_alarm("MODBUS_COMMUNICATION_FAILED", component="motion_bus", resource=self._alarm_resource(slave))
+                recover_alarm("SERIAL_CONNECTION_FAILED", component="motion_bus", resource=self._alarm_resource())
             return result
         finally:
+            # Individual retries are expected noise; only the final failure
+            # changes the persistent alarm state.
+            if not success:
+                report_alarm("MODBUS_COMMUNICATION_FAILED", component="motion_bus", resource=self._alarm_resource(slave))
             try:
                 if stats is not None:
                     communication_timing.record(
@@ -443,6 +461,7 @@ class ModbusRTUClient:
             logger.error("故障复位失败，故障位仍然存在")
             return False
         logger.info("故障复位成功")
+        recover_alarm("MOTION_DRIVE_FAULT", component="motion_bus", resource=self._alarm_resource(slave))
         return True
 
     def enable_motor(self, slave: int) -> bool:
@@ -601,10 +620,12 @@ class ModbusRTUClient:
             status = self._read_statusword(slave)
             if status is not None and (status & self.STAT_FAULT):
                 logger.error("运动过程中发生故障")
+                report_alarm("MOTION_DRIVE_FAULT", component="motion_bus", resource=self._alarm_resource(slave))
                 return None
             time.sleep(0.05)
         else:
             logger.error(f"运动超时（{timeout}秒），当前位置 {current_pos} != 目标 {target_pos}")
+            report_alarm("MOTION_TIMEOUT", component="motion_bus", resource=self._alarm_resource(slave))
             self._restore_enabled_state(slave)
             return None
 
@@ -624,6 +645,8 @@ class ModbusRTUClient:
 
         diff = final_pos - cmd_pos
         logger.info(f"运动完成: 目标={target_pos}, 当前位置={final_pos}, 指令位置={cmd_pos}, 差值={diff}")
+        if abs(final_pos - target_pos) <= 50:
+            recover_alarm("MOTION_TIMEOUT", component="motion_bus", resource=self._alarm_resource(slave))
         return diff
 
     def move_relative_pp(self, slave: int, offset: int,
@@ -683,10 +706,12 @@ class ModbusRTUClient:
             status = self._read_statusword(slave)
             if status is not None and (status & self.STAT_FAULT):
                 logger.error("运动过程中发生故障")
+                report_alarm("MOTION_DRIVE_FAULT", component="motion_bus", resource=self._alarm_resource(slave))
                 return None
             time.sleep(0.05)
         else:
             logger.error(f"运动超时（{timeout}秒），当前位置 {current_pos} != 目标 {target_abs_pos}")
+            report_alarm("MOTION_TIMEOUT", component="motion_bus", resource=self._alarm_resource(slave))
             self._restore_enabled_state(slave)
             return None
 
@@ -705,6 +730,8 @@ class ModbusRTUClient:
         diff = final_pos - cmd_pos
         logger.info(f"相对运动完成: 起始={start_pos}, 偏移={offset}, "
                     f"期望绝对位置={target_abs_pos}, 当前位置={final_pos}, 指令位置={cmd_pos}, 差值={diff}")
+        if abs(final_pos - target_abs_pos) <= 50:
+            recover_alarm("MOTION_TIMEOUT", component="motion_bus", resource=self._alarm_resource(slave))
         return diff
 
     # ----------------------- 轮廓速度模式控制逻辑 --------------------------
@@ -769,8 +796,15 @@ class ModbusRTUClient:
         发送快速停止命令（控制字 0x02）。
         电机将按当前设定的减速度减速停止，状态变为 Quick stop active。
         """
-        if not self._write_controlword(slave, self.CMD_SHUTDOWN):
+        try:
+            stopped = self._write_controlword(slave, self.CMD_SHUTDOWN)
+        except Exception:
+            report_alarm("MOTION_STOP_FAILED", component="motion_bus", resource=self._alarm_resource(slave))
+            raise
+        if not stopped:
+            report_alarm("MOTION_STOP_FAILED", component="motion_bus", resource=self._alarm_resource(slave))
             return False
+        # A write acknowledgment is not evidence of physical standstill.
         time.sleep(0.05)
         logger.info(f"从站 {slave} 快速停止命令已发送")
         return True

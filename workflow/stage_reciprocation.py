@@ -10,6 +10,9 @@ from workflow.config_validator import validate_plates_file
 from workflow.plate_geometry import compute_well_start
 from workflow.platform_defaults import DEFAULT_MODBUS_PORT
 from workflow.stage_executor import StageMotionError, move_to_absolute
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
 
 
 class StageReciprocationError(RuntimeError):
@@ -171,6 +174,7 @@ class StageReciprocationController:
                 if move.get("stopped_by_request") or self._stop_event.is_set():
                     break
 
+                recover_alarm("STAGE_RECIPROCATION_FAILED", component="stage_reciprocation")
                 target_index += 1
                 if target_index >= len(targets):
                     target_index = 0
@@ -200,7 +204,9 @@ class StageReciprocationController:
                     "current_pos": current_pos,
                     "stopped_at": time.time(),
                 }
+            report_alarm("STAGE_RECIPROCATION_STOPPED", component="stage_reciprocation", fact=True)
         except Exception as exc:
+            report_alarm("STAGE_RECIPROCATION_FAILED", component="stage_reciprocation")
             with self._lock:
                 self._status = {
                     **self._status,

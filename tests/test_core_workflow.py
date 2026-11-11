@@ -475,6 +475,37 @@ def test_objective_executor_focus_precheck_failure_prevents_all_motion_and_state
     assert not state_file.exists()
 
 
+@pytest.mark.parametrize("failed_slave", [4, 3])
+def test_objective_excessive_error_prevents_success_state(tmp_path, monkeypatch, failed_slave):
+    from contextlib import nullcontext
+    from workflow import objective_executor
+
+    moves = []
+    state_file = tmp_path / "objective_state.json"
+    state_file.write_text('{"current_objective": "4x"}', encoding="utf-8")
+
+    class FakeMotor:
+        def __init__(self, client, slave):
+            self.slave = slave
+
+        def get_current_position(self):
+            return -3000000
+
+        def pp_absolute_move(self, **kwargs):
+            moves.append(self.slave)
+            return 51 if self.slave == failed_slave else 0
+
+    monkeypatch.setattr(objective_executor, "ModbusRTUClient", lambda **kw: nullcontext())
+    monkeypatch.setattr(objective_executor, "MotorManager", FakeMotor)
+    with pytest.raises(objective_executor.ObjectiveSwitchError, match="tolerance=50"):
+        objective_executor.ensure_objective_for_task(
+            {"objective_name": "10x"},
+            _objective_switch_test_config(state={"enabled": True, "state_file": str(state_file)}),
+        )
+    assert moves == ([4] if failed_slave == 4 else [4, 3])
+    assert state_file.read_text(encoding="utf-8") == '{"current_objective": "4x"}'
+
+
 def test_objective_executor_rejects_focus_target_beyond_collision_limit() -> None:
     from workflow import objective_executor
 

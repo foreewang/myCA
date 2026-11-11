@@ -8,6 +8,10 @@ import time
 from typing import Any, Callable, Dict, Mapping
 
 from devices.motion.communication_timing import motion_measure as measure
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
+from workflow.task_control import TaskCanceled
 
 from devices.motion.MotorManager import MotorManager
 from devices.motion.modbus import ModbusRTUClient, validate_slave_switch_gap_ms
@@ -22,6 +26,27 @@ _PP_NEW_SETPOINT_BIT = 0x10
 
 class StageMotionError(RuntimeError):
     """Raised when an XY stage move cannot be completed safely."""
+
+
+def _stage_failure(message: str, code: str) -> StageMotionError:
+    report_alarm(code, component="stage", resource="xy")
+    failure = StageMotionError(message)
+    failure._stage_alarm_reported = True
+    return failure
+
+
+def _recover_stage_move(*, standstill_verified: bool, tolerance_verified: bool,
+                        limits_verified: bool, drive_verified: bool) -> None:
+    for code in ("MOTION_MOVE_FAILED", "MOTION_POSITION_UNAVAILABLE", "MOTION_TIMEOUT"):
+        recover_alarm(code, component="stage", resource="xy")
+    if tolerance_verified:
+        recover_alarm("MOTION_ARRIVAL_OUT_OF_TOLERANCE", component="stage", resource="xy")
+    if limits_verified:
+        recover_alarm("MOTION_HARD_LIMIT_EXCEEDED", component="stage", resource="xy")
+    if drive_verified:
+        recover_alarm("MOTION_DRIVE_FAULT", component="stage", resource="xy")
+    if standstill_verified:
+        recover_alarm("MOTION_STATE_UNCERTAIN", component="stage", resource="xy")
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -106,7 +131,7 @@ def _check_target_in_stage_limits(
 def _require_axis_position(snapshot: Mapping[str, Any], axis_name: str) -> int:
     pos = snapshot.get("current_pos")
     if pos is None:
-        raise StageMotionError(f"failed to read {axis_name} current position")
+        raise _stage_failure(f"failed to read {axis_name} current position", "MOTION_POSITION_UNAVAILABLE")
     return int(pos)
 
 
@@ -123,7 +148,7 @@ def _check_arrival_tolerance(
     for axis in ("x", "y"):
         err = int(err_to_target[axis])
         if abs(err) > tolerance:
-            raise StageMotionError(f"{axis} arrival error is too large: err={err}, tolerance={tolerance}")
+            raise _stage_failure(f"{axis} arrival error is too large: err={err}, tolerance={tolerance}", "MOTION_ARRIVAL_OUT_OF_TOLERANCE")
 
 
 def _quick_stop_xy(x_motor: MotorManager | None, y_motor: MotorManager | None) -> None:
@@ -288,21 +313,21 @@ def _check_current_within_hard_limits(
     if not limits["enabled"]:
         return
     if int(current["x"]) < int(limits["x_min"]) or int(current["x"]) > int(limits["x_max"]):
-        raise StageMotionError(
+        raise _stage_failure(
             f"x current position {int(current['x'])} is outside hard range "
-            f"[{int(limits['x_min'])}, {int(limits['x_max'])}]"
+            f"[{int(limits['x_min'])}, {int(limits['x_max'])}]", "MOTION_HARD_LIMIT_EXCEEDED"
         )
     if int(current["y"]) < int(limits["y_min"]) or int(current["y"]) > int(limits["y_max"]):
-        raise StageMotionError(
+        raise _stage_failure(
             f"y current position {int(current['y'])} is outside hard range "
-            f"[{int(limits['y_min'])}, {int(limits['y_max'])}]"
+            f"[{int(limits['y_min'])}, {int(limits['y_max'])}]", "MOTION_HARD_LIMIT_EXCEEDED"
         )
 
 
 def _check_axis_fault(motor: MotorManager, axis_name: str) -> None:
     status = motor.client._read_statusword(motor.slave)
     if status is not None and bool(status & motor.client.STAT_FAULT):
-        raise StageMotionError(f"{axis_name} axis reported fault during move")
+        raise _stage_failure(f"{axis_name} axis reported fault during move", "MOTION_DRIVE_FAULT")
 
 
 def _checked_snapshot_positions(snapshot):
@@ -311,9 +336,9 @@ def _checked_snapshot_positions(snapshot):
         positions[axis] = _require_axis_position(snapshot[axis], axis)
         status = snapshot[axis].get("statusword")
         if status is None:
-            raise StageMotionError(f"failed to read {axis} statusword")
+            raise _stage_failure(f"failed to read {axis} statusword", "MOTION_POSITION_UNAVAILABLE")
         if status & ModbusRTUClient.STAT_FAULT:
-            raise StageMotionError(f"{axis} axis reported fault during move")
+            raise _stage_failure(f"{axis} axis reported fault during move", "MOTION_DRIVE_FAULT")
     return positions
 
 
@@ -403,9 +428,10 @@ def _wait_xy_arrival(
             _check_axis_fault(x_motor, "x")
             _check_axis_fault(y_motor, "y")
         if time.monotonic() >= deadline:
-            raise StageMotionError(
+            raise _stage_failure(
                 "xy move timed out: "
-                f"target=({x_target},{y_target}), current=({last_pos['x']},{last_pos['y']}), timeout_s={timeout_s}"
+                f"target=({x_target},{y_target}), current=({last_pos['x']},{last_pos['y']}), timeout_s={timeout_s}",
+                "MOTION_TIMEOUT"
             )
         time.sleep(poll_s)
 
@@ -644,7 +670,7 @@ def move_to_absolute(
             if keep_enabled:
                 mask = ModbusRTUClient.STAT_TARGET_REACHED | ModbusRTUClient.STAT_OPERATION_ENABLED
                 if any(after[a]["statusword"] & mask != mask or abs(after[a]["current_pos"] - wait_result["current"][a]) > 10 for a in ("x", "y")):
-                    raise StageMotionError("position/status changed after hold standstill check")
+                    raise _stage_failure("position/status changed after hold standstill check", "MOTION_STATE_UNCERTAIN")
             with measure(timings, "command_snapshot"):
                 cmd_pos = _snapshot_command_positions(x_motor, y_motor)
 
@@ -676,6 +702,23 @@ def move_to_absolute(
                     wait_result.get("standstill_verified"), wait_result.get("stable_samples"),
                 )
 
+            limits = _normalize_stage_limits(stage_limits)
+            standstill_verified = bool(wait_result.get("standstill_verified"))
+            _recover_stage_move(
+                standstill_verified=standstill_verified,
+                tolerance_verified=arrival_tolerance_pulse is not None,
+                limits_verified=bool(limits["enabled"] and
+                                     limits["x_min"] <= after_x <= limits["x_max"] and
+                                     limits["y_min"] <= after_y <= limits["y_max"]),
+                drive_verified=all(after[a].get("statusword") is not None and
+                                   not after[a]["statusword"] & ModbusRTUClient.STAT_FAULT
+                                   for a in ("x", "y")),
+            )
+            if standstill_verified:
+                resource_for = getattr(client, "_alarm_resource", None)
+                if callable(resource_for):
+                    for slave in (x_slave, y_slave):
+                        recover_alarm("MOTION_STOP_FAILED", component="motion_bus", resource=resource_for(slave))
             return {
                 "timings_ms": timings,
                 "target": {"x": x_target, "y": y_target},
@@ -706,7 +749,9 @@ def move_to_absolute(
                     "move_mode": "simultaneous_pp",
                 },
             }
-        except Exception:
+        except Exception as exc:
+            if not isinstance(exc, TaskCanceled) and not getattr(exc, "_stage_alarm_reported", False):
+                report_alarm("MOTION_MOVE_FAILED", component="stage", resource="xy")
             _quick_stop_xy(x_motor, y_motor)
             raise
 

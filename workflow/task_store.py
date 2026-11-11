@@ -9,8 +9,11 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
+from uuid import uuid4
 
 from workflow.file_io import atomic_write_json, read_json_with_retry
+from workflow.alarm_service import report_alarm, recover_alarm
+from workflow.alarm_task_hooks import observe_task_record, storage_resource
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -99,6 +102,7 @@ def write_task_record_unlocked(record: Dict[str, Any]) -> None:
         attempts=TASK_RECORD_REPLACE_ATTEMPTS,
         sleep_s=TASK_RECORD_REPLACE_SLEEP_SEC,
     )
+    observe_task_record(record)
 
 
 def read_task_record(task_id: str) -> Dict[str, Any]:
@@ -122,6 +126,7 @@ def read_task_record_unlocked(task_id: str) -> Dict[str, Any]:
             sleep_s=TASK_RECORD_REPLACE_SLEEP_SEC,
         )
     except Exception as exc:
+        report_alarm("TASK_RECORD_READ_FAILED", component="task_store", resource=storage_resource(path), task_id=task_id)
         raise TaskStoreError(
             503,
             "TASK_RECORD_TEMPORARILY_UNREADABLE",
@@ -130,12 +135,14 @@ def read_task_record_unlocked(task_id: str) -> Dict[str, Any]:
             cause=exc,
         ) from exc
     if not isinstance(record, dict):
+        report_alarm("TASK_RECORD_READ_FAILED", component="task_store", resource=storage_resource(path), task_id=task_id)
         raise TaskStoreError(
             500,
             "TASK_RECORD_INVALID",
             "任务记录格式异常，请查看本地日志",
             log_detail=f"task_id={task_id} path={path}",
         )
+    recover_alarm("TASK_RECORD_READ_FAILED", component="task_store", resource=storage_resource(path))
     return record
 
 
@@ -583,6 +590,7 @@ def build_accepted_record(task: Dict[str, Any], dump_json: str | None, persist_r
     output_cfg = task.get("output", {}) or {}
     return {
         "task_id": str(task.get("task_id") or ""),
+        "execution_id": uuid4().hex,
         "status": "queued",
         "task_type": task.get("task_type"),
         "observe_scope": task.get("observe_scope"),

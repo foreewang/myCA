@@ -8,6 +8,7 @@ import yaml
 
 from workflow.config_validator import validate_camera_file, validate_plates_file
 from workflow.task_store import normalize_task_objective_alias, task_objective_name
+from workflow.alarm_task_hooks import configuration_boundary
 
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
@@ -36,6 +37,7 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
     return data or {}
 
 
+@configuration_boundary("runtime_context")
 def load_runtime_context(
     task_path: str | Path,
     camera_path: str | Path | None = None,

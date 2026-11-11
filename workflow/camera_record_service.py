@@ -5,6 +5,8 @@ import os
 from typing import Any, Callable, Dict
 
 from workflow.api_models import CameraRecordStartRequest
+from workflow.alarm_service import report_alarm, recover_alarm
+from workflow.alarm_task_hooks import storage_resource
 from workflow.config_validator import (
     ConfigValidationError,
     resolve_mvs_python_dir,
@@ -47,7 +49,14 @@ def load_camera_settings_for_recording(req: CameraRecordStartRequest) -> Dict[st
         req.camera_path or os.getenv("CAMERA_CONFIG_PATH") or str(CONFIG_ROOT / "camera.yaml"),
         "camera_path",
     )
-    cfg = validate_camera_file(camera_path)
+    try:
+        cfg = validate_camera_file(camera_path)
+    except Exception:
+        report_alarm("CONFIG_EXECUTION_BLOCKED", component="camera_configuration",
+                     resource=storage_resource(camera_path))
+        raise
+    recover_alarm("CONFIG_EXECUTION_BLOCKED", component="camera_configuration",
+                  resource=storage_resource(camera_path))
     camera_cfg = cfg.get("camera", cfg) if isinstance(cfg, dict) else {}
     if not isinstance(camera_cfg, dict):
         camera_cfg = {}

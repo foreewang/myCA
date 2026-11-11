@@ -17,6 +17,7 @@ from workflow.path_guard import PathGuardError
 from workflow.task_artifacts import TaskArtifactError
 from workflow.task_runtime import TaskRuntimeError
 from workflow.task_store import TaskStoreError
+from workflow.alarm_service import report_alarm
 
 API_LOG_PATH = LOG_DIR / "api_server.log"
 ACCESS_LOG_PATH = LOG_DIR / "api_access.log"
@@ -187,6 +188,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     request_id = getattr(request.state, "request_id", "-")
     logger.error("event=request_failed error_code=INTERNAL_SERVER_ERROR",
                  exc_info=(type(exc), exc, exc.__traceback__), extra={"request_id": request_id})
+    report_alarm("API_UNHANDLED_ERROR", component="api", fact=True,
+                 occurrence_key=request_id if request_id != "-" else None,
+                 diagnostic_id=request_id if request_id != "-" else None)
     exc._colony_logged = True
     return JSONResponse(
         status_code=500,

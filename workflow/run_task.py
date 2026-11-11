@@ -1,5 +1,6 @@
 """执行 capture、pipeline、compensate 和 handoff 任务的主工作流。"""
 from __future__ import annotations
+from workflow.alarm_task_hooks import configuration_boundary
 
 from workflow.task_logging import with_task_logging
 
@@ -92,6 +93,7 @@ def _normalize_objective_name(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+@configuration_boundary("autofocus_policy")
 def load_local_autofocus_policy(task: Dict[str, Any], default_config_dir: Path) -> Dict[str, Any]:
     """Load local autofocus policy.
 
@@ -543,6 +545,8 @@ def run_pipeline_task(ctx: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, 
     raise ValueError(f"不支持的 observe_scope: {observe_scope}")
 
 
+@configuration_boundary("scan_preflight", should_observe=lambda ctx, params:
+                        params.get("scan_mode") == "five_point" and "capture" in (params.get("stages") or []))
 def preflight_five_point_scans(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
     """Validate every requested five-point well before any hardware operation.
 
@@ -613,6 +617,7 @@ def _preflight_overlap_deduplication(detect_cfg: Dict[str, Any], params: Dict[st
             raise ValueError("detect.deduplication.registration_tolerance_mm 必须为有限正数")
 
 
+@configuration_boundary("detection_preflight", should_observe=lambda ctx, params: "detect" in (params.get("stages") or []))
 def preflight_detection_backend(ctx: Dict[str, Any], params: Dict[str, Any]) -> None:
     """Validate/load the model before capture moves or camera acquisition begin."""
     if "detect" not in (params.get("stages") or []):

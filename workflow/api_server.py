@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 import time
@@ -14,8 +15,15 @@ from workflow.task_logging import current_request_id
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
+
+from workflow.alarm_service import (
+    get_alarm_service,
+    initialize_alarm_service,
+    shutdown_alarm_service,
+)
+from workflow.alarm_store import AlarmQueryError
 
 from workflow.api_errors import (
     access_logger,
@@ -119,6 +127,7 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _configure_api_file_logging()
     single_worker_lock: SingleInstanceLock | None = None
     camera_supervisor_initialized = False
+    alarm_service = None
     body_error: BaseException | None = None
     try:
         configured_workers = assert_single_worker_config()
@@ -130,6 +139,7 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
         single_worker_lock.acquire()
         logger.info("api single-worker lock acquired: %s", single_worker_lock.path)
+        alarm_service = initialize_alarm_service()
         recover_interrupted_task_records()
         # Validate all camera-process timeout environment variables during
         # lifespan startup.  This creates only the local supervisor; the MVS
@@ -139,11 +149,17 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         initialize_camera_process_supervisor()
         camera_supervisor_initialized = True
         start_task_runtime_manager()
+        if alarm_service is not None:
+            alarm_service.start()
         yield
     except BaseException as exc:
         body_error = exc
         raise
     finally:
+        # Stop sampling before normal worker shutdown; recording hooks remain
+        # available until device cleanup has finished.
+        if alarm_service is not None:
+            alarm_service.stop()
         cleanup_error: BaseException | None = None
         cleanup_cancellation: asyncio.CancelledError | None = None
         try:
@@ -182,6 +198,7 @@ async def _api_lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 except BaseException as exc:
                     _log_cleanup_error("failed to schedule camera shutdown", exc)
         finally:
+            shutdown_alarm_service()
             if single_worker_lock is not None:
                 try:
                     single_worker_lock.release()
@@ -254,6 +271,34 @@ app.add_middleware(RequestLoggingMiddleware)
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/alarms")
+def get_alarms(
+    request: Request,
+    response: Response,
+    mode: str = "events",
+    cursor: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> Dict[str, Any]:
+    """Read-only alarm synchronization; authentication grants no control rights."""
+    response.headers["Cache-Control"] = "no-store"
+    expected = os.getenv("COLONY_ALARM_TOKEN", "")
+    if not expected:
+        raise HTTPException(503, detail={"error_code": "ALARM_AUTH_NOT_CONFIGURED",
+                                         "message": "报警查询凭据尚未配置"})
+    supplied = request.headers.get("authorization", "")
+    if not hmac.compare_digest(supplied.encode(), f"Bearer {expected}".encode()):
+        raise HTTPException(401, detail={"error_code": "ALARM_UNAUTHORIZED", "message": "报警查询认证失败"},
+                            headers={"WWW-Authenticate": "Bearer"})
+    if (set(request.query_params) - {"mode", "cursor", "limit"}
+            or any(len(request.query_params.getlist(key)) > 1 for key in request.query_params)):
+        raise HTTPException(400, detail={"error_code": "ALARM_QUERY_INVALID",
+                                         "message": "报警查询不支持类型筛选或其他额外参数"})
+    try:
+        return get_alarm_service().query(mode=mode, cursor=cursor, limit=limit)
+    except AlarmQueryError as exc:
+        raise HTTPException(exc.status, detail=exc.detail) from exc
 
 
 @app.get("/api/camera/record/status")
@@ -375,6 +420,7 @@ def get_task_status(task_id: str) -> Dict[str, Any]:
     record = read_task_record(task_id)
     return {
         "task_id": record.get("task_id"),
+        "execution_id": record.get("execution_id"),
         "status": record.get("status"),
         "task_type": record.get("task_type"),
         "observe_scope": record.get("observe_scope"),

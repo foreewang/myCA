@@ -4,6 +4,9 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from workflow.stage_executor import StageMotionError, move_to_absolute
+from workflow.alarm_service import (
+    report_device_alarm as report_alarm, recover_device_alarm as recover_alarm,
+)
 
 
 class HandoffError(RuntimeError):
@@ -143,8 +146,13 @@ def execute_handoff_task(
             stage_limits=(plate_cfg or {}).get("stage_limits"),
         )
     except StageMotionError as exc:
+        report_alarm("HANDOFF_MOVE_FAILED", component="handoff")
         raise HandoffError(str(exc)) from exc
+    except Exception:
+        report_alarm("HANDOFF_MOVE_FAILED", component="handoff")
+        raise
 
+    recover_alarm("HANDOFF_MOVE_FAILED", component="handoff")
     return {
         "task_id": task_id,
         "status": "success",
