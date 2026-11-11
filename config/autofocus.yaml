@@ -69,9 +69,9 @@ motor:
   objective_ranges:
     4x:
       # 4x 搜索最小位置。
-      min_pos: -3082685
+      min_pos: -3029800
       # 4x 搜索最大位置。
-      max_pos: -2922685
+      max_pos: -2999800
     10x:
       # 10x 搜索最小位置。
       min_pos: -3078604

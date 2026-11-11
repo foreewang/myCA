@@ -2923,7 +2923,7 @@ def test_project_objective_focus_calibration_values() -> None:
     assert objectives["4x"]["switch"]["objective_target_pos"] == 166347
     assert objectives["4x"]["switch"]["focus_target_pos"] == -3002685
     assert objectives["4x"]["switch"]["focus_collision_limit_pos"] == -3436433
-    assert ranges["4x"] == {"min_pos": -3082685, "max_pos": -2922685}
+    assert ranges["4x"] == {"min_pos": -3029800, "max_pos": -2999800}
 
     assert objectives["10x"]["switch"]["objective_target_pos"] == 332695
     assert objectives["10x"]["switch"]["focus_target_pos"] == -2998604
